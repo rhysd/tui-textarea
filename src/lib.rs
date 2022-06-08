@@ -14,11 +14,53 @@ pub enum Key {
     Delete,
     Home,
     End,
+    Null,
 }
 
 pub struct Input {
     pub key: Key,
     pub ctrl: bool,
+}
+
+impl Default for Input {
+    fn default() -> Self {
+        Input {
+            key: Key::Null,
+            ctrl: false,
+        }
+    }
+}
+
+impl From<crossterm::event::Event> for Input {
+    fn from(event: crossterm::event::Event) -> Self {
+        if let crossterm::event::Event::Key(key) = event {
+            Self::from(key)
+        } else {
+            Self::default()
+        }
+    }
+}
+
+impl From<crossterm::event::KeyEvent> for Input {
+    fn from(key: crossterm::event::KeyEvent) -> Self {
+        use crossterm::event::{KeyCode, KeyModifiers};
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        let key = match key.code {
+            KeyCode::Char(c) => Key::Char(c),
+            KeyCode::Backspace => Key::Backspace,
+            KeyCode::Enter => Key::Enter,
+            KeyCode::Left => Key::Left,
+            KeyCode::Right => Key::Right,
+            KeyCode::Up => Key::Up,
+            KeyCode::Down => Key::Down,
+            KeyCode::Tab => Key::Tab,
+            KeyCode::Delete => Key::Delete,
+            KeyCode::Home => Key::Home,
+            KeyCode::End => Key::End,
+            _ => Key::Null,
+        };
+        Self { key, ctrl }
+    }
 }
 
 pub struct TextArea<'a> {
@@ -40,7 +82,8 @@ impl<'a> Default for TextArea<'a> {
 }
 
 impl<'a> TextArea<'a> {
-    pub fn input(&mut self, input: Input) {
+    pub fn input(&mut self, input: impl Into<Input>) {
+        let input = input.into();
         if input.ctrl {
             // TODO
         } else {

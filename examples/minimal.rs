@@ -7,7 +7,7 @@ use tui::backend::CrosstermBackend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::widgets::{Block, Borders};
 use tui::Terminal;
-use tui_textarea::{Input, Key, TextArea};
+use tui_textarea::{Input, TextArea};
 
 fn main() -> io::Result<()> {
     let stdout = io::stdout();
@@ -29,20 +29,11 @@ fn main() -> io::Result<()> {
             let widget = textarea.widget();
             f.render_widget(widget, chunks[0]);
         })?;
-
         if let Event::Key(key) = crossterm::event::read()? {
-            match key.code {
-                KeyCode::Char(c) => textarea.input(Input {
-                    key: Key::Char(c),
-                    ctrl: false,
-                }),
-                KeyCode::Backspace => textarea.input(Input {
-                    key: Key::Backspace,
-                    ctrl: false,
-                }),
-                KeyCode::Esc => break,
-                _ => {}
+            if key.code == KeyCode::Esc {
+                break;
             }
+            textarea.input(Input::from(key));
         }
     }
 
