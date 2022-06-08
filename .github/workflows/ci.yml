@@ -15,5 +15,5 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - name: rustfmt
         run: cargo fmt -- --check --color always
-      # - name: clippy
-      #   run: cargo clippy --color always -- -D warnings
+      - name: clippy
+        run: cargo clippy --color always -- -D warnings
