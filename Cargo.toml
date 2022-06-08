@@ -3,7 +3,6 @@ name = "tui-textarea"
 version = "0.0.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+crossterm = "0.23.2"
 tui = "0.18"

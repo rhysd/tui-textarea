@@ -97,4 +97,14 @@ impl<'a> TextArea<'a> {
         }
         p
     }
+
+    pub fn style(mut self, style: Style) -> Self {
+        self.style = style;
+        self
+    }
+
+    pub fn block(mut self, block: Block<'a>) -> Self {
+        self.block = Some(block);
+        self
+    }
 }
