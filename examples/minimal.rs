@@ -17,8 +17,8 @@ fn main() -> io::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut term = Terminal::new(backend)?;
 
-    let mut textarea =
-        TextArea::default().block(Block::default().borders(Borders::ALL).title("EXAMPLE"));
+    let mut textarea = TextArea::default();
+    textarea.block(Block::default().borders(Borders::ALL).title("EXAMPLE"));
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1)].as_ref());

@@ -2,6 +2,7 @@ use tui::style::{Modifier, Style};
 use tui::text::{Span, Spans, Text};
 use tui::widgets::{Block, Paragraph, Widget};
 
+#[derive(Clone, Copy)]
 pub enum Key {
     Char(char),
     Backspace,
@@ -68,6 +69,7 @@ pub struct TextArea<'a> {
     block: Option<Block<'a>>,
     style: Style,
     cursor: (usize, usize),
+    tab: &'a str,
 }
 
 impl<'a> Default for TextArea<'a> {
@@ -77,6 +79,7 @@ impl<'a> Default for TextArea<'a> {
             block: None,
             style: Style::default(),
             cursor: (0, 0),
+            tab: "    ",
         }
     }
 }
@@ -90,6 +93,7 @@ impl<'a> TextArea<'a> {
             match input.key {
                 Key::Char(c) => self.insert_char(c),
                 Key::Backspace => self.delete_char(),
+                Key::Tab => self.insert_tab(),
                 _ => {}
             }
         }
@@ -101,6 +105,23 @@ impl<'a> TextArea<'a> {
         if let Some((i, _)) = line.char_indices().nth(col) {
             line.insert(i, c);
             self.cursor.1 += 1;
+        }
+    }
+
+    pub fn insert_str(&mut self, s: &str) {
+        // TODO: Consider \n in `s`
+        let (row, col) = self.cursor;
+        let line = &mut self.lines[row];
+        if let Some((i, _)) = line.char_indices().nth(col) {
+            line.insert_str(i, s);
+            self.cursor.1 += s.chars().count();
+        }
+    }
+
+    pub fn insert_tab(&mut self) {
+        if !self.tab.is_empty() {
+            let len = self.tab.len() - self.cursor.1 % self.tab.len();
+            self.insert_str(&self.tab[..len]);
         }
     }
 
@@ -141,13 +162,36 @@ impl<'a> TextArea<'a> {
         p
     }
 
-    pub fn style(mut self, style: Style) -> Self {
+    pub fn style(&mut self, style: Style) -> &mut Self {
         self.style = style;
         self
     }
 
-    pub fn block(mut self, block: Block<'a>) -> Self {
+    pub fn block(&mut self, block: Block<'a>) -> &mut Self {
         self.block = Some(block);
         self
+    }
+
+    pub fn remove_block(&mut self) -> &mut Self {
+        self.block = None;
+        self
+    }
+
+    pub fn tab(&mut self, tab: &'a str) -> &mut Self {
+        assert!(
+            tab.chars().all(|c| c == ' '),
+            "tab string must consist of spaces but got {:?}",
+            tab,
+        );
+        self.tab = tab;
+        self
+    }
+
+    pub fn lines(&'a self) -> impl Iterator<Item = &'a str> {
+        self.lines.iter().map(|l| &l[..l.len() - 1]) // Trim last whitespace
+    }
+
+    pub fn cursor(&self) -> (usize, usize) {
+        self.cursor
     }
 }
