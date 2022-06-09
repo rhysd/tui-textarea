@@ -44,5 +44,7 @@ fn main() -> io::Result<()> {
         DisableMouseCapture
     )?;
     term.show_cursor()?;
+
+    println!("Lines: {:?}", textarea.lines().collect::<Vec<_>>());
     Ok(())
 }

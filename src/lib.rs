@@ -2,7 +2,7 @@ use tui::style::{Modifier, Style};
 use tui::text::{Span, Spans, Text};
 use tui::widgets::{Block, Paragraph, Widget};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Key {
     Char(char),
     Backspace,
@@ -18,6 +18,7 @@ pub enum Key {
     Null,
 }
 
+#[derive(Debug)]
 pub struct Input {
     pub key: Key,
     pub ctrl: bool,
@@ -91,6 +92,12 @@ impl<'a> TextArea<'a> {
             match input.key {
                 Key::Char('h') => self.delete_char(),
                 Key::Char('m') => self.insert_newline(),
+                Key::Char('p') => self.cursor_up(),
+                Key::Char('f') => self.cursor_forward(),
+                Key::Char('n') => self.cursor_down(),
+                Key::Char('b') => self.cursor_back(),
+                Key::Char('a') => self.cursor_start(),
+                Key::Char('e') => self.cursor_end(),
                 _ => {}
             }
         } else {
@@ -99,9 +106,43 @@ impl<'a> TextArea<'a> {
                 Key::Backspace => self.delete_char(),
                 Key::Tab => self.insert_tab(),
                 Key::Enter => self.insert_newline(),
+                Key::Up => self.cursor_up(),
+                Key::Right => self.cursor_forward(),
+                Key::Down => self.cursor_down(),
+                Key::Left => self.cursor_back(),
+                Key::Home => self.cursor_start(),
+                Key::End => self.cursor_end(),
                 _ => {}
             }
         }
+
+        // Check invariants
+        debug_assert!(!self.lines.is_empty(), "no line after {:?}", input);
+        for (i, l) in self.lines.iter().enumerate() {
+            debug_assert!(
+                l.ends_with(' '),
+                "line {} does not end with space after {:?}: {:?}",
+                i + 1,
+                input,
+                l,
+            );
+        }
+        let (r, c) = self.cursor;
+        debug_assert!(
+            self.lines.len() > r,
+            "cursor {:?} exceeds max lines {} after {:?}",
+            self.cursor,
+            self.lines.len(),
+            input,
+        );
+        debug_assert!(
+            self.lines[r].chars().count() > c,
+            "cursor {:?} exceeds max col {} at line {:?} after {:?}",
+            self.cursor,
+            self.lines[r].chars().count(),
+            self.lines[r],
+            input,
+        );
     }
 
     pub fn insert_char(&mut self, c: char) {
@@ -111,25 +152,26 @@ impl<'a> TextArea<'a> {
             line.insert(i, c);
             self.cursor.1 += 1;
         }
-        self.debug_assert();
     }
 
     pub fn insert_str(&mut self, s: &str) {
-        // TODO: Consider \n in `s`
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
+        debug_assert_eq!(
+            line.char_indices().find(|(_, c)| *c == '\n'),
+            None,
+            "string given to insert_str must not contain newline",
+        );
         if let Some((i, _)) = line.char_indices().nth(col) {
             line.insert_str(i, s);
             self.cursor.1 += s.chars().count();
         }
-        self.debug_assert();
     }
 
     pub fn insert_tab(&mut self) {
         if !self.tab.is_empty() {
             let len = self.tab.len() - self.cursor.1 % self.tab.len();
             self.insert_str(&self.tab[..len]);
-            self.debug_assert();
         }
     }
 
@@ -146,7 +188,6 @@ impl<'a> TextArea<'a> {
         line.push(' ');
         self.lines.insert(row + 1, next_line);
         self.cursor = (row + 1, 0);
-        self.debug_assert();
     }
 
     pub fn delete_char(&mut self) {
@@ -159,7 +200,6 @@ impl<'a> TextArea<'a> {
                 prev_line.push_str(&line);
                 self.cursor = (row - 1, prev_line.chars().count() - 1);
             }
-            self.debug_assert();
             return;
         }
 
@@ -168,7 +208,60 @@ impl<'a> TextArea<'a> {
             line.remove(i);
             self.cursor.1 -= 1;
         }
-        self.debug_assert();
+    }
+
+    pub fn cursor_forward(&mut self) {
+        let (r, c) = self.cursor;
+        if c + 1 >= self.lines[r].chars().count() {
+            if r + 1 < self.lines.len() {
+                self.cursor = (r + 1, 0);
+            }
+        } else {
+            self.cursor.1 += 1;
+        }
+    }
+
+    pub fn cursor_back(&mut self) {
+        let (r, c) = self.cursor;
+        if c == 0 {
+            if r > 0 {
+                self.cursor = (r - 1, self.lines[r - 1].chars().count() - 1);
+            }
+        } else {
+            self.cursor.1 -= 1;
+        }
+    }
+
+    pub fn cursor_down(&mut self) {
+        let (r, c) = self.cursor;
+        if r + 1 >= self.lines.len() {
+            return;
+        }
+        self.cursor.0 += 1;
+        let len = self.lines[r + 1].chars().count();
+        if len <= c {
+            self.cursor.1 = len - 1;
+        }
+    }
+
+    pub fn cursor_up(&mut self) {
+        let (r, c) = self.cursor;
+        if r == 0 {
+            return;
+        }
+        self.cursor.0 -= 1;
+        let len = self.lines[r - 1].chars().count();
+        if len <= c {
+            self.cursor.1 = len - 1;
+        }
+    }
+
+    pub fn cursor_start(&mut self) {
+        self.cursor.1 = 0;
+    }
+
+    pub fn cursor_end(&mut self) {
+        self.cursor.1 = self.lines[self.cursor.0].chars().count() - 1;
     }
 
     pub fn widget(&'a self) -> impl Widget + 'a {
@@ -228,31 +321,5 @@ impl<'a> TextArea<'a> {
     /// 0-base character-wise (row, col) cursor position.
     pub fn cursor(&self) -> (usize, usize) {
         self.cursor
-    }
-
-    fn debug_assert(&self) {
-        debug_assert!(!self.lines.is_empty(), "no line");
-        for (i, l) in self.lines.iter().enumerate() {
-            debug_assert!(
-                l.ends_with(' '),
-                "line {} does not end with space: {:?}",
-                i + 1,
-                l,
-            );
-        }
-        let (r, c) = self.cursor;
-        debug_assert!(
-            self.lines.len() > r,
-            "cursor {:?} exceeds max lines {}",
-            self.cursor,
-            self.lines.len(),
-        );
-        debug_assert!(
-            self.lines[r].chars().count() > c,
-            "cursor {:?} exceeds max col {} at line {:?}",
-            self.cursor,
-            self.lines[r].chars().count(),
-            self.lines[r],
-        );
     }
 }
