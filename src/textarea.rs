@@ -1,3 +1,4 @@
+use crate::cursor::CursorMove;
 use crate::edit::{Edit, EditKind};
 use crate::history::EditHistory;
 use crate::input::{Input, Key};
@@ -34,12 +35,12 @@ impl<'a> TextArea<'a> {
             match input.key {
                 Key::Char('h') => self.delete_char(),
                 Key::Char('m') => self.insert_newline(),
-                Key::Char('p') => self.cursor_up(),
-                Key::Char('f') => self.cursor_forward(),
-                Key::Char('n') => self.cursor_down(),
-                Key::Char('b') => self.cursor_back(),
-                Key::Char('a') => self.cursor_start(),
-                Key::Char('e') => self.cursor_end(),
+                Key::Char('p') => self.move_cursor(CursorMove::Up),
+                Key::Char('f') => self.move_cursor(CursorMove::Forward),
+                Key::Char('n') => self.move_cursor(CursorMove::Down),
+                Key::Char('b') => self.move_cursor(CursorMove::Back),
+                Key::Char('a') => self.move_cursor(CursorMove::Head),
+                Key::Char('e') => self.move_cursor(CursorMove::End),
                 Key::Char('u') => self.undo(),
                 Key::Char('r') => self.redo(),
                 _ => {}
@@ -50,12 +51,12 @@ impl<'a> TextArea<'a> {
                 Key::Backspace => self.delete_char(),
                 Key::Tab => self.insert_tab(),
                 Key::Enter => self.insert_newline(),
-                Key::Up => self.cursor_up(),
-                Key::Right => self.cursor_forward(),
-                Key::Down => self.cursor_down(),
-                Key::Left => self.cursor_back(),
-                Key::Home => self.cursor_start(),
-                Key::End => self.cursor_end(),
+                Key::Up => self.move_cursor(CursorMove::Up),
+                Key::Right => self.move_cursor(CursorMove::Forward),
+                Key::Down => self.move_cursor(CursorMove::Down),
+                Key::Left => self.move_cursor(CursorMove::Back),
+                Key::Home => self.move_cursor(CursorMove::Head),
+                Key::End => self.move_cursor(CursorMove::End),
                 _ => {}
             }
         }
@@ -165,58 +166,10 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    pub fn cursor_forward(&mut self) {
-        let (r, c) = self.cursor;
-        if c + 1 >= self.lines[r].chars().count() {
-            if r + 1 < self.lines.len() {
-                self.cursor = (r + 1, 0);
-            }
-        } else {
-            self.cursor.1 += 1;
+    pub fn move_cursor(&mut self, m: CursorMove) {
+        if let Some(cursor) = m.next_cursor(self.cursor, &self.lines) {
+            self.cursor = cursor;
         }
-    }
-
-    pub fn cursor_back(&mut self) {
-        let (r, c) = self.cursor;
-        if c == 0 {
-            if r > 0 {
-                self.cursor = (r - 1, self.lines[r - 1].chars().count() - 1);
-            }
-        } else {
-            self.cursor.1 -= 1;
-        }
-    }
-
-    pub fn cursor_down(&mut self) {
-        let (r, c) = self.cursor;
-        if r + 1 >= self.lines.len() {
-            return;
-        }
-        self.cursor.0 += 1;
-        let len = self.lines[r + 1].chars().count();
-        if len <= c {
-            self.cursor.1 = len - 1;
-        }
-    }
-
-    pub fn cursor_up(&mut self) {
-        let (r, c) = self.cursor;
-        if r == 0 {
-            return;
-        }
-        self.cursor.0 -= 1;
-        let len = self.lines[r - 1].chars().count();
-        if len <= c {
-            self.cursor.1 = len - 1;
-        }
-    }
-
-    pub fn cursor_start(&mut self) {
-        self.cursor.1 = 0;
-    }
-
-    pub fn cursor_end(&mut self) {
-        self.cursor.1 = self.lines[self.cursor.0].chars().count() - 1;
     }
 
     pub fn undo(&mut self) {
