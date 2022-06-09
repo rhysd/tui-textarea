@@ -13,6 +13,7 @@ pub struct TextArea<'a> {
     cursor: (usize, usize), // 0-base
     tab: &'a str,
     history: EditHistory,
+    cursor_line_style: Style,
 }
 
 impl<'a> Default for TextArea<'a> {
@@ -24,6 +25,7 @@ impl<'a> Default for TextArea<'a> {
             cursor: (0, 0),
             tab: "    ",
             history: EditHistory::new(50),
+            cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
         }
     }
 }
@@ -194,9 +196,9 @@ impl<'a> TextArea<'a> {
                     .unwrap_or((l.len() - 1, ' '));
                 let j = i + c.len_utf8();
                 lines.push(Spans::from(vec![
-                    Span::from(&l[..i]),
+                    Span::styled(&l[..i], self.cursor_line_style),
                     Span::styled(&l[i..j], Style::default().add_modifier(Modifier::REVERSED)),
-                    Span::from(&l[j..]),
+                    Span::styled(&l[j..], self.cursor_line_style),
                 ]));
             } else {
                 lines.push(Spans::from(l.as_str()));
@@ -232,6 +234,10 @@ impl<'a> TextArea<'a> {
 
     pub fn set_max_histories(&mut self, max: usize) {
         self.history = EditHistory::new(max);
+    }
+
+    pub fn set_cursor_line_style(&mut self, style: Style) {
+        self.cursor_line_style = style;
     }
 
     pub fn lines(&'a self) -> impl Iterator<Item = &'a str> {
