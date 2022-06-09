@@ -1,3 +1,5 @@
+use crate::edit::{Edit, EditKind};
+use crate::history::EditHistory;
 use crate::input::{Input, Key};
 use tui::style::{Modifier, Style};
 use tui::text::{Span, Spans, Text};
@@ -9,6 +11,7 @@ pub struct TextArea<'a> {
     style: Style,
     cursor: (usize, usize), // 0-base
     tab: &'a str,
+    history: EditHistory,
 }
 
 impl<'a> Default for TextArea<'a> {
@@ -19,6 +22,7 @@ impl<'a> Default for TextArea<'a> {
             style: Style::default(),
             cursor: (0, 0),
             tab: "    ",
+            history: EditHistory::new(50),
         }
     }
 }
@@ -36,6 +40,8 @@ impl<'a> TextArea<'a> {
                 Key::Char('b') => self.cursor_back(),
                 Key::Char('a') => self.cursor_start(),
                 Key::Char('e') => self.cursor_end(),
+                Key::Char('u') => self.undo(),
+                Key::Char('r') => self.redo(),
                 _ => {}
             }
         } else {
@@ -83,12 +89,18 @@ impl<'a> TextArea<'a> {
         );
     }
 
+    fn push_history(&mut self, kind: EditKind, cursor_before: (usize, usize)) {
+        let edit = Edit::new(kind, cursor_before, self.cursor);
+        self.history.push(edit);
+    }
+
     pub fn insert_char(&mut self, c: char) {
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
         if let Some((i, _)) = line.char_indices().nth(col) {
             line.insert(i, c);
             self.cursor.1 += 1;
+            self.push_history(EditKind::InsertChar(c, i), (row, col));
         }
     }
 
@@ -103,6 +115,7 @@ impl<'a> TextArea<'a> {
         if let Some((i, _)) = line.char_indices().nth(col) {
             line.insert_str(i, s);
             self.cursor.1 += s.chars().count();
+            self.push_history(EditKind::Insert(s.to_string(), i), (row, col));
         }
     }
 
@@ -126,6 +139,7 @@ impl<'a> TextArea<'a> {
         line.push(' ');
         self.lines.insert(row + 1, next_line);
         self.cursor = (row + 1, 0);
+        self.push_history(EditKind::InsertNewline(idx), (row, col));
     }
 
     pub fn delete_char(&mut self) {
@@ -135,16 +149,19 @@ impl<'a> TextArea<'a> {
                 let line = self.lines.remove(row);
                 let prev_line = &mut self.lines[row - 1];
                 prev_line.pop(); // Remove trailing space
+                let prev_line_end = prev_line.len();
                 prev_line.push_str(&line);
                 self.cursor = (row - 1, prev_line.chars().count() - 1);
+                self.push_history(EditKind::DeleteNewline(prev_line_end), (row, col));
             }
             return;
         }
 
         let line = &mut self.lines[row];
-        if let Some((i, _)) = line.char_indices().nth(col - 1) {
+        if let Some((i, c)) = line.char_indices().nth(col - 1) {
             line.remove(i);
             self.cursor.1 -= 1;
+            self.push_history(EditKind::DeleteChar(c, i), (row, col));
         }
     }
 
@@ -202,6 +219,18 @@ impl<'a> TextArea<'a> {
         self.cursor.1 = self.lines[self.cursor.0].chars().count() - 1;
     }
 
+    pub fn undo(&mut self) {
+        if let Some(cursor) = self.history.undo(&mut self.lines) {
+            self.cursor = cursor;
+        }
+    }
+
+    pub fn redo(&mut self) {
+        if let Some(cursor) = self.history.redo(&mut self.lines) {
+            self.cursor = cursor;
+        }
+    }
+
     pub fn widget(&'a self) -> impl Widget + 'a {
         let mut lines = Vec::with_capacity(self.lines.len());
         for (i, l) in self.lines.iter().enumerate() {
@@ -227,29 +256,29 @@ impl<'a> TextArea<'a> {
         p
     }
 
-    pub fn style(&mut self, style: Style) -> &mut Self {
+    pub fn set_style(&mut self, style: Style) {
         self.style = style;
-        self
     }
 
-    pub fn block(&mut self, block: Block<'a>) -> &mut Self {
+    pub fn set_block(&mut self, block: Block<'a>) {
         self.block = Some(block);
-        self
     }
 
-    pub fn remove_block(&mut self) -> &mut Self {
+    pub fn remove_block(&mut self) {
         self.block = None;
-        self
     }
 
-    pub fn tab(&mut self, tab: &'a str) -> &mut Self {
+    pub fn set_tab(&mut self, tab: &'a str) {
         assert!(
             tab.chars().all(|c| c == ' '),
             "tab string must consist of spaces but got {:?}",
             tab,
         );
         self.tab = tab;
-        self
+    }
+
+    pub fn set_max_histories(&mut self, max: usize) {
+        self.history = EditHistory::new(max);
     }
 
     pub fn lines(&'a self) -> impl Iterator<Item = &'a str> {
