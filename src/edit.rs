@@ -1,13 +1,15 @@
+#[derive(Clone)]
 pub enum EditKind {
     InsertChar(char, usize),
     DeleteChar(char, usize),
     InsertNewline(usize),
     DeleteNewline(usize),
     Insert(String, usize),
+    Remove(String, usize),
 }
 
 impl EditKind {
-    fn redo(&self, row: usize, lines: &mut Vec<String>) {
+    fn apply(&self, row: usize, lines: &mut Vec<String>) {
         match self {
             EditKind::InsertChar(c, i) => {
                 lines[row].insert(*i, *c);
@@ -33,19 +35,22 @@ impl EditKind {
             EditKind::Insert(s, i) => {
                 lines[row].insert_str(*i, s.as_str());
             }
+            EditKind::Remove(s, i) => {
+                let end = *i + s.len();
+                lines[row].replace_range(*i..end, "");
+            }
         }
     }
 
-    fn undo(&self, row: usize, lines: &mut Vec<String>) {
+    fn invert(&self) -> Self {
         use EditKind::*;
-        match self {
-            InsertChar(c, i) => DeleteChar(*c, *i).redo(row, lines),
-            DeleteChar(c, i) => InsertChar(*c, *i).redo(row, lines),
-            InsertNewline(i) => DeleteNewline(*i).redo(row, lines),
-            DeleteNewline(i) => InsertNewline(*i).redo(row, lines),
-            Insert(s, i) => {
-                lines[row].replace_range(*i..s.len(), "");
-            }
+        match self.clone() {
+            InsertChar(c, i) => DeleteChar(c, i),
+            DeleteChar(c, i) => InsertChar(c, i),
+            InsertNewline(i) => DeleteNewline(i),
+            DeleteNewline(i) => InsertNewline(i),
+            Insert(s, i) => Remove(s, i),
+            Remove(s, i) => Insert(s, i),
         }
     }
 }
@@ -71,12 +76,12 @@ impl Edit {
 
     pub fn redo(&self, lines: &mut Vec<String>) {
         let (row, _) = self.cursor_before;
-        self.kind.redo(row, lines)
+        self.kind.apply(row, lines);
     }
 
     pub fn undo(&self, lines: &mut Vec<String>) {
         let (row, _) = self.cursor_after;
-        self.kind.undo(row, lines)
+        self.kind.invert().apply(row, lines); // Undo is redo of inverted edit
     }
 
     pub fn cursor_before(&self) -> (usize, usize) {
