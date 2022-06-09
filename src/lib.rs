@@ -68,7 +68,7 @@ pub struct TextArea<'a> {
     lines: Vec<String>,
     block: Option<Block<'a>>,
     style: Style,
-    cursor: (usize, usize),
+    cursor: (usize, usize), // 0-base
     tab: &'a str,
 }
 
@@ -88,12 +88,17 @@ impl<'a> TextArea<'a> {
     pub fn input(&mut self, input: impl Into<Input>) {
         let input = input.into();
         if input.ctrl {
-            // TODO
+            match input.key {
+                Key::Char('h') => self.delete_char(),
+                Key::Char('m') => self.insert_newline(),
+                _ => {}
+            }
         } else {
             match input.key {
                 Key::Char(c) => self.insert_char(c),
                 Key::Backspace => self.delete_char(),
                 Key::Tab => self.insert_tab(),
+                Key::Enter => self.insert_newline(),
                 _ => {}
             }
         }
@@ -106,6 +111,7 @@ impl<'a> TextArea<'a> {
             line.insert(i, c);
             self.cursor.1 += 1;
         }
+        self.debug_assert();
     }
 
     pub fn insert_str(&mut self, s: &str) {
@@ -116,25 +122,53 @@ impl<'a> TextArea<'a> {
             line.insert_str(i, s);
             self.cursor.1 += s.chars().count();
         }
+        self.debug_assert();
     }
 
     pub fn insert_tab(&mut self) {
         if !self.tab.is_empty() {
             let len = self.tab.len() - self.cursor.1 % self.tab.len();
             self.insert_str(&self.tab[..len]);
+            self.debug_assert();
         }
+    }
+
+    pub fn insert_newline(&mut self) {
+        let (row, col) = self.cursor;
+        let line = &mut self.lines[row];
+        let idx = line
+            .char_indices()
+            .nth(col)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len() - 1);
+        let next_line = line[idx..].to_string();
+        line.truncate(idx);
+        line.push(' ');
+        self.lines.insert(row + 1, next_line);
+        self.cursor = (row + 1, 0);
+        self.debug_assert();
     }
 
     pub fn delete_char(&mut self) {
         let (row, col) = self.cursor;
-        let line = &mut self.lines[row];
         if col == 0 {
+            if row > 0 {
+                let line = self.lines.remove(row);
+                let prev_line = &mut self.lines[row - 1];
+                prev_line.pop(); // Remove trailing space
+                prev_line.push_str(&line);
+                self.cursor = (row - 1, prev_line.chars().count() - 1);
+            }
+            self.debug_assert();
             return;
         }
+
+        let line = &mut self.lines[row];
         if let Some((i, _)) = line.char_indices().nth(col - 1) {
             line.remove(i);
             self.cursor.1 -= 1;
         }
+        self.debug_assert();
     }
 
     pub fn widget(&'a self) -> impl Widget + 'a {
@@ -156,8 +190,8 @@ impl<'a> TextArea<'a> {
             }
         }
         let mut p = Paragraph::new(Text::from(lines)).style(self.style);
-        if let Some(b) = self.block.clone() {
-            p = p.block(b);
+        if let Some(b) = &self.block {
+            p = p.block(b.clone());
         }
         p
     }
@@ -191,7 +225,34 @@ impl<'a> TextArea<'a> {
         self.lines.iter().map(|l| &l[..l.len() - 1]) // Trim last whitespace
     }
 
+    /// 0-base character-wise (row, col) cursor position.
     pub fn cursor(&self) -> (usize, usize) {
         self.cursor
+    }
+
+    fn debug_assert(&self) {
+        debug_assert!(!self.lines.is_empty(), "no line");
+        for (i, l) in self.lines.iter().enumerate() {
+            debug_assert!(
+                l.ends_with(' '),
+                "line {} does not end with space: {:?}",
+                i + 1,
+                l,
+            );
+        }
+        let (r, c) = self.cursor;
+        debug_assert!(
+            self.lines.len() > r,
+            "cursor {:?} exceeds max lines {}",
+            self.cursor,
+            self.lines.len(),
+        );
+        debug_assert!(
+            self.lines[r].chars().count() > c,
+            "cursor {:?} exceeds max col {} at line {:?}",
+            self.cursor,
+            self.lines[r].chars().count(),
+            self.lines[r],
+        );
     }
 }
