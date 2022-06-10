@@ -2,6 +2,9 @@ use crate::cursor::CursorMove;
 use crate::edit::{Edit, EditKind};
 use crate::history::EditHistory;
 use crate::input::{Input, Key};
+use std::sync::atomic::{AtomicU16, Ordering};
+use tui::buffer::Buffer;
+use tui::layout::Rect;
 use tui::style::{Modifier, Style};
 use tui::text::{Span, Spans, Text};
 use tui::widgets::{Block, Paragraph, Widget};
@@ -14,6 +17,7 @@ pub struct TextArea<'a> {
     tab: &'a str,
     history: EditHistory,
     cursor_line_style: Style,
+    scroll_top: (AtomicU16, AtomicU16),
 }
 
 impl<'a> Default for TextArea<'a> {
@@ -26,6 +30,7 @@ impl<'a> Default for TextArea<'a> {
             tab: "    ",
             history: EditHistory::new(50),
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
+            scroll_top: (AtomicU16::new(0), AtomicU16::new(0)),
         }
     }
 }
@@ -204,11 +209,13 @@ impl<'a> TextArea<'a> {
                 lines.push(Spans::from(l.as_str()));
             }
         }
-        let mut p = Paragraph::new(Text::from(lines)).style(self.style);
-        if let Some(b) = &self.block {
-            p = p.block(b.clone());
+        let inner = Paragraph::new(Text::from(lines)).style(self.style);
+        TextAreaWidget {
+            scroll_top: &self.scroll_top,
+            cursor: (self.cursor.0 as u16, self.cursor.1 as u16),
+            block: self.block.clone(),
+            inner,
         }
-        p
     }
 
     pub fn set_style(&mut self, style: Style) {
@@ -247,5 +254,53 @@ impl<'a> TextArea<'a> {
     /// 0-base character-wise (row, col) cursor position.
     pub fn cursor(&self) -> (usize, usize) {
         self.cursor
+    }
+}
+
+struct TextAreaWidget<'a> {
+    // &mut 'a (u16, u16) is not available since TextAreaWidget instance takes over the ownership of TextArea instance.
+    // In the case the TextArea instance cannot be accessed from any other objects.
+    scroll_top: &'a (AtomicU16, AtomicU16),
+    cursor: (u16, u16),
+    block: Option<Block<'a>>,
+    inner: Paragraph<'a>,
+}
+
+impl<'a> Widget for TextAreaWidget<'a> {
+    fn render(mut self, area: Rect, buf: &mut Buffer) {
+        let inner_area = if let Some(b) = self.block.take() {
+            let area = b.inner(area);
+            self.inner = self.inner.block(b);
+            area
+        } else {
+            area
+        };
+
+        let top_row = self.scroll_top.0.load(Ordering::Relaxed);
+        let top_col = self.scroll_top.1.load(Ordering::Relaxed);
+
+        fn next_scroll_top(prev_top: u16, cursor: u16, width: u16) -> u16 {
+            if cursor < prev_top {
+                cursor
+            } else if prev_top + width <= cursor {
+                cursor + 1 - width
+            } else {
+                prev_top
+            }
+        }
+
+        let row = next_scroll_top(top_row, self.cursor.0, inner_area.height);
+        let col = next_scroll_top(top_col, self.cursor.1, inner_area.width);
+
+        let scroll = (row, col);
+        if scroll != (0, 0) {
+            self.inner = self.inner.scroll(scroll);
+        }
+
+        // Store scroll top position for rendering on the next tick
+        self.scroll_top.0.store(row, Ordering::Relaxed);
+        self.scroll_top.1.store(col, Ordering::Relaxed);
+
+        self.inner.render(area, buf);
     }
 }
