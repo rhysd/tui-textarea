@@ -67,6 +67,16 @@ impl<'a> TextArea<'a> {
                 key: Key::Enter, ..
             } => self.insert_newline(),
             Input {
+                key: Key::Char('k'),
+                ctrl: true,
+                alt: false,
+            } => self.delete_line_by_end(),
+            Input {
+                key: Key::Char('j'),
+                ctrl: true,
+                alt: false,
+            } => self.delete_line_by_head(),
+            Input {
                 key: Key::Char('n'),
                 ctrl: true,
                 alt: false,
@@ -220,6 +230,28 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    pub fn delete_str(&mut self, col: usize, chars: usize) {
+        if chars == 0 {
+            return;
+        }
+        let row = self.cursor.0;
+        let line = &mut self.lines[row];
+        if let Some((i, _)) = line.char_indices().nth(col) {
+            // push/pop ' ' to preserve ' ' at the end of line
+            line.pop();
+            let bytes = line[i..]
+                .char_indices()
+                .nth(chars)
+                .map(|(i, _)| i)
+                .unwrap_or(line[i..].len());
+            let removed = line[i..i + bytes].to_string();
+            line.replace_range(i..i + bytes, "");
+            line.push(' ');
+            self.cursor = (row, col);
+            self.push_history(EditKind::Remove(removed, i), (row, col));
+        }
+    }
+
     pub fn insert_tab(&mut self) {
         if !self.tab.is_empty() {
             let len = self.tab.len() - self.cursor.1 % self.tab.len();
@@ -264,6 +296,14 @@ impl<'a> TextArea<'a> {
             self.cursor.1 -= 1;
             self.push_history(EditKind::DeleteChar(c, i), (row, col));
         }
+    }
+
+    pub fn delete_line_by_end(&mut self) {
+        self.delete_str(self.cursor.1, usize::MAX);
+    }
+
+    pub fn delete_line_by_head(&mut self) {
+        self.delete_str(0, self.cursor.1);
     }
 
     pub fn move_cursor(&mut self, m: CursorMove) {
@@ -352,7 +392,7 @@ impl<'a> TextArea<'a> {
 
 struct TextAreaWidget<'a> {
     // &mut 'a (u16, u16) is not available since TextAreaWidget instance takes over the ownership of TextArea instance.
-    // In the case the TextArea instance cannot be accessed from any other objects.
+    // In the case the TextArea instance cannot be accessed from any other objects since it is mutablly borrowed.
     scroll_top: &'a (AtomicU16, AtomicU16),
     cursor: (u16, u16),
     block: Option<Block<'a>>,
