@@ -20,6 +20,7 @@ pub enum Key {
 pub struct Input {
     pub key: Key,
     pub ctrl: bool,
+    pub alt: bool,
 }
 
 impl Default for Input {
@@ -27,6 +28,7 @@ impl Default for Input {
         Input {
             key: Key::Null,
             ctrl: false,
+            alt: false,
         }
     }
 }
@@ -44,6 +46,7 @@ impl From<Event> for Input {
 impl From<KeyEvent> for Input {
     fn from(key: KeyEvent) -> Self {
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        let alt = key.modifiers.contains(KeyModifiers::ALT);
         let key = match key.code {
             KeyCode::Char(c) => Key::Char(c),
             KeyCode::Backspace => Key::Backspace,
@@ -58,6 +61,6 @@ impl From<KeyEvent> for Input {
             KeyCode::End => Key::End,
             _ => Key::Null,
         };
-        Self { key, ctrl }
+        Self { key, ctrl, alt }
     }
 }

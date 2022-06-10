@@ -38,34 +38,127 @@ impl<'a> Default for TextArea<'a> {
 impl<'a> TextArea<'a> {
     pub fn input(&mut self, input: impl Into<Input>) {
         let input = input.into();
-        if input.ctrl {
-            match input.key {
-                Key::Char('h') => self.delete_char(),
-                Key::Char('m') => self.insert_newline(),
-                Key::Char('p') => self.move_cursor(CursorMove::Up),
-                Key::Char('f') => self.move_cursor(CursorMove::Forward),
-                Key::Char('n') => self.move_cursor(CursorMove::Down),
-                Key::Char('b') => self.move_cursor(CursorMove::Back),
-                Key::Char('a') => self.move_cursor(CursorMove::Head),
-                Key::Char('e') => self.move_cursor(CursorMove::End),
-                Key::Char('u') => self.undo(),
-                Key::Char('r') => self.redo(),
-                _ => {}
+        match input {
+            Input {
+                key: Key::Char(c),
+                ctrl: false,
+                alt: false,
+            } => self.insert_char(c),
+            Input {
+                key: Key::Tab,
+                ctrl: false,
+                alt: false,
+            } => self.insert_tab(),
+            Input {
+                key: Key::Char('h'),
+                ctrl: true,
+                alt: false,
             }
-        } else {
-            match input.key {
-                Key::Char(c) => self.insert_char(c),
-                Key::Backspace => self.delete_char(),
-                Key::Tab => self.insert_tab(),
-                Key::Enter => self.insert_newline(),
-                Key::Up => self.move_cursor(CursorMove::Up),
-                Key::Right => self.move_cursor(CursorMove::Forward),
-                Key::Down => self.move_cursor(CursorMove::Down),
-                Key::Left => self.move_cursor(CursorMove::Back),
-                Key::Home => self.move_cursor(CursorMove::Head),
-                Key::End => self.move_cursor(CursorMove::End),
-                _ => {}
+            | Input {
+                key: Key::Backspace,
+                ..
+            } => self.delete_char(),
+            Input {
+                key: Key::Char('m'),
+                ctrl: true,
+                alt: false,
             }
+            | Input {
+                key: Key::Enter, ..
+            } => self.insert_newline(),
+            Input {
+                key: Key::Char('n'),
+                ctrl: true,
+                alt: false,
+            }
+            | Input {
+                key: Key::Down,
+                ctrl: false,
+                alt: false,
+            } => self.move_cursor(CursorMove::Down),
+            Input {
+                key: Key::Char('p'),
+                ctrl: true,
+                alt: false,
+            }
+            | Input {
+                key: Key::Up,
+                ctrl: false,
+                alt: false,
+            } => self.move_cursor(CursorMove::Up),
+            Input {
+                key: Key::Char('f'),
+                ctrl: true,
+                alt: false,
+            }
+            | Input {
+                key: Key::Right,
+                ctrl: false,
+                alt: false,
+            } => self.move_cursor(CursorMove::Forward),
+            Input {
+                key: Key::Char('b'),
+                ctrl: true,
+                alt: false,
+            }
+            | Input {
+                key: Key::Left,
+                ctrl: false,
+                alt: false,
+            } => self.move_cursor(CursorMove::Back),
+            Input {
+                key: Key::Char('a'),
+                ctrl: true,
+                alt: false,
+            }
+            | Input { key: Key::Home, .. }
+            | Input {
+                key: Key::Left | Key::Char('b'),
+                ctrl: true,
+                alt: true,
+            } => self.move_cursor(CursorMove::Head),
+            Input {
+                key: Key::Char('e'),
+                ctrl: true,
+                alt: false,
+            }
+            | Input { key: Key::End, .. }
+            | Input {
+                key: Key::Right | Key::Char('f'),
+                ctrl: true,
+                alt: true,
+            } => self.move_cursor(CursorMove::End),
+            Input {
+                key: Key::Char('<'),
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
+                key: Key::Up | Key::Char('p'),
+                ctrl: true,
+                alt: true,
+            } => self.move_cursor(CursorMove::Top),
+            Input {
+                key: Key::Char('>'),
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
+                key: Key::Down | Key::Char('n'),
+                ctrl: true,
+                alt: true,
+            } => self.move_cursor(CursorMove::Bottom),
+            Input {
+                key: Key::Char('u'),
+                ctrl: true,
+                alt: false,
+            } => self.undo(),
+            Input {
+                key: Key::Char('r'),
+                ctrl: true,
+                alt: false,
+            } => self.redo(),
+            _ => {}
         }
 
         // Check invariants
