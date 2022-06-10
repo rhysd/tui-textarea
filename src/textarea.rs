@@ -159,6 +159,26 @@ impl<'a> TextArea<'a> {
                 alt: true,
             } => self.move_cursor(CursorMove::Bottom),
             Input {
+                key: Key::Char('f'),
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
+                key: Key::Right,
+                ctrl: true,
+                alt: false,
+            } => self.move_cursor(CursorMove::WordForward),
+            Input {
+                key: Key::Char('b'),
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
+                key: Key::Left,
+                ctrl: true,
+                alt: false,
+            } => self.move_cursor(CursorMove::WordBack),
+            Input {
                 key: Key::Char('u'),
                 ctrl: true,
                 alt: false,
