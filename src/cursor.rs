@@ -1,3 +1,5 @@
+use std::cmp;
+
 #[derive(Clone, Copy, Debug)]
 pub enum CursorMove {
     Forward,
@@ -17,16 +19,11 @@ impl CursorMove {
         lines: &[String],
     ) -> Option<(usize, usize)> {
         fn fit_col(col: usize, line: &str) -> usize {
-            let end = line.chars().count();
-            if end <= col {
-                end - 1
-            } else {
-                col
-            }
+            cmp::min(col, line.chars().count())
         }
 
         match self {
-            CursorMove::Forward if col + 1 >= lines[row].chars().count() => {
+            CursorMove::Forward if col >= lines[row].chars().count() => {
                 if row + 1 < lines.len() {
                     Some((row + 1, 0))
                 } else {
@@ -36,7 +33,7 @@ impl CursorMove {
             CursorMove::Forward => Some((row, col + 1)),
             CursorMove::Back if col == 0 => {
                 if row > 0 {
-                    Some((row - 1, lines[row - 1].chars().count() - 1))
+                    Some((row - 1, lines[row - 1].chars().count()))
                 } else {
                     None
                 }
@@ -47,7 +44,7 @@ impl CursorMove {
             CursorMove::Down if row + 1 >= lines.len() => None,
             CursorMove::Down => (Some((row + 1, fit_col(col, &lines[row + 1])))),
             CursorMove::Head => Some((row, 0)),
-            CursorMove::End => Some((row, lines[row].chars().count() - 1)),
+            CursorMove::End => Some((row, lines[row].chars().count())),
             CursorMove::Top => Some((0, fit_col(col, &lines[0]))),
             CursorMove::Bottom => {
                 let row = lines.len() - 1;

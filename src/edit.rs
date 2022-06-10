@@ -21,15 +21,12 @@ impl EditKind {
                 let line = &mut lines[row];
                 let next_line = line[*i..].to_string();
                 line.truncate(*i);
-                line.push(' ');
                 lines.insert(row + 1, next_line);
             }
             EditKind::DeleteNewline(_) => {
                 if row > 0 {
                     let line = lines.remove(row);
-                    let prev_line = &mut lines[row - 1];
-                    prev_line.pop(); // Remove trailing space
-                    prev_line.push_str(&line);
+                    lines[row - 1].push_str(&line);
                 }
             }
             EditKind::Insert(s, i) => {

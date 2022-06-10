@@ -23,7 +23,7 @@ pub struct TextArea<'a> {
 impl<'a> Default for TextArea<'a> {
     fn default() -> Self {
         Self {
-            lines: vec![" ".to_string()],
+            lines: vec!["".to_string()],
             block: None,
             style: Style::default(),
             cursor: (0, 0),
@@ -173,15 +173,6 @@ impl<'a> TextArea<'a> {
 
         // Check invariants
         debug_assert!(!self.lines.is_empty(), "no line after {:?}", input);
-        for (i, l) in self.lines.iter().enumerate() {
-            debug_assert!(
-                l.ends_with(' '),
-                "line {} does not end with space after {:?}: {:?}",
-                i + 1,
-                input,
-                l,
-            );
-        }
         let (r, c) = self.cursor;
         debug_assert!(
             self.lines.len() > r,
@@ -191,7 +182,7 @@ impl<'a> TextArea<'a> {
             input,
         );
         debug_assert!(
-            self.lines[r].chars().count() > c,
+            self.lines[r].chars().count() >= c,
             "cursor {:?} exceeds max col {} at line {:?} after {:?}",
             self.cursor,
             self.lines[r].chars().count(),
@@ -208,11 +199,14 @@ impl<'a> TextArea<'a> {
     pub fn insert_char(&mut self, c: char) {
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
-        if let Some((i, _)) = line.char_indices().nth(col) {
-            line.insert(i, c);
-            self.cursor.1 += 1;
-            self.push_history(EditKind::InsertChar(c, i), (row, col));
-        }
+        let i = line
+            .char_indices()
+            .nth(col)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        line.insert(i, c);
+        self.cursor.1 += 1;
+        self.push_history(EditKind::InsertChar(c, i), (row, col));
     }
 
     pub fn insert_str(&mut self, s: &str) {
@@ -223,11 +217,14 @@ impl<'a> TextArea<'a> {
             None,
             "string given to insert_str must not contain newline",
         );
-        if let Some((i, _)) = line.char_indices().nth(col) {
-            line.insert_str(i, s);
-            self.cursor.1 += s.chars().count();
-            self.push_history(EditKind::Insert(s.to_string(), i), (row, col));
-        }
+        let i = line
+            .char_indices()
+            .nth(col)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        line.insert_str(i, s);
+        self.cursor.1 += s.chars().count();
+        self.push_history(EditKind::Insert(s.to_string(), i), (row, col));
     }
 
     pub fn delete_str(&mut self, col: usize, chars: usize) {
@@ -266,10 +263,9 @@ impl<'a> TextArea<'a> {
             .char_indices()
             .nth(col)
             .map(|(i, _)| i)
-            .unwrap_or(line.len() - 1);
+            .unwrap_or(line.len());
         let next_line = line[idx..].to_string();
         line.truncate(idx);
-        line.push(' ');
         self.lines.insert(row + 1, next_line);
         self.cursor = (row + 1, 0);
         self.push_history(EditKind::InsertNewline(idx), (row, col));
@@ -281,10 +277,9 @@ impl<'a> TextArea<'a> {
             if row > 0 {
                 let line = self.lines.remove(row);
                 let prev_line = &mut self.lines[row - 1];
-                prev_line.pop(); // Remove trailing space
                 let prev_line_end = prev_line.len();
+                self.cursor = (row - 1, prev_line.chars().count());
                 prev_line.push_str(&line);
-                self.cursor = (row - 1, prev_line.chars().count() - 1);
                 self.push_history(EditKind::DeleteNewline(prev_line_end), (row, col));
             }
             return;
@@ -328,16 +323,20 @@ impl<'a> TextArea<'a> {
         let mut lines = Vec::with_capacity(self.lines.len());
         for (i, l) in self.lines.iter().enumerate() {
             if i == self.cursor.0 {
-                let (i, c) = l
-                    .char_indices()
-                    .nth(self.cursor.1)
-                    .unwrap_or((l.len() - 1, ' '));
-                let j = i + c.len_utf8();
-                lines.push(Spans::from(vec![
-                    Span::styled(&l[..i], self.cursor_line_style),
-                    Span::styled(&l[i..j], Style::default().add_modifier(Modifier::REVERSED)),
-                    Span::styled(&l[j..], self.cursor_line_style),
-                ]));
+                if let Some((i, c)) = l.char_indices().nth(self.cursor.1) {
+                    let j = i + c.len_utf8();
+                    lines.push(Spans::from(vec![
+                        Span::styled(&l[..i], self.cursor_line_style),
+                        Span::styled(&l[i..j], Style::default().add_modifier(Modifier::REVERSED)),
+                        Span::styled(&l[j..], self.cursor_line_style),
+                    ]));
+                } else {
+                    // When cursor is at the end of line
+                    lines.push(Spans::from(vec![
+                        Span::styled(l.as_str(), self.cursor_line_style),
+                        Span::styled(" ", Style::default().add_modifier(Modifier::REVERSED)),
+                    ]));
+                }
             } else {
                 lines.push(Spans::from(l.as_str()));
             }
@@ -380,8 +379,8 @@ impl<'a> TextArea<'a> {
         self.cursor_line_style = style;
     }
 
-    pub fn lines(&'a self) -> impl Iterator<Item = &'a str> {
-        self.lines.iter().map(|l| &l[..l.len() - 1]) // Trim last whitespace
+    pub fn lines(&'a self) -> &'a [String] {
+        &self.lines
     }
 
     /// 0-base character-wise (row, col) cursor position.

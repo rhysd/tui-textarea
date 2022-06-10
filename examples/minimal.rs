@@ -45,6 +45,6 @@ fn main() -> io::Result<()> {
     )?;
     term.show_cursor()?;
 
-    println!("Lines: {:?}", textarea.lines().collect::<Vec<_>>());
+    println!("Lines: {:?}", textarea.lines());
     Ok(())
 }
