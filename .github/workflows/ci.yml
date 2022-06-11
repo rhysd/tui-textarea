@@ -4,6 +4,8 @@ on: [push, pull_request]
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -14,6 +16,8 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v1
       - name: rustfmt
-        run: cargo fmt -- --check --color always
+        run: cargo fmt -- --check
       - name: clippy
-        run: cargo clippy --color always -- -D warnings
+        run: cargo clippy -- -D warnings
+      - name: clippy with --no-default-features
+        run: cargo clippy --no-default-features -- -D warnings

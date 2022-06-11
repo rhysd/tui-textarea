@@ -1,3 +1,4 @@
+#[cfg(feature = "crossterm")]
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 
 #[derive(Clone, Copy, Debug)]
@@ -33,6 +34,7 @@ impl Default for Input {
     }
 }
 
+#[cfg(feature = "crossterm")]
 impl From<Event> for Input {
     fn from(event: Event) -> Self {
         if let Event::Key(key) = event {
@@ -43,6 +45,7 @@ impl From<Event> for Input {
     }
 }
 
+#[cfg(feature = "crossterm")]
 impl From<KeyEvent> for Input {
     fn from(key: KeyEvent) -> Self {
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);

@@ -3,6 +3,13 @@ name = "tui-textarea"
 version = "0.0.0"
 edition = "2021"
 
+[features]
+default = ["crossterm"]
+
 [dependencies]
-crossterm = "0.23.2"
+crossterm = { version = "0.23", optional = true }
 tui = "0.18"
+
+[[example]]
+name = "minimal"
+required-features = ["crossterm"]

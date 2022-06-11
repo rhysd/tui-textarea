@@ -312,7 +312,7 @@ impl<'a> TextArea<'a> {
                 .char_indices()
                 .nth(chars)
                 .map(|(i, _)| i)
-                .unwrap_or(line[i..].len());
+                .unwrap_or_else(|| line[i..].len());
             let removed = line[i..i + bytes].to_string();
             line.replace_range(i..i + bytes, "");
             line.push(' ');
