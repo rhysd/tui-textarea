@@ -18,6 +18,6 @@ jobs:
       - name: rustfmt
         run: cargo fmt -- --check
       - name: clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --examples --all-features -- -D warnings
       - name: clippy with --no-default-features
         run: cargo clippy --no-default-features -- -D warnings

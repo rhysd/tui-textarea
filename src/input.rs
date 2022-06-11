@@ -14,6 +14,8 @@ pub enum Key {
     Delete,
     Home,
     End,
+    PageUp,
+    PageDown,
     Null,
 }
 
@@ -62,6 +64,8 @@ impl From<KeyEvent> for Input {
             KeyCode::Delete => Key::Delete,
             KeyCode::Home => Key::Home,
             KeyCode::End => Key::End,
+            KeyCode::PageUp => Key::PageUp,
+            KeyCode::PageDown => Key::PageDown,
             _ => Key::Null,
         };
         Self { key, ctrl, alt }

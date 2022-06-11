@@ -37,12 +37,12 @@ impl<'a> Default for TextArea<'a> {
 }
 
 impl<'a> TextArea<'a> {
-    pub fn new(mut v: Vec<String>) -> Self {
-        if v.is_empty() {
-            v.push(String::new());
+    pub fn new(mut lines: Vec<String>) -> Self {
+        if lines.is_empty() {
+            lines.push(String::new());
         }
         Self {
-            lines: v,
+            lines,
             block: None,
             style: Style::default(),
             cursor: (0, 0),
@@ -204,6 +204,22 @@ impl<'a> TextArea<'a> {
                 ctrl: true,
                 alt: false,
             } => self.move_cursor(CursorMove::WordBack),
+            Input {
+                key: Key::Char('n'),
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
+                key: Key::PageDown, ..
+            } => self.move_cursor(CursorMove::ParagraphForward),
+            Input {
+                key: Key::Char('p'),
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
+                key: Key::PageUp, ..
+            } => self.move_cursor(CursorMove::ParagraphBack),
             Input {
                 key: Key::Char('u'),
                 ctrl: true,

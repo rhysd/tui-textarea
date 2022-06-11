@@ -1,3 +1,5 @@
+#![allow(clippy::needless_range_loop)]
+
 mod cursor;
 mod history;
 mod input;

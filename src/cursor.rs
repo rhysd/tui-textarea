@@ -12,6 +12,8 @@ pub enum CursorMove {
     Bottom,
     WordForward,
     WordBack,
+    ParagraphForward,
+    ParagraphBack,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -123,6 +125,31 @@ impl CursorMove {
                 } else {
                     Some((row, 0))
                 }
+            }
+            ParagraphForward => {
+                let mut prev_is_empty = lines[row].is_empty();
+                for row in row + 1..lines.len() {
+                    let line = &lines[row];
+                    let is_empty = line.is_empty();
+                    if !is_empty && prev_is_empty {
+                        return Some((row, fit_col(col, line)));
+                    }
+                    prev_is_empty = is_empty;
+                }
+                let row = lines.len() - 1;
+                Some((row, fit_col(col, &lines[row])))
+            }
+            ParagraphBack if row == 0 => None,
+            ParagraphBack => {
+                let mut prev_is_empty = lines[row - 1].is_empty();
+                for row in (0..row - 1).rev() {
+                    let is_empty = lines[row].is_empty();
+                    if is_empty && !prev_is_empty {
+                        return Some((row + 1, fit_col(col, &lines[row + 1])));
+                    }
+                    prev_is_empty = is_empty;
+                }
+                Some((0, fit_col(col, &lines[0])))
             }
         }
     }
