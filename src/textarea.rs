@@ -20,10 +20,29 @@ pub struct TextArea<'a> {
     scroll_top: (AtomicU16, AtomicU16),
 }
 
+impl<'a, I> From<I> for TextArea<'a>
+where
+    I: Iterator,
+    I::Item: Into<String>,
+{
+    fn from(i: I) -> Self {
+        Self::new(i.map(|s| s.into()).collect::<Vec<String>>())
+    }
+}
+
 impl<'a> Default for TextArea<'a> {
     fn default() -> Self {
+        Self::new(vec![String::new()])
+    }
+}
+
+impl<'a> TextArea<'a> {
+    pub fn new(mut v: Vec<String>) -> Self {
+        if v.is_empty() {
+            v.push(String::new());
+        }
         Self {
-            lines: vec!["".to_string()],
+            lines: v,
             block: None,
             style: Style::default(),
             cursor: (0, 0),
@@ -33,9 +52,7 @@ impl<'a> Default for TextArea<'a> {
             scroll_top: (AtomicU16::new(0), AtomicU16::new(0)),
         }
     }
-}
 
-impl<'a> TextArea<'a> {
     pub fn input(&mut self, input: impl Into<Input>) {
         let input = input.into();
         match input {
@@ -58,6 +75,14 @@ impl<'a> TextArea<'a> {
                 key: Key::Backspace,
                 ..
             } => self.delete_char(),
+            Input {
+                key: Key::Char('d'),
+                ctrl: true,
+                alt: false,
+            }
+            | Input {
+                key: Key::Delete, ..
+            } => self.delete_next_char(),
             Input {
                 key: Key::Char('m'),
                 ctrl: true,
@@ -211,6 +236,33 @@ impl<'a> TextArea<'a> {
         );
     }
 
+    pub fn input_without_shortcuts(&mut self, input: impl Into<Input>) {
+        let input = input.into();
+        match input {
+            Input {
+                key: Key::Char(c),
+                ctrl: false,
+                alt: false,
+            } => self.insert_char(c),
+            Input {
+                key: Key::Tab,
+                ctrl: false,
+                alt: false,
+            } => self.insert_tab(),
+            Input {
+                key: Key::Backspace,
+                ..
+            } => self.delete_char(),
+            Input {
+                key: Key::Delete, ..
+            } => self.delete_next_char(),
+            Input {
+                key: Key::Enter, ..
+            } => self.insert_newline(),
+            _ => {}
+        }
+    }
+
     fn push_history(&mut self, kind: EditKind, cursor_before: (usize, usize)) {
         let edit = Edit::new(kind, cursor_before, self.cursor);
         self.history.push(edit);
@@ -311,6 +363,15 @@ impl<'a> TextArea<'a> {
             self.cursor.1 -= 1;
             self.push_history(EditKind::DeleteChar(c, i), (row, col));
         }
+    }
+
+    pub fn delete_next_char(&mut self) {
+        let before = self.cursor;
+        self.move_cursor(CursorMove::Forward);
+        if before == self.cursor {
+            return; // Cursor didn't move, meant no character at next of cursor.
+        }
+        self.delete_char();
     }
 
     pub fn delete_line_by_end(&mut self) {
