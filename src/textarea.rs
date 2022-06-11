@@ -17,6 +17,7 @@ pub struct TextArea<'a> {
     history: History,
     cursor_line_style: Style,
     scroll_top: (AtomicU16, AtomicU16),
+    yank: String,
 }
 
 impl<'a, I> From<I> for TextArea<'a>
@@ -49,6 +50,7 @@ impl<'a> TextArea<'a> {
             history: History::new(50),
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
             scroll_top: (AtomicU16::new(0), AtomicU16::new(0)),
+            yank: String::new(),
         }
     }
 
@@ -212,6 +214,11 @@ impl<'a> TextArea<'a> {
                 ctrl: true,
                 alt: false,
             } => self.redo(),
+            Input {
+                key: Key::Char('y' | 'v'),
+                ctrl: true,
+                alt: false,
+            } => self.paste(),
             _ => {}
         }
 
@@ -280,7 +287,12 @@ impl<'a> TextArea<'a> {
         self.push_history(EditKind::InsertChar(c, i), (row, col));
     }
 
-    pub fn insert_str(&mut self, s: &str) {
+    pub fn insert_str<S: Into<String>>(&mut self, s: S) {
+        let s = s.into();
+        if s.is_empty() {
+            return;
+        }
+
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
         debug_assert_eq!(
@@ -288,20 +300,23 @@ impl<'a> TextArea<'a> {
             None,
             "string given to insert_str must not contain newline",
         );
+
         let i = line
             .char_indices()
             .nth(col)
             .map(|(i, _)| i)
             .unwrap_or(line.len());
-        line.insert_str(i, s);
+        line.insert_str(i, &s);
+
         self.cursor.1 += s.chars().count();
-        self.push_history(EditKind::Insert(s.to_string(), i), (row, col));
+        self.push_history(EditKind::Insert(s, i), (row, col));
     }
 
     pub fn delete_str(&mut self, col: usize, chars: usize) {
         if chars == 0 {
             return;
         }
+
         let row = self.cursor.0;
         let line = &mut self.lines[row];
         if let Some((i, _)) = line.char_indices().nth(col) {
@@ -315,8 +330,10 @@ impl<'a> TextArea<'a> {
             let removed = line[i..i + bytes].to_string();
             line.replace_range(i..i + bytes, "");
             line.push(' ');
+
             self.cursor = (row, col);
-            self.push_history(EditKind::Remove(removed, i), (row, col));
+            self.push_history(EditKind::Remove(removed.clone(), i), (row, col));
+            self.yank = removed;
         }
     }
 
@@ -337,6 +354,7 @@ impl<'a> TextArea<'a> {
             .unwrap_or(line.len());
         let next_line = line[idx..].to_string();
         line.truncate(idx);
+
         self.lines.insert(row + 1, next_line);
         self.cursor = (row + 1, 0);
         self.push_history(EditKind::InsertNewline(idx), (row, col));
@@ -349,6 +367,7 @@ impl<'a> TextArea<'a> {
                 let line = self.lines.remove(row);
                 let prev_line = &mut self.lines[row - 1];
                 let prev_line_end = prev_line.len();
+
                 self.cursor = (row - 1, prev_line.chars().count());
                 prev_line.push_str(&line);
                 self.push_history(EditKind::DeleteNewline(prev_line_end), (row, col));
@@ -379,6 +398,11 @@ impl<'a> TextArea<'a> {
 
     pub fn delete_line_by_head(&mut self) {
         self.delete_str(0, self.cursor.1);
+    }
+
+    pub fn paste(&mut self) {
+        let yank = std::mem::take(&mut self.yank);
+        self.insert_str(yank);
     }
 
     pub fn move_cursor(&mut self, m: CursorMove) {
@@ -421,6 +445,7 @@ impl<'a> TextArea<'a> {
                 lines.push(Spans::from(l.as_str()));
             }
         }
+
         let inner = Paragraph::new(Text::from(lines)).style(self.style);
         TextAreaWidget {
             scroll_top: &self.scroll_top,
