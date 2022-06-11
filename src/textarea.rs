@@ -9,14 +9,20 @@ use tui::style::{Modifier, Style};
 use tui::text::{Span, Spans, Text};
 use tui::widgets::{Block, Paragraph, Widget};
 
+fn spaces(size: usize) -> &'static str {
+    const SPACES: &str = "                                                                                                                                                                                                                                                                ";
+    &SPACES[..size]
+}
+
 pub struct TextArea<'a> {
     lines: Vec<String>,
     block: Option<Block<'a>>,
     style: Style,
     cursor: (usize, usize), // 0-base
-    tab: &'a str,
+    tab_len: u8,
     history: History,
     cursor_line_style: Style,
+    line_number_style: Option<Style>,
     scroll_top: (AtomicU16, AtomicU16),
     yank: String,
 }
@@ -47,9 +53,10 @@ impl<'a> TextArea<'a> {
             block: None,
             style: Style::default(),
             cursor: (0, 0),
-            tab: "    ",
+            tab_len: 4,
             history: History::new(50),
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
+            line_number_style: None,
             scroll_top: (AtomicU16::new(0), AtomicU16::new(0)),
             yank: String::new(),
         }
@@ -380,9 +387,9 @@ impl<'a> TextArea<'a> {
     }
 
     pub fn insert_tab(&mut self) {
-        if !self.tab.is_empty() {
-            let len = self.tab.len() - self.cursor.1 % self.tab.len();
-            self.insert_str(&self.tab[..len]);
+        if self.tab_len > 0 {
+            let len = self.tab_len as usize - self.cursor.1 % self.tab_len as usize;
+            self.insert_str(spaces(len));
         }
     }
 
@@ -500,26 +507,41 @@ impl<'a> TextArea<'a> {
     }
 
     pub fn widget(&'a self) -> impl Widget + 'a {
+        fn num_digits(i: usize) -> usize {
+            f64::log10(i as f64) as usize + 1
+        }
+
         let mut lines = Vec::with_capacity(self.lines.len());
+        let line_number_len = num_digits(self.lines.len());
         for (i, l) in self.lines.iter().enumerate() {
+            let mut spans = vec![];
+
+            if let Some(style) = self.line_number_style {
+                let pad = spaces(line_number_len - num_digits(i + 1) + 1);
+                spans.push(Span::styled(format!("{}{} ", pad, i + 1), style));
+            }
+
             if i == self.cursor.0 {
+                let cursor_style = Style::default().add_modifier(Modifier::REVERSED);
                 if let Some((i, c)) = l.char_indices().nth(self.cursor.1) {
                     let j = i + c.len_utf8();
-                    lines.push(Spans::from(vec![
+                    spans.extend_from_slice(&[
                         Span::styled(&l[..i], self.cursor_line_style),
-                        Span::styled(&l[i..j], Style::default().add_modifier(Modifier::REVERSED)),
+                        Span::styled(&l[i..j], cursor_style),
                         Span::styled(&l[j..], self.cursor_line_style),
-                    ]));
+                    ]);
                 } else {
                     // When cursor is at the end of line
-                    lines.push(Spans::from(vec![
+                    spans.extend_from_slice(&[
                         Span::styled(l.as_str(), self.cursor_line_style),
-                        Span::styled(" ", Style::default().add_modifier(Modifier::REVERSED)),
-                    ]));
+                        Span::styled(" ", cursor_style),
+                    ]);
                 }
             } else {
-                lines.push(Spans::from(l.as_str()));
+                spans.push(Span::from(l.as_str()));
             }
+
+            lines.push(Spans::from(spans));
         }
 
         let inner = Paragraph::new(Text::from(lines)).style(self.style);
@@ -543,13 +565,8 @@ impl<'a> TextArea<'a> {
         self.block = None;
     }
 
-    pub fn set_tab(&mut self, tab: &'a str) {
-        assert!(
-            tab.chars().all(|c| c == ' '),
-            "tab string must consist of spaces but got {:?}",
-            tab,
-        );
-        self.tab = tab;
+    pub fn set_tab_length(&mut self, len: u8) {
+        self.tab_len = len;
     }
 
     pub fn set_max_histories(&mut self, max: usize) {
@@ -558,6 +575,14 @@ impl<'a> TextArea<'a> {
 
     pub fn set_cursor_line_style(&mut self, style: Style) {
         self.cursor_line_style = style;
+    }
+
+    pub fn set_line_number_style(&mut self, style: Style) {
+        self.line_number_style = Some(style);
+    }
+
+    pub fn remove_line_number(&mut self) {
+        self.line_number_style = None;
     }
 
     pub fn lines(&'a self) -> &'a [String] {
