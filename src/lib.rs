@@ -1,5 +1,4 @@
 mod cursor;
-mod edit;
 mod history;
 mod input;
 mod textarea;

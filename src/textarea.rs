@@ -1,6 +1,5 @@
 use crate::cursor::CursorMove;
-use crate::edit::{Edit, EditKind};
-use crate::history::EditHistory;
+use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
 use std::sync::atomic::{AtomicU16, Ordering};
 use tui::buffer::Buffer;
@@ -15,7 +14,7 @@ pub struct TextArea<'a> {
     style: Style,
     cursor: (usize, usize), // 0-base
     tab: &'a str,
-    history: EditHistory,
+    history: History,
     cursor_line_style: Style,
     scroll_top: (AtomicU16, AtomicU16),
 }
@@ -47,7 +46,7 @@ impl<'a> TextArea<'a> {
             style: Style::default(),
             cursor: (0, 0),
             tab: "    ",
-            history: EditHistory::new(50),
+            history: History::new(50),
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
             scroll_top: (AtomicU16::new(0), AtomicU16::new(0)),
         }
@@ -453,7 +452,7 @@ impl<'a> TextArea<'a> {
     }
 
     pub fn set_max_histories(&mut self, max: usize) {
-        self.history = EditHistory::new(max);
+        self.history = History::new(max);
     }
 
     pub fn set_cursor_line_style(&mut self, style: Style) {
