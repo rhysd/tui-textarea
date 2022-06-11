@@ -1,6 +1,7 @@
 use crate::cursor::CursorMove;
 use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
+use crate::word::{find_word_end_forward, find_word_start_backward};
 use std::sync::atomic::{AtomicU16, Ordering};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
@@ -74,7 +75,8 @@ impl<'a> TextArea<'a> {
             }
             | Input {
                 key: Key::Backspace,
-                ..
+                ctrl: false,
+                alt: false,
             } => self.delete_char(),
             Input {
                 key: Key::Char('d'),
@@ -82,7 +84,9 @@ impl<'a> TextArea<'a> {
                 alt: false,
             }
             | Input {
-                key: Key::Delete, ..
+                key: Key::Delete,
+                ctrl: false,
+                alt: false,
             } => self.delete_next_char(),
             Input {
                 key: Key::Char('m'),
@@ -102,6 +106,31 @@ impl<'a> TextArea<'a> {
                 ctrl: true,
                 alt: false,
             } => self.delete_line_by_head(),
+            Input {
+                key: Key::Char('w'),
+                ctrl: true,
+                alt: false,
+            }
+            | Input {
+                key: Key::Char('h'),
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
+                key: Key::Backspace,
+                ctrl: false,
+                alt: true,
+            } => self.delete_word(),
+            Input {
+                key: Key::Delete,
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
+                key: Key::Char('d'),
+                ctrl: false,
+                alt: true,
+            } => self.delete_next_word(),
             Input {
                 key: Key::Char('n'),
                 ctrl: true,
@@ -336,8 +365,6 @@ impl<'a> TextArea<'a> {
         let row = self.cursor.0;
         let line = &mut self.lines[row];
         if let Some((i, _)) = line.char_indices().nth(col) {
-            // push/pop ' ' to preserve ' ' at the end of line
-            line.pop();
             let bytes = line[i..]
                 .char_indices()
                 .nth(chars)
@@ -345,7 +372,6 @@ impl<'a> TextArea<'a> {
                 .unwrap_or_else(|| line[i..].len());
             let removed = line[i..i + bytes].to_string();
             line.replace_range(i..i + bytes, "");
-            line.push(' ');
 
             self.cursor = (row, col);
             self.push_history(EditKind::Remove(removed.clone(), i), (row, col));
@@ -376,18 +402,25 @@ impl<'a> TextArea<'a> {
         self.push_history(EditKind::InsertNewline(idx), (row, col));
     }
 
+    pub fn delete_newline(&mut self) {
+        let (row, col) = self.cursor;
+        if row == 0 {
+            return;
+        }
+
+        let line = self.lines.remove(row);
+        let prev_line = &mut self.lines[row - 1];
+        let prev_line_end = prev_line.len();
+
+        self.cursor = (row - 1, prev_line.chars().count());
+        prev_line.push_str(&line);
+        self.push_history(EditKind::DeleteNewline(prev_line_end), (row, col));
+    }
+
     pub fn delete_char(&mut self) {
         let (row, col) = self.cursor;
         if col == 0 {
-            if row > 0 {
-                let line = self.lines.remove(row);
-                let prev_line = &mut self.lines[row - 1];
-                let prev_line_end = prev_line.len();
-
-                self.cursor = (row - 1, prev_line.chars().count());
-                prev_line.push_str(&line);
-                self.push_history(EditKind::DeleteNewline(prev_line_end), (row, col));
-            }
+            self.delete_newline();
             return;
         }
 
@@ -414,6 +447,33 @@ impl<'a> TextArea<'a> {
 
     pub fn delete_line_by_head(&mut self) {
         self.delete_str(0, self.cursor.1);
+    }
+
+    pub fn delete_word(&mut self) {
+        let (r, c) = self.cursor;
+        if let Some(col) = find_word_start_backward(&self.lines[r], c) {
+            self.delete_str(col, c - col);
+        } else if c > 0 {
+            self.delete_str(0, c);
+        } else {
+            self.delete_newline();
+        }
+    }
+
+    pub fn delete_next_word(&mut self) {
+        let (r, c) = self.cursor;
+        let line = &self.lines[r];
+        if let Some(col) = find_word_end_forward(line, c) {
+            self.delete_str(c, col - c);
+        } else {
+            let end_col = line.chars().count();
+            if c < end_col {
+                self.delete_str(c, end_col - c);
+            } else if r + 1 < self.lines.len() {
+                self.cursor = (r + 1, 0);
+                self.delete_newline();
+            }
+        }
     }
 
     pub fn paste(&mut self) {

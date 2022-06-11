@@ -1,3 +1,4 @@
+use crate::word::{find_word_start_backward, find_word_start_forward};
 use std::cmp;
 
 #[derive(Clone, Copy, Debug)]
@@ -14,25 +15,6 @@ pub enum CursorMove {
     WordBack,
     ParagraphForward,
     ParagraphBack,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy)]
-enum CharKind {
-    Space,
-    Punct,
-    Other,
-}
-
-impl CharKind {
-    fn new(c: char) -> Self {
-        if c.is_whitespace() {
-            Self::Space
-        } else if c.is_ascii_punctuation() {
-            Self::Punct
-        } else {
-            Self::Other
-        }
-    }
 }
 
 impl CursorMove {
@@ -76,19 +58,7 @@ impl CursorMove {
                 Some((row, fit_col(col, &lines[row])))
             }
             WordForward => {
-                fn find_word_forward(line: &str, col: usize) -> Option<usize> {
-                    let mut it = line.chars().enumerate().skip(col);
-                    let mut prev = CharKind::new(it.next()?.1);
-                    for (col, c) in it {
-                        let cur = CharKind::new(c);
-                        if cur != CharKind::Space && prev != cur {
-                            return Some(col);
-                        }
-                        prev = cur;
-                    }
-                    None
-                }
-                if let Some(col) = find_word_forward(&lines[row], col) {
+                if let Some(col) = find_word_start_forward(&lines[row], col) {
                     Some((row, col))
                 } else if row + 1 < lines.len() {
                     Some((row + 1, 0))
@@ -97,28 +67,7 @@ impl CursorMove {
                 }
             }
             WordBack => {
-                fn find_word_back(line: &str, col: usize) -> Option<usize> {
-                    let idx = line
-                        .char_indices()
-                        .nth(col)
-                        .map(|(i, _)| i)
-                        .unwrap_or(line.len());
-                    let mut it = line[..idx].chars().rev().enumerate();
-                    let mut cur = CharKind::new(it.next()?.1);
-                    for (i, c) in it {
-                        let next = CharKind::new(c);
-                        if cur != CharKind::Space && next != cur {
-                            return Some(col - i);
-                        }
-                        cur = next;
-                    }
-                    if cur != CharKind::Space {
-                        Some(0)
-                    } else {
-                        None
-                    }
-                }
-                if let Some(col) = find_word_back(&lines[row], col) {
+                if let Some(col) = find_word_start_backward(&lines[row], col) {
                     Some((row, col))
                 } else if row > 0 {
                     Some((row - 1, lines[row - 1].chars().count()))
