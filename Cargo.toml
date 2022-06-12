@@ -5,12 +5,18 @@ edition = "2021"
 
 [features]
 default = ["crossterm"]
+crossterm = ["dep:crossterm", "tui/crossterm"]
+termion = ["dep:termion", "tui/termion"]
 
 [dependencies]
 crossterm = { version = "0.23", optional = true }
 termion = { version = "1.5", optional = true }
-tui = "0.18"
+tui = { version = "0.18", default-features = false }
 
 [[example]]
 name = "minimal"
 required-features = ["crossterm"]
+
+[[example]]
+name = "termion"
+required-features = ["termion"]
