@@ -93,6 +93,7 @@ impl From<TermionKey> for Input {
         let mut ctrl = false;
         let mut alt = false;
         let key = match key {
+            Char('\n' | '\r') => Key::Enter,
             Char(c) => Key::Char(c),
             Ctrl(c) => {
                 ctrl = true;
