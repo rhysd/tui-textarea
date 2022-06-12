@@ -7,7 +7,7 @@ use tui::backend::CrosstermBackend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::widgets::{Block, Borders};
 use tui::Terminal;
-use tui_textarea::{Input, TextArea};
+use tui_textarea::TextArea;
 
 fn main() -> io::Result<()> {
     let stdout = io::stdout();
@@ -18,7 +18,11 @@ fn main() -> io::Result<()> {
     let mut term = Terminal::new(backend)?;
 
     let mut textarea = TextArea::default();
-    textarea.set_block(Block::default().borders(Borders::ALL).title("EXAMPLE"));
+    textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Crossterm Minimal Example"),
+    );
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1)].as_ref());
@@ -33,7 +37,7 @@ fn main() -> io::Result<()> {
             if key.code == KeyCode::Esc {
                 break;
             }
-            textarea.input(Input::from(key));
+            textarea.input(key);
         }
     }
 

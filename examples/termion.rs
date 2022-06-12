@@ -42,7 +42,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let mut textarea = TextArea::default();
-    textarea.set_block(Block::default().borders(Borders::ALL).title("EXAMPLE"));
+    textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Termion Minimal Example"),
+    );
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1)].as_ref());
@@ -60,6 +64,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         })?;
     }
 
+    drop(term); // Leave terminal raw mode to print the following line
     println!("Lines: {:?}", textarea.lines());
     Ok(())
 }
