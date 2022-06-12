@@ -1,5 +1,7 @@
 #[cfg(feature = "crossterm")]
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEvent, KeyModifiers};
+#[cfg(feature = "termion")]
+use termion::event::{Event as TerimonEvent, Key as TermionKey};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Key {
@@ -37,9 +39,9 @@ impl Default for Input {
 }
 
 #[cfg(feature = "crossterm")]
-impl From<Event> for Input {
-    fn from(event: Event) -> Self {
-        if let Event::Key(key) = event {
+impl From<CrosstermEvent> for Input {
+    fn from(event: CrosstermEvent) -> Self {
+        if let CrosstermEvent::Key(key) = event {
             Self::from(key)
         } else {
             Self::default()
@@ -69,5 +71,51 @@ impl From<KeyEvent> for Input {
             _ => Key::Null,
         };
         Self { key, ctrl, alt }
+    }
+}
+
+#[cfg(feature = "termion")]
+impl From<TerimonEvent> for Input {
+    fn from(event: TerimonEvent) -> Self {
+        if let TerimonEvent::Key(key) = event {
+            Self::from(key)
+        } else {
+            Self::default()
+        }
+    }
+}
+
+#[cfg(feature = "termion")]
+impl From<TermionKey> for Input {
+    fn from(key: TermionKey) -> Self {
+        use TermionKey::*;
+
+        let mut ctrl = false;
+        let mut alt = false;
+        let key = match key {
+            Char(c) => Key::Char(c),
+            Ctrl(c) => {
+                ctrl = true;
+                Key::Char(c)
+            }
+            Alt(c) => {
+                alt = true;
+                Key::Char(c)
+            }
+            Backspace => Key::Backspace,
+            Left => Key::Left,
+            Right => Key::Right,
+            Up => Key::Up,
+            Down => Key::Down,
+            Home => Key::Home,
+            End => Key::End,
+            PageUp => Key::PageUp,
+            PageDown => Key::PageDown,
+            BackTab => Key::Tab,
+            Delete => Key::Delete,
+            _ => Key::Null,
+        };
+
+        Input { key, ctrl, alt }
     }
 }
