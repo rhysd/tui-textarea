@@ -31,20 +31,10 @@ impl CursorMove {
 
         match self {
             Forward if col >= lines[row].chars().count() => {
-                if row + 1 < lines.len() {
-                    Some((row + 1, 0))
-                } else {
-                    None
-                }
+                (row + 1 < lines.len()).then(|| (row + 1, 0))
             }
             Forward => Some((row, col + 1)),
-            Back if col == 0 => {
-                if row > 0 {
-                    Some((row - 1, lines[row - 1].chars().count()))
-                } else {
-                    None
-                }
-            }
+            Back if col == 0 => (row > 0).then(|| (row - 1, lines[row - 1].chars().count())),
             Back => Some((row, col - 1)),
             Up if row == 0 => None,
             Up => Some((row - 1, fit_col(col, &lines[row - 1]))),

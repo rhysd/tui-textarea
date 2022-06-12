@@ -140,4 +140,8 @@ impl History {
         edit.undo(lines);
         Some(edit.cursor_before())
     }
+
+    pub fn max_items(&self) -> usize {
+        self.max_items
+    }
 }

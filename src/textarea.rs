@@ -48,6 +48,7 @@ impl<'a> TextArea<'a> {
         if lines.is_empty() {
             lines.push(String::new());
         }
+
         Self {
             lines,
             block: None,
@@ -246,12 +247,22 @@ impl<'a> TextArea<'a> {
                 alt: true,
             }
             | Input {
+                key: Key::Down,
+                ctrl: true,
+                alt: false,
+            }
+            | Input {
                 key: Key::PageDown, ..
             } => self.move_cursor(CursorMove::ParagraphForward),
             Input {
                 key: Key::Char('p'),
                 ctrl: false,
                 alt: true,
+            }
+            | Input {
+                key: Key::Up,
+                ctrl: true,
+                alt: false,
             }
             | Input {
                 key: Key::PageUp, ..
@@ -347,10 +358,10 @@ impl<'a> TextArea<'a> {
 
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
-        debug_assert_eq!(
-            line.char_indices().find(|(_, c)| *c == '\n'),
-            None,
-            "string given to insert_str must not contain newline",
+        debug_assert!(
+            !line.contains('\n'),
+            "string given to insert_str must not contain newline: {:?}",
+            line,
         );
 
         let i = line
@@ -557,6 +568,10 @@ impl<'a> TextArea<'a> {
         self.style = style;
     }
 
+    pub fn style(&self) -> Style {
+        self.style
+    }
+
     pub fn set_block(&mut self, block: Block<'a>) {
         self.block = Some(block);
     }
@@ -565,16 +580,32 @@ impl<'a> TextArea<'a> {
         self.block = None;
     }
 
+    pub fn block<'s>(&'s self) -> Option<&'s Block<'a>> {
+        self.block.as_ref()
+    }
+
     pub fn set_tab_length(&mut self, len: u8) {
         self.tab_len = len;
+    }
+
+    pub fn tab_length(&self) -> u8 {
+        self.tab_len
     }
 
     pub fn set_max_histories(&mut self, max: usize) {
         self.history = History::new(max);
     }
 
+    pub fn max_histories(&self) -> usize {
+        self.history.max_items()
+    }
+
     pub fn set_cursor_line_style(&mut self, style: Style) {
         self.cursor_line_style = style;
+    }
+
+    pub fn cursor_line_style(&self) -> Style {
+        self.cursor_line_style
     }
 
     pub fn set_line_number_style(&mut self, style: Style) {
@@ -585,8 +616,16 @@ impl<'a> TextArea<'a> {
         self.line_number_style = None;
     }
 
+    pub fn line_number_style(&self) -> Option<Style> {
+        self.line_number_style
+    }
+
     pub fn lines(&'a self) -> &'a [String] {
         &self.lines
+    }
+
+    pub fn into_lines(self) -> Vec<String> {
+        self.lines
     }
 
     /// 0-base character-wise (row, col) cursor position.
