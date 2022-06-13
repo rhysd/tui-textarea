@@ -149,8 +149,8 @@ let mut textarea = TextArea::new(lines);
 from any iterators whose elements can be converted to `String`.
 
 ```rust
-// Create `TextArea` from from `&[&str]`
-let mut textarea = TextArea::from(&[
+// Create `TextArea` from from `[&str]`
+let mut textarea = TextArea::from([
     "this is first line",
     "this is second line",
     "this is third line",
@@ -467,10 +467,12 @@ loop {
 
 ## Contributing to tui-textarea
 
-For feature requests or bug reports, please create an issue on GitHub. For submitting patches, please create a pull
-request on GitHub.
+This project is developed [on GitHub][repo].
 
-https://github.com/rhysd/tui-textarea
+For feature requests or bug reports, please [create an issue][new-issue]. For submitting patches, please [create a pull
+request][pulls].
+
+Please see [CONTRIBUTING.md](./CONTRIBUTING.md) before making a PR.
 
 ## License
 
@@ -482,3 +484,6 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 [crosster]: https://docs.rs/crossterm/latest/crossterm/
 [doc]: https://docs.rs/tui-textarea/latest/tui_textarea
 [tui-backend]: https://docs.rs/tui/latest/tui/backend/trait.Backend.html
+[repo]: https://github.com/rhysd/tui-textarea
+[new-issue]: https://github.com/rhysd/tui-textarea/issues/new
+[pulls]: https://github.com/rhysd/tui-textarea/pulls
