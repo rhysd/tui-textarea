@@ -34,12 +34,16 @@ impl CursorMove {
                 (row + 1 < lines.len()).then(|| (row + 1, 0))
             }
             Forward => Some((row, col + 1)),
-            Back if col == 0 => (row > 0).then(|| (row - 1, lines[row - 1].chars().count())),
+            Back if col == 0 => {
+                let row = row.checked_sub(1)?;
+                Some((row, lines[row].chars().count()))
+            }
             Back => Some((row, col - 1)),
-            Up if row == 0 => None,
-            Up => Some((row - 1, fit_col(col, &lines[row - 1]))),
-            Down if row + 1 >= lines.len() => None,
-            Down => (Some((row + 1, fit_col(col, &lines[row + 1])))),
+            Up => {
+                let row = row.checked_sub(1)?;
+                Some((row, fit_col(col, &lines[row])))
+            }
+            Down => (Some((row + 1, fit_col(col, lines.get(row + 1)?)))),
             Head => Some((row, 0)),
             End => Some((row, lines[row].chars().count())),
             Top => Some((0, fit_col(col, &lines[0]))),
@@ -78,10 +82,10 @@ impl CursorMove {
                 let row = lines.len() - 1;
                 Some((row, fit_col(col, &lines[row])))
             }
-            ParagraphBack if row == 0 => None,
             ParagraphBack => {
-                let mut prev_is_empty = lines[row - 1].is_empty();
-                for row in (0..row - 1).rev() {
+                let row = row.checked_sub(1)?;
+                let mut prev_is_empty = lines[row].is_empty();
+                for row in (0..row).rev() {
                     let is_empty = lines[row].is_empty();
                     if is_empty && !prev_is_empty {
                         return Some((row + 1, fit_col(col, &lines[row + 1])));

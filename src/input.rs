@@ -21,7 +21,7 @@ pub enum Key {
     Null,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Input {
     pub key: Key,
     pub ctrl: bool,
