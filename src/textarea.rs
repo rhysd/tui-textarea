@@ -14,6 +14,26 @@ fn spaces(size: usize) -> &'static str {
     &SPACES[..size]
 }
 
+/// A type to manage state of textarea.
+///
+/// [`TextArea::default`] creates an empty textarea. [`TextArea::new`] creates a textarea with given text lines.
+/// [`TextArea::from`] creates a textarea from an iterator of lines. [`TextArea::input`] handles key input.
+/// [`TextArea::widget`] builds a widget to render. And [`TextArea::lines`] returns line texts.
+/// ```
+/// use tui_textarea::{TextArea, Input, Key};
+///
+/// let mut textarea = TextArea::default();
+///
+/// // Input 'a'
+/// let input = Input { key: Key::Char('a'), ctrl: false, alt: false };
+/// textarea.input(input);
+///
+/// // Get widget to render.
+/// let widget = textarea.widget();
+///
+/// // Get lines as String.
+/// println!("Lines: {:?}", textarea.lines());
+/// ```
 pub struct TextArea<'a> {
     lines: Vec<String>,
     block: Option<Block<'a>>,
@@ -27,23 +47,52 @@ pub struct TextArea<'a> {
     yank: String,
 }
 
+/// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
+/// handled as line. Ensure that the strings don't contain any newlines. This method is useful to create [`TextArea`]
+/// from [`std::str::Lines`].
+/// ```
+/// use tui_textarea::TextArea;
+///
+/// let text = "hello\nworld";
+/// let textarea = TextArea::from(text.lines());
+/// assert_eq!(textarea.lines(), ["hello", "world"]);
+///
+/// let textarea = TextArea::from(["hello", "world"]);
+/// assert_eq!(textarea.lines(), ["hello", "world"]);
+/// ```
 impl<'a, I> From<I> for TextArea<'a>
 where
-    I: Iterator,
+    I: IntoIterator,
     I::Item: Into<String>,
 {
     fn from(i: I) -> Self {
-        Self::new(i.map(|s| s.into()).collect::<Vec<String>>())
+        Self::new(i.into_iter().map(|s| s.into()).collect::<Vec<String>>())
     }
 }
 
 impl<'a> Default for TextArea<'a> {
+    /// Create [`TextArea`] instance with empty text content.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let textarea = TextArea::default();
+    /// assert_eq!(textarea.lines(), [""]);
+    /// ```
     fn default() -> Self {
         Self::new(vec![String::new()])
     }
 }
 
 impl<'a> TextArea<'a> {
+    /// Create [`TextArea`] instance with given lines. If you have value other than `Vec<String>`, [`TextArea::from`]
+    /// may be more useful.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let lines = vec!["hello".to_string(), "...".to_string(), "goodbye".to_string()];
+    /// let textarea = TextArea::new(lines);
+    /// assert_eq!(textarea.lines(), ["hello", "...", "goodbye"]);
+    /// ```
     pub fn new(mut lines: Vec<String>) -> Self {
         if lines.is_empty() {
             lines.push(String::new());
@@ -63,6 +112,33 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    /// Handle a key input with default key mappings. For default key mappings, see the table in
+    /// [the module document](./index.html).
+    /// `crossterm` and `termion` features enable conversion from their own key event types into [`Input`] so this
+    /// method can take the event values directly.
+    /// ```ignore
+    /// use tui_textarea::{TextArea, Key, Input};
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// // Handle crossterm key events
+    /// let event: crossterm::event::Event = ...;
+    /// textarea.input(event);
+    /// if let crossterm::event::Event::Key(key) = event {
+    ///     textarea.input(key);
+    /// }
+    ///
+    /// // Handle termion key events
+    /// let event: termion::event::Event = ...;
+    /// textarea.input(event);
+    /// if let termion::event::Event::Key(key) = event {
+    ///     textarea.input(key);
+    /// }
+    ///
+    /// // Handle backend-agnostic key input
+    /// let input = Input { key: Key::Char('a'), ctrl: false, alt: false };
+    /// textarea.input(input);
+    /// ```
     pub fn input(&mut self, input: impl Into<Input>) {
         let input = input.into();
         match input {
@@ -305,6 +381,15 @@ impl<'a> TextArea<'a> {
         );
     }
 
+    /// Handle a key input without default key mappings. This method handles only
+    /// - Single character input without modifier keys
+    /// - Tab
+    /// - Enter
+    /// - Backspace
+    /// - Delete
+    ///
+    /// This method is useful when you want to define your own key mappings and don't want default key mappings.
+    /// See 'Define your own key mappings' section in [the module document](./index.html).
     pub fn input_without_shortcuts(&mut self, input: impl Into<Input>) {
         let input = input.into();
         match input {
@@ -337,6 +422,15 @@ impl<'a> TextArea<'a> {
         self.history.push(edit);
     }
 
+    /// Insert a single character at current cursor position.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.insert_char('a');
+    /// assert_eq!(textarea.lines(), ["a"]);
+    /// ```
     pub fn insert_char(&mut self, c: char) {
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
@@ -350,6 +444,15 @@ impl<'a> TextArea<'a> {
         self.push_history(EditKind::InsertChar(c, i), (row, col));
     }
 
+    /// Insert a string at current cursor position. Currently the string must not contain any newlines.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.insert_str("hello");
+    /// assert_eq!(textarea.lines(), ["hello"]);
+    /// ```
     pub fn insert_str<S: Into<String>>(&mut self, s: S) {
         let s = s.into();
         if s.is_empty() {
@@ -375,6 +478,16 @@ impl<'a> TextArea<'a> {
         self.push_history(EditKind::Insert(s, i), (row, col));
     }
 
+    /// Delete a string in current cursor line. The `chars` parameter means number of characters, not a byte length of
+    /// the string.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["🐱🐶🐰🐮"]);
+    ///
+    /// textarea.delete_str(1, 2);
+    /// assert_eq!(textarea.lines(), ["🐱🐮"]);
+    /// ```
     pub fn delete_str(&mut self, col: usize, chars: usize) {
         if chars == 0 {
             return;
@@ -397,6 +510,15 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    /// Insert a tab at current cursor position.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["hi"]);
+    ///
+    /// textarea.insert_tab();
+    /// assert_eq!(textarea.lines(), ["    hi"]);
+    /// ```
     pub fn insert_tab(&mut self) {
         if self.tab_len > 0 {
             let len = self.tab_len as usize - self.cursor.1 % self.tab_len as usize;
@@ -404,6 +526,16 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    /// Insert a newline at current cursor position.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["hi"]);
+    ///
+    /// textarea.move_cursor(CursorMove::Forward);
+    /// textarea.insert_newline();
+    /// assert_eq!(textarea.lines(), ["h", "i"]);
+    /// ```
     pub fn insert_newline(&mut self) {
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
@@ -420,6 +552,16 @@ impl<'a> TextArea<'a> {
         self.push_history(EditKind::InsertNewline(idx), (row, col));
     }
 
+    /// Delete a newline from **head** of current cursor line.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["hello", "world"]);
+    ///
+    /// textarea.move_cursor(CursorMove::Down);
+    /// textarea.delete_newline();
+    /// assert_eq!(textarea.lines(), ["helloworld"]);
+    /// ```
     pub fn delete_newline(&mut self) {
         let (row, col) = self.cursor;
         if row == 0 {
@@ -435,6 +577,17 @@ impl<'a> TextArea<'a> {
         self.push_history(EditKind::DeleteNewline(prev_line_end), (row, col));
     }
 
+    /// Delete one character before cursor. When the cursor is at head of line, the newline before the cursor will be
+    /// removed.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["abc"]);
+    ///
+    /// textarea.move_cursor(CursorMove::Forward);
+    /// textarea.delete_char();
+    /// assert_eq!(textarea.lines(), ["bc"]);
+    /// ```
     pub fn delete_char(&mut self) {
         let (row, col) = self.cursor;
         if col == 0 {
@@ -450,6 +603,17 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    /// Delete one character next to cursor. When the cursor is at end of line, the newline next to the cursor will be
+    /// removed.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["abc"]);
+    ///
+    /// textarea.move_cursor(CursorMove::Forward);
+    /// textarea.delete_next_char();
+    /// assert_eq!(textarea.lines(), ["ac"]);
+    /// ```
     pub fn delete_next_char(&mut self) {
         let before = self.cursor;
         self.move_cursor(CursorMove::Forward);
@@ -459,14 +623,57 @@ impl<'a> TextArea<'a> {
         self.delete_char();
     }
 
+    /// Delete string from cursor to end of the line. When the cursor is at end of line, the newline next to the cursor
+    /// will be removed.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["abcde"]);
+    ///
+    /// // Move to 'c'
+    /// textarea.move_cursor(CursorMove::Forward);
+    /// textarea.move_cursor(CursorMove::Forward);
+    ///
+    /// textarea.delete_line_by_end();
+    /// assert_eq!(textarea.lines(), ["ab"]);
+    /// ```
     pub fn delete_line_by_end(&mut self) {
         self.delete_str(self.cursor.1, usize::MAX);
     }
 
+    /// Delete string from cursor to head of the line. When the cursor is at head of line, the newline before the cursor
+    /// will be removed.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["abcde"]);
+    ///
+    /// // Move to 'c'
+    /// textarea.move_cursor(CursorMove::Forward);
+    /// textarea.move_cursor(CursorMove::Forward);
+    ///
+    /// textarea.delete_line_by_head();
+    /// assert_eq!(textarea.lines(), ["cde"]);
+    /// ```
     pub fn delete_line_by_head(&mut self) {
         self.delete_str(0, self.cursor.1);
     }
 
+    /// Delete a word before cursor. Word boundary appears at spaces, punctuations, and others. For example `fn foo(a)`
+    /// consists of words `fn`, `foo`, `(`, `a`, `)`. When the cursor is at head of line, the newline before the cursor
+    /// will be removed.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["aaa bbb ccc"]);
+    ///
+    /// textarea.move_cursor(CursorMove::End);
+    ///
+    /// textarea.delete_word();
+    /// assert_eq!(textarea.lines(), ["aaa bbb "]);
+    /// textarea.delete_word();
+    /// assert_eq!(textarea.lines(), ["aaa "]);
+    /// ```
     pub fn delete_word(&mut self) {
         let (r, c) = self.cursor;
         if let Some(col) = find_word_start_backward(&self.lines[r], c) {
@@ -478,6 +685,19 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    /// Delete a word next to cursor. Word boundary appears at spaces, punctuations, and others. For example `fn foo(a)`
+    /// consists of words `fn`, `foo`, `(`, `a`, `)`. When the cursor is at end of line, the newline next to the cursor
+    /// will be removed.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["aaa bbb ccc"]);
+    ///
+    /// textarea.delete_next_word();
+    /// assert_eq!(textarea.lines(), [" bbb ccc"]);
+    /// textarea.delete_next_word();
+    /// assert_eq!(textarea.lines(), [" ccc"]);
+    /// ```
     pub fn delete_next_word(&mut self) {
         let (r, c) = self.cursor;
         let line = &self.lines[r];
@@ -494,29 +714,103 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    /// Paste a string previously deleted by [`TextArea::delete_line_by_head`], [`TextArea::delete_line_by_end`],
+    /// [`TextArea::delete_word`], [`TextArea::delete_next_word`].
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["aaa bbb ccc"]);
+    ///
+    /// textarea.delete_next_word();
+    /// textarea.move_cursor(CursorMove::End);
+    /// textarea.paste();
+    /// assert_eq!(textarea.lines(), [" bbb cccaaa"]);
+    /// ```
     pub fn paste(&mut self) {
         let yank = std::mem::take(&mut self.yank);
         self.insert_str(yank);
     }
 
+    /// Move the cursor to the position specified by the [`CursorMove`] parameter. For each kind of cursor moves, see
+    /// the document of [`CursorMove`].
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["abc", "def"]);
+    ///
+    /// textarea.move_cursor(CursorMove::Forward);
+    /// assert_eq!(textarea.cursor(), (0, 1));
+    /// textarea.move_cursor(CursorMove::Down);
+    /// assert_eq!(textarea.cursor(), (1, 1));
+    /// ```
     pub fn move_cursor(&mut self, m: CursorMove) {
         if let Some(cursor) = m.next_cursor(self.cursor, &self.lines) {
             self.cursor = cursor;
         }
     }
 
+    /// Undo the last modification. When no modification is added to the text, this method does nothing.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["abc def"]);
+    ///
+    /// textarea.delete_next_word();
+    /// assert_eq!(textarea.lines(), [" def"]);
+    /// textarea.undo();
+    /// assert_eq!(textarea.lines(), ["abc def"]);
+    /// ```
     pub fn undo(&mut self) {
         if let Some(cursor) = self.history.undo(&mut self.lines) {
             self.cursor = cursor;
         }
     }
 
+    /// Redo the last undo change. When no undo change remain, this method does nothing.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["abc def"]);
+    ///
+    /// textarea.delete_next_word();
+    /// assert_eq!(textarea.lines(), [" def"]);
+    /// textarea.undo();
+    /// assert_eq!(textarea.lines(), ["abc def"]);
+    /// textarea.redo();
+    /// assert_eq!(textarea.lines(), [" def"]);
+    /// ```
     pub fn redo(&mut self) {
         if let Some(cursor) = self.history.redo(&mut self.lines) {
             self.cursor = cursor;
         }
     }
 
+    /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this
+    /// method can be rendered with [`tui::terminal::Frame::render_widget`].
+    /// ```no_run
+    /// use tui::backend::CrosstermBackend;
+    /// use tui::layout::{Constraint, Direction, Layout};
+    /// use tui::Terminal;
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// let layout = Layout::default()
+    ///     .direction(Direction::Vertical)
+    ///     .constraints([Constraint::Min(1)].as_ref());
+    /// let backend = CrosstermBackend::new(std::io::stdout());
+    /// let mut term = Terminal::new(backend).unwrap();
+    ///
+    /// loop {
+    ///     term.draw(|f| {
+    ///         let chunks = layout.split(f.size());
+    ///         let widget = textarea.widget();
+    ///         f.render_widget(widget, chunks[0]);
+    ///     }).unwrap();
+    ///
+    ///     // ...
+    /// }
+    /// ```
     pub fn widget(&'a self) -> impl Widget + 'a {
         fn num_digits(i: usize) -> usize {
             f64::log10(i as f64) as usize + 1
@@ -564,71 +858,198 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    /// Set the style of textarea. By default, textarea is not styled.
+    /// ```
+    /// use tui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// let style = Style::default().fg(Color::Red);
+    /// textarea.set_style(style);
+    /// assert_eq!(textarea.style(), style);
+    /// ```
     pub fn set_style(&mut self, style: Style) {
         self.style = style;
     }
 
+    /// Get the current style of textarea.
     pub fn style(&self) -> Style {
         self.style
     }
 
+    /// Set the block of textarea. By default, no block is set.
+    /// ```
+    /// use tui_textarea::TextArea;
+    /// use tui::widgets::{Block, Borders};
+    ///
+    /// let mut textarea = TextArea::default();
+    /// let block = Block::default().borders(Borders::ALL).title("Block Title");
+    /// textarea.set_block(block);
+    /// assert!(textarea.block().is_some());
+    /// ```
     pub fn set_block(&mut self, block: Block<'a>) {
         self.block = Some(block);
     }
 
+    /// Remove the block of textarea which was set by [`TextArea::set_block`].
+    /// ```
+    /// use tui_textarea::TextArea;
+    /// use tui::widgets::{Block, Borders};
+    ///
+    /// let mut textarea = TextArea::default();
+    /// let block = Block::default().borders(Borders::ALL).title("Block Title");
+    /// textarea.set_block(block);
+    /// textarea.remove_block();
+    /// assert!(textarea.block().is_none());
+    /// ```
     pub fn remove_block(&mut self) {
         self.block = None;
     }
 
+    /// Get the block of textarea if exists.
     pub fn block<'s>(&'s self) -> Option<&'s Block<'a>> {
         self.block.as_ref()
     }
 
+    /// Set the length of tab character. Due to limitation of tui-rs, hard tab is not supported. Setting 0 disables tab
+    /// inputs.
+    /// ```
+    /// use tui_textarea::{TextArea, Input, Key};
+    ///
+    /// let mut textarea = TextArea::default();
+    /// let tab_input = Input { key: Key::Tab, ctrl: false, alt: false };
+    ///
+    /// textarea.set_tab_length(8);
+    /// textarea.input(tab_input.clone());
+    /// assert_eq!(textarea.lines(), ["        "]);
+    ///
+    /// textarea.set_tab_length(2);
+    /// textarea.input(tab_input);
+    /// assert_eq!(textarea.lines(), ["          "]);
+    /// ```
     pub fn set_tab_length(&mut self, len: u8) {
         self.tab_len = len;
     }
 
+    /// Get how many spaces are used for representing tab character. The default value is 4.
     pub fn tab_length(&self) -> u8 {
         self.tab_len
     }
 
+    /// Set how many modifications are remembered for undo/redo. Setting 0 disables undo/redo.
     pub fn set_max_histories(&mut self, max: usize) {
         self.history = History::new(max);
     }
 
+    /// Get how many modifications are remembered for undo/redo. The default value is 50.
     pub fn max_histories(&self) -> usize {
         self.history.max_items()
     }
 
+    /// Set the style of line at cursor. By default, the cursor line is styled with underline. To stop styling the
+    /// cursor line, set the default style.
+    /// ```
+    /// use tui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// let style = Style::default().fg(Color::Red);
+    /// textarea.set_cursor_line_style(style);
+    /// assert_eq!(textarea.cursor_line_style(), style);
+    ///
+    /// // Disable cursor line style
+    /// textarea.set_cursor_line_style(Style::default());
+    /// ```
     pub fn set_cursor_line_style(&mut self, style: Style) {
         self.cursor_line_style = style;
     }
 
+    /// Get the style of cursor line. By default it is styled with underline.
     pub fn cursor_line_style(&self) -> Style {
         self.cursor_line_style
     }
 
+    /// Set the style of line number. By setting the style with this method, line numbers are drawn in textarea, meant
+    /// that line numbers are disabled by default. If you want to show line numbers but don't want to style them, set
+    /// the default style.
+    /// ```
+    /// use tui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// // Show line numbers in dark gray background
+    /// let style = Style::default().bg(Color::DarkGray);
+    /// textarea.set_line_number_style(style);
+    /// assert_eq!(textarea.line_number_style(), Some(style));
+    /// ```
     pub fn set_line_number_style(&mut self, style: Style) {
         self.line_number_style = Some(style);
     }
 
+    /// Remove the style of line number which was set by [`TextArea::set_line_number_style`]. After calling this
+    /// method, Line numbers will no longer be shown.
     pub fn remove_line_number(&mut self) {
         self.line_number_style = None;
     }
 
+    /// Get the style of line number if set.
     pub fn line_number_style(&self) -> Option<Style> {
         self.line_number_style
     }
 
+    /// Get slice of line texts. This method borrows the content, but not moves. Note that the returned slice will
+    /// never be empty because an empty text means a slice containing one empty line. This is correct since any text
+    /// file must end with a newline.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// assert_eq!(textarea.lines(), [""]);
+    ///
+    /// textarea.insert_char('a');
+    /// assert_eq!(textarea.lines(), ["a"]);
+    ///
+    /// textarea.insert_newline();
+    /// assert_eq!(textarea.lines(), ["a", ""]);
+    ///
+    /// textarea.insert_char('b');
+    /// assert_eq!(textarea.lines(), ["a", "b"]);
+    /// ```
     pub fn lines(&'a self) -> &'a [String] {
         &self.lines
     }
 
+    /// Convert [`TextArea`] instance into line texts.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.insert_char('a');
+    /// textarea.insert_newline();
+    /// textarea.insert_char('b');
+    ///
+    /// assert_eq!(textarea.into_lines(), ["a", "b"]);
+    /// ```
     pub fn into_lines(self) -> Vec<String> {
         self.lines
     }
 
-    /// 0-base character-wise (row, col) cursor position.
+    /// Get the current cursor position. 0-base character-wise (row, col) cursor position.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// assert_eq!(textarea.cursor(), (0, 0));
+    ///
+    /// textarea.insert_char('a');
+    /// textarea.insert_newline();
+    /// textarea.insert_char('b');
+    ///
+    /// assert_eq!(textarea.cursor(), (1, 1));
+    /// ```
     pub fn cursor(&self) -> (usize, usize) {
         self.cursor
     }
