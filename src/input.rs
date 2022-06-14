@@ -64,6 +64,7 @@ pub struct Input {
 }
 
 impl Default for Input {
+    /// The default input is [`Key::Null`] without pressing Ctrl nor Alt, which means invalid input.
     fn default() -> Self {
         Input {
             key: Key::Null,

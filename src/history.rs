@@ -132,10 +132,7 @@ impl History {
     }
 
     pub fn undo(&mut self, lines: &mut Vec<String>) -> Option<(usize, usize)> {
-        if self.index == 0 {
-            return None;
-        }
-        self.index -= 1;
+        self.index = self.index.checked_sub(1)?;
         let edit = &self.edits[self.index];
         edit.undo(lines);
         Some(edit.cursor_before())

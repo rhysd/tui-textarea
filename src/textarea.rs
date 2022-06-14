@@ -53,11 +53,18 @@ pub struct TextArea<'a> {
 /// ```
 /// use tui_textarea::TextArea;
 ///
+/// // From `String`
 /// let text = "hello\nworld";
 /// let textarea = TextArea::from(text.lines());
 /// assert_eq!(textarea.lines(), ["hello", "world"]);
 ///
+/// // From array of `&str`
 /// let textarea = TextArea::from(["hello", "world"]);
+/// assert_eq!(textarea.lines(), ["hello", "world"]);
+///
+/// // From slice of `&str`
+/// let slice = &["hello", "world"];
+/// let textarea = TextArea::from(slice.iter().copied());
 /// assert_eq!(textarea.lines(), ["hello", "world"]);
 /// ```
 impl<'a, I> From<I> for TextArea<'a>
@@ -347,12 +354,16 @@ impl<'a> TextArea<'a> {
                 key: Key::Char('u'),
                 ctrl: true,
                 alt: false,
-            } => self.undo(),
+            } => {
+                self.undo();
+            }
             Input {
                 key: Key::Char('r'),
                 ctrl: true,
                 alt: false,
-            } => self.redo(),
+            } => {
+                self.redo();
+            }
             Input {
                 key: Key::Char('y' | 'v'),
                 ctrl: true,
@@ -749,7 +760,8 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    /// Undo the last modification. When no modification is added to the text, this method does nothing.
+    /// Undo the last modification. When no modification is added to the text, this method does not modify contents and
+    /// returns `false`.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -760,13 +772,16 @@ impl<'a> TextArea<'a> {
     /// textarea.undo();
     /// assert_eq!(textarea.lines(), ["abc def"]);
     /// ```
-    pub fn undo(&mut self) {
+    pub fn undo(&mut self) -> bool {
         if let Some(cursor) = self.history.undo(&mut self.lines) {
             self.cursor = cursor;
+            true
+        } else {
+            false
         }
     }
 
-    /// Redo the last undo change. When no undo change remain, this method does nothing.
+    /// Redo the last undo change. When no undo change remain, this method does not modify contents and returns `false`.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -779,9 +794,12 @@ impl<'a> TextArea<'a> {
     /// textarea.redo();
     /// assert_eq!(textarea.lines(), [" def"]);
     /// ```
-    pub fn redo(&mut self) {
+    pub fn redo(&mut self) -> bool {
         if let Some(cursor) = self.history.redo(&mut self.lines) {
             self.cursor = cursor;
+            true
+        } else {
+            false
         }
     }
 
@@ -850,7 +868,7 @@ impl<'a> TextArea<'a> {
         }
 
         let inner = Paragraph::new(Text::from(lines)).style(self.style);
-        TextAreaWidget {
+        Renderer {
             scroll_top: &self.scroll_top,
             cursor: (self.cursor.0 as u16, self.cursor.1 as u16),
             block: self.block.clone(),
@@ -1055,16 +1073,22 @@ impl<'a> TextArea<'a> {
     }
 }
 
-struct TextAreaWidget<'a> {
-    // &mut 'a (u16, u16) is not available since TextAreaWidget instance takes over the ownership of TextArea instance.
-    // In the case the TextArea instance cannot be accessed from any other objects since it is mutablly borrowed.
+struct Renderer<'a> {
+    // &mut 'a (u16, u16) is not available since TextAreaWidget instance totally takes over the ownership of TextArea
+    // instance. In the case, the TextArea instance cannot be accessed from any other objects since it is mutablly
+    // borrowed.
+    //
+    // `tui::terminal::Frame::render_stateful_widget` would be an assumed way to render a stateful widget. But at this
+    // point we stick with using `tui::terminal::Frame::render_widget` because it is simpler API. Users don't need to
+    // manage states of textarea instances separately.
+    // https://docs.rs/tui/latest/tui/terminal/struct.Frame.html#method.render_stateful_widget
     scroll_top: &'a (AtomicU16, AtomicU16),
     cursor: (u16, u16),
     block: Option<Block<'a>>,
     inner: Paragraph<'a>,
 }
 
-impl<'a> Widget for TextAreaWidget<'a> {
+impl<'a> Widget for Renderer<'a> {
     fn render(mut self, area: Rect, buf: &mut Buffer) {
         let inner_area = if let Some(b) = self.block.take() {
             let area = b.inner(area);
