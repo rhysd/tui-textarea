@@ -3,8 +3,11 @@ use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEvent, KeyModifiers}
 #[cfg(feature = "termion")]
 use termion::event::{Event as TerimonEvent, Key as TermionKey};
 
+/// Backend-agnostic key input kind.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 pub enum Key {
+    /// Normal letter key input.
     Char(char),
     Backspace,
     Enter,
@@ -18,13 +21,45 @@ pub enum Key {
     End,
     PageUp,
     PageDown,
+    /// An invalid key input (this key is always ignored by [`TextArea`](crate::TextArea)).
     Null,
 }
 
+/// Backend-agnostic key input type.
+///
+/// When `crossterm` and/or `termion` features are enabled, converting their key input types into this `Input` type is defined.
+/// ```no_run
+/// use tui_textarea::{TextArea, Input, Key};
+/// use crossterm::event::{Event, read};
+///
+/// let event = read().unwrap();
+/// let input = Input::from(event);
+/// if let Event::Key(key) = event {
+///     let input = Input::from(key); // Conversion from `KeyEvent` value is also available
+/// }
+/// ```
+///
+/// Creating `Input` instance directly can cause backend-agnostic input as follows.
+///
+/// ```
+/// use tui_textarea::{TextArea, Input, Key};
+///
+/// let mut textarea = TextArea::default();
+///
+/// // Input Ctrl+A
+/// textarea.input(Input {
+///     key: Key::Char('a'),
+///     ctrl: true,
+///     alt: false,
+/// });
+/// ```
 #[derive(Debug, Clone)]
 pub struct Input {
+    /// Typed key.
     pub key: Key,
+    /// Ctrl modifier key. `true` means Ctrl key was pressed.
     pub ctrl: bool,
+    /// Alt modifier key. `true` means Alt key was pressed.
     pub alt: bool,
 }
 
