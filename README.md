@@ -161,6 +161,14 @@ let mut text: String = ...;
 let mut textarea = TextARea::from(text.lines());
 ```
 
+`TextArea` also implements `FromIterator<impl Into<String>>`. `Iterator::collect()` can collect strings as an editor
+instance. This allows to create `TextArea` reading lines from file efficiently using `io::BufReader`.
+
+```rust
+let file = fs::File::open(path)?;
+let mut textarea: TextArea = io::BufReader::new(file).lines().collect::<io::Result<_>>()?;
+```
+
 ### Get text contents from `TextArea`
 
 `TextArea::lines()` returns text lines as `&[String]`. It borrows text contents temporarily.
