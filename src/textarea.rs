@@ -1071,6 +1071,20 @@ impl<'a> TextArea<'a> {
     pub fn cursor(&self) -> (usize, usize) {
         self.cursor
     }
+
+    /// Check if the textarea has a empty content.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let textarea = TextArea::default();
+    /// assert!(textarea.is_empty());
+    ///
+    /// let textarea = TextArea::from(["hello"]);
+    /// assert!(!textarea.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.lines == [""]
+    }
 }
 
 struct Renderer<'a> {
