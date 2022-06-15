@@ -28,6 +28,7 @@ macro_rules! error {
 struct Buffer<'a> {
     textarea: TextArea<'a>,
     path: PathBuf,
+    modified: bool,
 }
 
 impl<'a> Buffer<'a> {
@@ -44,15 +45,23 @@ impl<'a> Buffer<'a> {
             TextArea::default()
         };
         textarea.set_line_number_style(Style::default().fg(Color::DarkGray));
-        Ok(Self { textarea, path })
+        Ok(Self {
+            textarea,
+            path,
+            modified: false,
+        })
     }
 
-    fn save(&self) -> io::Result<()> {
+    fn save(&mut self) -> io::Result<()> {
+        if !self.modified {
+            return Ok(());
+        }
         let mut f = io::BufWriter::new(fs::File::create(&self.path)?);
         for line in self.textarea.lines() {
             f.write_all(line.as_bytes())?;
             f.write_all(b"\n")?;
         }
+        self.modified = false;
         Ok(())
     }
 }
@@ -111,11 +120,13 @@ impl<'a> Editor<'a> {
                 let widget = textarea.widget();
                 f.render_widget(widget, chunks[0]);
 
+                let modified = if buffer.modified { " [modified]" } else { "" };
                 let status = format!(
-                    "[{}/{}] {:?}",
+                    "[{}/{}] {:?}{}",
                     self.current + 1,
                     self.buffers.len(),
                     buffer.path,
+                    modified,
                 );
                 let status =
                     Paragraph::new(status).style(Style::default().add_modifier(Modifier::REVERSED));
@@ -161,7 +172,10 @@ impl<'a> Editor<'a> {
                     self.buffers[self.current].save()?;
                     self.message = Some("Saved!");
                 }
-                input => self.buffers[self.current].textarea.input(input),
+                input => {
+                    let buffer = &mut self.buffers[self.current];
+                    buffer.modified = buffer.textarea.input(input);
+                }
             }
         }
 

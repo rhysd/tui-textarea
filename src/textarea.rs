@@ -97,14 +97,15 @@ impl<'a, S: Into<String>> FromIterator<S> for TextArea<'a> {
     }
 }
 
+/// Create [`TextArea`] instance with empty text content.
+/// ```
+/// use tui_textarea::TextArea;
+///
+/// let textarea = TextArea::default();
+/// assert_eq!(textarea.lines(), [""]);
+/// assert!(textarea.is_empty());
+/// ```
 impl<'a> Default for TextArea<'a> {
-    /// Create [`TextArea`] instance with empty text content.
-    /// ```
-    /// use tui_textarea::TextArea;
-    ///
-    /// let textarea = TextArea::default();
-    /// assert_eq!(textarea.lines(), [""]);
-    /// ```
     fn default() -> Self {
         Self::new(vec![String::new()])
     }
@@ -143,6 +144,7 @@ impl<'a> TextArea<'a> {
     /// [the module document](./index.html).
     /// `crossterm` and `termion` features enable conversion from their own key event types into [`Input`] so this
     /// method can take the event values directly.
+    /// This method returns if the input modified text contents or not in the textarea.
     /// ```ignore
     /// use tui_textarea::{TextArea, Key, Input};
     ///
@@ -164,16 +166,20 @@ impl<'a> TextArea<'a> {
     ///
     /// // Handle backend-agnostic key input
     /// let input = Input { key: Key::Char('a'), ctrl: false, alt: false };
-    /// textarea.input(input);
+    /// let modified = textarea.input(input);
+    /// assert!(modified);
     /// ```
-    pub fn input(&mut self, input: impl Into<Input>) {
+    pub fn input(&mut self, input: impl Into<Input>) -> bool {
         let input = input.into();
-        match input {
+        let modified = match input {
             Input {
                 key: Key::Char(c),
                 ctrl: false,
                 alt: false,
-            } => self.insert_char(c),
+            } => {
+                self.insert_char(c);
+                true
+            }
             Input {
                 key: Key::Tab,
                 ctrl: false,
@@ -206,7 +212,10 @@ impl<'a> TextArea<'a> {
             }
             | Input {
                 key: Key::Enter, ..
-            } => self.insert_newline(),
+            } => {
+                self.insert_newline();
+                true
+            }
             Input {
                 key: Key::Char('k'),
                 ctrl: true,
@@ -251,7 +260,10 @@ impl<'a> TextArea<'a> {
                 key: Key::Down,
                 ctrl: false,
                 alt: false,
-            } => self.move_cursor(CursorMove::Down),
+            } => {
+                self.move_cursor(CursorMove::Down);
+                false
+            }
             Input {
                 key: Key::Char('p'),
                 ctrl: true,
@@ -261,7 +273,10 @@ impl<'a> TextArea<'a> {
                 key: Key::Up,
                 ctrl: false,
                 alt: false,
-            } => self.move_cursor(CursorMove::Up),
+            } => {
+                self.move_cursor(CursorMove::Up);
+                false
+            }
             Input {
                 key: Key::Char('f'),
                 ctrl: true,
@@ -271,7 +286,10 @@ impl<'a> TextArea<'a> {
                 key: Key::Right,
                 ctrl: false,
                 alt: false,
-            } => self.move_cursor(CursorMove::Forward),
+            } => {
+                self.move_cursor(CursorMove::Forward);
+                false
+            }
             Input {
                 key: Key::Char('b'),
                 ctrl: true,
@@ -281,7 +299,10 @@ impl<'a> TextArea<'a> {
                 key: Key::Left,
                 ctrl: false,
                 alt: false,
-            } => self.move_cursor(CursorMove::Back),
+            } => {
+                self.move_cursor(CursorMove::Back);
+                false
+            }
             Input {
                 key: Key::Char('a'),
                 ctrl: true,
@@ -292,7 +313,10 @@ impl<'a> TextArea<'a> {
                 key: Key::Left | Key::Char('b'),
                 ctrl: true,
                 alt: true,
-            } => self.move_cursor(CursorMove::Head),
+            } => {
+                self.move_cursor(CursorMove::Head);
+                false
+            }
             Input {
                 key: Key::Char('e'),
                 ctrl: true,
@@ -303,7 +327,10 @@ impl<'a> TextArea<'a> {
                 key: Key::Right | Key::Char('f'),
                 ctrl: true,
                 alt: true,
-            } => self.move_cursor(CursorMove::End),
+            } => {
+                self.move_cursor(CursorMove::End);
+                false
+            }
             Input {
                 key: Key::Char('<'),
                 ctrl: false,
@@ -313,7 +340,10 @@ impl<'a> TextArea<'a> {
                 key: Key::Up | Key::Char('p'),
                 ctrl: true,
                 alt: true,
-            } => self.move_cursor(CursorMove::Top),
+            } => {
+                self.move_cursor(CursorMove::Top);
+                false
+            }
             Input {
                 key: Key::Char('>'),
                 ctrl: false,
@@ -323,7 +353,10 @@ impl<'a> TextArea<'a> {
                 key: Key::Down | Key::Char('n'),
                 ctrl: true,
                 alt: true,
-            } => self.move_cursor(CursorMove::Bottom),
+            } => {
+                self.move_cursor(CursorMove::Bottom);
+                false
+            }
             Input {
                 key: Key::Char('f'),
                 ctrl: false,
@@ -333,7 +366,10 @@ impl<'a> TextArea<'a> {
                 key: Key::Right,
                 ctrl: true,
                 alt: false,
-            } => self.move_cursor(CursorMove::WordForward),
+            } => {
+                self.move_cursor(CursorMove::WordForward);
+                false
+            }
             Input {
                 key: Key::Char('b'),
                 ctrl: false,
@@ -343,7 +379,10 @@ impl<'a> TextArea<'a> {
                 key: Key::Left,
                 ctrl: true,
                 alt: false,
-            } => self.move_cursor(CursorMove::WordBack),
+            } => {
+                self.move_cursor(CursorMove::WordBack);
+                false
+            }
             Input {
                 key: Key::Char('n'),
                 ctrl: false,
@@ -356,7 +395,10 @@ impl<'a> TextArea<'a> {
             }
             | Input {
                 key: Key::PageDown, ..
-            } => self.move_cursor(CursorMove::ParagraphForward),
+            } => {
+                self.move_cursor(CursorMove::ParagraphForward);
+                false
+            }
             Input {
                 key: Key::Char('p'),
                 ctrl: false,
@@ -369,28 +411,27 @@ impl<'a> TextArea<'a> {
             }
             | Input {
                 key: Key::PageUp, ..
-            } => self.move_cursor(CursorMove::ParagraphBack),
+            } => {
+                self.move_cursor(CursorMove::ParagraphBack);
+                false
+            }
             Input {
                 key: Key::Char('u'),
                 ctrl: true,
                 alt: false,
-            } => {
-                self.undo();
-            }
+            } => self.undo(),
             Input {
                 key: Key::Char('r'),
                 ctrl: true,
                 alt: false,
-            } => {
-                self.redo();
-            }
+            } => self.redo(),
             Input {
                 key: Key::Char('y' | 'v'),
                 ctrl: true,
                 alt: false,
             } => self.paste(),
-            _ => {}
-        }
+            _ => false,
+        };
 
         // Check invariants
         debug_assert!(!self.lines.is_empty(), "no line after {:?}", input);
@@ -410,6 +451,8 @@ impl<'a> TextArea<'a> {
             self.lines[r],
             input,
         );
+
+        modified
     }
 
     /// Handle a key input without default key mappings. This method handles only
@@ -419,16 +462,20 @@ impl<'a> TextArea<'a> {
     /// - Backspace
     /// - Delete
     ///
+    /// This method returns if the input modified text contents or not in the textarea.
+    ///
     /// This method is useful when you want to define your own key mappings and don't want default key mappings.
     /// See 'Define your own key mappings' section in [the module document](./index.html).
-    pub fn input_without_shortcuts(&mut self, input: impl Into<Input>) {
-        let input = input.into();
-        match input {
+    pub fn input_without_shortcuts(&mut self, input: impl Into<Input>) -> bool {
+        match input.into() {
             Input {
                 key: Key::Char(c),
                 ctrl: false,
                 alt: false,
-            } => self.insert_char(c),
+            } => {
+                self.insert_char(c);
+                true
+            }
             Input {
                 key: Key::Tab,
                 ctrl: false,
@@ -443,8 +490,11 @@ impl<'a> TextArea<'a> {
             } => self.delete_next_char(),
             Input {
                 key: Key::Enter, ..
-            } => self.insert_newline(),
-            _ => {}
+            } => {
+                self.insert_newline();
+                true
+            }
+            _ => false,
         }
     }
 
@@ -475,7 +525,8 @@ impl<'a> TextArea<'a> {
         self.push_history(EditKind::InsertChar(c, i), (row, col));
     }
 
-    /// Insert a string at current cursor position. Currently the string must not contain any newlines.
+    /// Insert a string at current cursor position. Currently the string must not contain any newlines. This method
+    /// returns if some text was inserted or not in the textarea.
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -484,10 +535,10 @@ impl<'a> TextArea<'a> {
     /// textarea.insert_str("hello");
     /// assert_eq!(textarea.lines(), ["hello"]);
     /// ```
-    pub fn insert_str<S: Into<String>>(&mut self, s: S) {
+    pub fn insert_str<S: Into<String>>(&mut self, s: S) -> bool {
         let s = s.into();
         if s.is_empty() {
-            return;
+            return false;
         }
 
         let (row, col) = self.cursor;
@@ -507,10 +558,11 @@ impl<'a> TextArea<'a> {
 
         self.cursor.1 += s.chars().count();
         self.push_history(EditKind::Insert(s, i), (row, col));
+        true
     }
 
     /// Delete a string in current cursor line. The `chars` parameter means number of characters, not a byte length of
-    /// the string.
+    /// the string. This method returns if some text was deleted or not in the textarea.
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -519,9 +571,9 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_str(1, 2);
     /// assert_eq!(textarea.lines(), ["🐱🐮"]);
     /// ```
-    pub fn delete_str(&mut self, col: usize, chars: usize) {
+    pub fn delete_str(&mut self, col: usize, chars: usize) -> bool {
         if chars == 0 {
-            return;
+            return false;
         }
 
         let row = self.cursor.0;
@@ -538,10 +590,15 @@ impl<'a> TextArea<'a> {
             self.cursor = (row, col);
             self.push_history(EditKind::Remove(removed.clone(), i), (row, col));
             self.yank = removed;
+            true
+        } else {
+            false
         }
     }
 
-    /// Insert a tab at current cursor position.
+    /// Insert a tab at current cursor position. Note that this method does nothing when the tab length is 0. This
+    /// method returns if a tab string was inserted or not in the textarea.
+    /// textarea.
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -550,11 +607,12 @@ impl<'a> TextArea<'a> {
     /// textarea.insert_tab();
     /// assert_eq!(textarea.lines(), ["    hi"]);
     /// ```
-    pub fn insert_tab(&mut self) {
-        if self.tab_len > 0 {
-            let len = self.tab_len as usize - self.cursor.1 % self.tab_len as usize;
-            self.insert_str(spaces(len));
+    pub fn insert_tab(&mut self) -> bool {
+        if self.tab_len == 0 {
+            return false;
         }
+        let len = self.tab_len as usize - self.cursor.1 % self.tab_len as usize;
+        self.insert_str(spaces(len))
     }
 
     /// Insert a newline at current cursor position.
@@ -583,7 +641,8 @@ impl<'a> TextArea<'a> {
         self.push_history(EditKind::InsertNewline(idx), (row, col));
     }
 
-    /// Delete a newline from **head** of current cursor line.
+    /// Delete a newline from **head** of current cursor line. This method returns if a newline was deleted or not in
+    /// the textarea.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -593,10 +652,10 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_newline();
     /// assert_eq!(textarea.lines(), ["helloworld"]);
     /// ```
-    pub fn delete_newline(&mut self) {
+    pub fn delete_newline(&mut self) -> bool {
         let (row, col) = self.cursor;
         if row == 0 {
-            return;
+            return false;
         }
 
         let line = self.lines.remove(row);
@@ -606,10 +665,11 @@ impl<'a> TextArea<'a> {
         self.cursor = (row - 1, prev_line.chars().count());
         prev_line.push_str(&line);
         self.push_history(EditKind::DeleteNewline(prev_line_end), (row, col));
+        true
     }
 
     /// Delete one character before cursor. When the cursor is at head of line, the newline before the cursor will be
-    /// removed.
+    /// removed. This method returns if some text was deleted or not in the textarea.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -619,11 +679,10 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_char();
     /// assert_eq!(textarea.lines(), ["bc"]);
     /// ```
-    pub fn delete_char(&mut self) {
+    pub fn delete_char(&mut self) -> bool {
         let (row, col) = self.cursor;
         if col == 0 {
-            self.delete_newline();
-            return;
+            return self.delete_newline();
         }
 
         let line = &mut self.lines[row];
@@ -631,11 +690,14 @@ impl<'a> TextArea<'a> {
             line.remove(i);
             self.cursor.1 -= 1;
             self.push_history(EditKind::DeleteChar(c, i), (row, col));
+            true
+        } else {
+            false
         }
     }
 
     /// Delete one character next to cursor. When the cursor is at end of line, the newline next to the cursor will be
-    /// removed.
+    /// removed. This method returns if a character was deleted or not in the textarea.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -645,17 +707,17 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_next_char();
     /// assert_eq!(textarea.lines(), ["ac"]);
     /// ```
-    pub fn delete_next_char(&mut self) {
+    pub fn delete_next_char(&mut self) -> bool {
         let before = self.cursor;
         self.move_cursor(CursorMove::Forward);
         if before == self.cursor {
-            return; // Cursor didn't move, meant no character at next of cursor.
+            return false; // Cursor didn't move, meant no character at next of cursor.
         }
-        self.delete_char();
+        self.delete_char()
     }
 
     /// Delete string from cursor to end of the line. When the cursor is at end of line, the newline next to the cursor
-    /// will be removed.
+    /// will be removed. This method returns if some text was deleted or not in the textarea.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -668,12 +730,12 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_line_by_end();
     /// assert_eq!(textarea.lines(), ["ab"]);
     /// ```
-    pub fn delete_line_by_end(&mut self) {
-        self.delete_str(self.cursor.1, usize::MAX);
+    pub fn delete_line_by_end(&mut self) -> bool {
+        self.delete_str(self.cursor.1, usize::MAX)
     }
 
     /// Delete string from cursor to head of the line. When the cursor is at head of line, the newline before the cursor
-    /// will be removed.
+    /// will be removed. This method returns if some text was deleted or not in the textarea.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -686,13 +748,16 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_line_by_head();
     /// assert_eq!(textarea.lines(), ["cde"]);
     /// ```
-    pub fn delete_line_by_head(&mut self) {
-        self.delete_str(0, self.cursor.1);
+    pub fn delete_line_by_head(&mut self) -> bool {
+        self.delete_str(0, self.cursor.1)
     }
 
     /// Delete a word before cursor. Word boundary appears at spaces, punctuations, and others. For example `fn foo(a)`
     /// consists of words `fn`, `foo`, `(`, `a`, `)`. When the cursor is at head of line, the newline before the cursor
     /// will be removed.
+    ///
+    /// This method returns if some text was deleted or not in the textarea.
+    ///
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -705,20 +770,23 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_word();
     /// assert_eq!(textarea.lines(), ["aaa "]);
     /// ```
-    pub fn delete_word(&mut self) {
+    pub fn delete_word(&mut self) -> bool {
         let (r, c) = self.cursor;
         if let Some(col) = find_word_start_backward(&self.lines[r], c) {
-            self.delete_str(col, c - col);
+            self.delete_str(col, c - col)
         } else if c > 0 {
-            self.delete_str(0, c);
+            self.delete_str(0, c)
         } else {
-            self.delete_newline();
+            self.delete_newline()
         }
     }
 
     /// Delete a word next to cursor. Word boundary appears at spaces, punctuations, and others. For example `fn foo(a)`
     /// consists of words `fn`, `foo`, `(`, `a`, `)`. When the cursor is at end of line, the newline next to the cursor
     /// will be removed.
+    ///
+    /// This method returns if some text was deleted or not in the textarea.
+    ///
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -729,24 +797,27 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_next_word();
     /// assert_eq!(textarea.lines(), [" ccc"]);
     /// ```
-    pub fn delete_next_word(&mut self) {
+    pub fn delete_next_word(&mut self) -> bool {
         let (r, c) = self.cursor;
         let line = &self.lines[r];
         if let Some(col) = find_word_end_forward(line, c) {
-            self.delete_str(c, col - c);
+            self.delete_str(c, col - c)
         } else {
             let end_col = line.chars().count();
             if c < end_col {
-                self.delete_str(c, end_col - c);
+                self.delete_str(c, end_col - c)
             } else if r + 1 < self.lines.len() {
                 self.cursor = (r + 1, 0);
-                self.delete_newline();
+                self.delete_newline()
+            } else {
+                false
             }
         }
     }
 
     /// Paste a string previously deleted by [`TextArea::delete_line_by_head`], [`TextArea::delete_line_by_end`],
-    /// [`TextArea::delete_word`], [`TextArea::delete_next_word`].
+    /// [`TextArea::delete_word`], [`TextArea::delete_next_word`]. This method returns if some text was inserted or not
+    /// in the textarea.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -757,9 +828,9 @@ impl<'a> TextArea<'a> {
     /// textarea.paste();
     /// assert_eq!(textarea.lines(), [" bbb cccaaa"]);
     /// ```
-    pub fn paste(&mut self) {
+    pub fn paste(&mut self) -> bool {
         let yank = std::mem::take(&mut self.yank);
-        self.insert_str(yank);
+        self.insert_str(yank)
     }
 
     /// Move the cursor to the position specified by the [`CursorMove`] parameter. For each kind of cursor moves, see
@@ -780,8 +851,7 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    /// Undo the last modification. When no modification is added to the text, this method does not modify contents and
-    /// returns `false`.
+    /// Undo the last modification. This method returns if the undo modified text contents or not in the textarea.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -801,7 +871,7 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    /// Redo the last undo change. When no undo change remain, this method does not modify contents and returns `false`.
+    /// Redo the last undo change. This method returns if the redo modified text contents or not in the textarea.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///

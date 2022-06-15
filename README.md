@@ -274,7 +274,9 @@ loop {
     match Input::from(read()?) {
         Input { key: Key::Char('m'), ctrl: true, alt: false }
         | Input { key: Key::Enter, .. } => continue,
-        input => textarea.input(key),
+        input => {
+            textarea.input(key);
+        }
     }
 }
 
@@ -347,8 +349,12 @@ loop {
             _ => {},
         },
         Mode::Insert => match Input::from(read()?) {
-            Input { key: Key::Esc, .. } => mode = Mode::Normal,
-            input => textarea.input(input), // Use default key mappings in insert mode
+            Input { key: Key::Esc, .. } => {
+                mode = Mode::Normal;
+            }
+            input => {
+                textarea.input(input); // Use default key mappings in insert mode
+            }
         },
     }
 }

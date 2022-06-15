@@ -54,7 +54,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     loop {
         match events.recv()? {
             Event::Key(Key::Esc) => break,
-            Event::Key(key) => textarea.input(key),
+            Event::Key(key) => {
+                textarea.input(key);
+            }
             Event::Tick => {}
         }
         term.draw(|f| {
