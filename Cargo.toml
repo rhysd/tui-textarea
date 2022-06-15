@@ -20,3 +20,7 @@ required-features = ["crossterm"]
 [[example]]
 name = "termion"
 required-features = ["termion"]
+
+[[example]]
+name = "editor"
+required-features = ["crossterm"]

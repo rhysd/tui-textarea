@@ -49,6 +49,7 @@ cargo run --example minimal
 
 - [minimal](./examples/minimal.rs): Minimal usage with [crossterm][] support
 - [termion](./examples/termion.rs): Minimal usage with [termion][] support
+- [editor](./examples/editor.rs): Simple text editor to edit multiple files
 
 ## Minimal Usage
 
@@ -472,6 +473,8 @@ loop {
     }
 }
 ```
+
+See [`editor` example](./examples/editor.rs) for working example.
 
 ## Contributing to tui-textarea
 
