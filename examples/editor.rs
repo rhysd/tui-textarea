@@ -200,6 +200,5 @@ impl<'a> Drop for Editor<'a> {
 }
 
 fn main() -> io::Result<()> {
-    let mut editor = Editor::new(env::args_os().skip(1))?;
-    editor.run()
+    Editor::new(env::args_os().skip(1))?.run()
 }

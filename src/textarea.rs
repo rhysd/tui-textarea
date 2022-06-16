@@ -44,6 +44,7 @@ pub struct TextArea<'a> {
     cursor_line_style: Style,
     line_number_style: Option<Style>,
     scroll_top: (AtomicU16, AtomicU16),
+    cursor_style: Style,
     yank: String,
 }
 
@@ -136,6 +137,7 @@ impl<'a> TextArea<'a> {
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
             line_number_style: None,
             scroll_top: (AtomicU16::new(0), AtomicU16::new(0)),
+            cursor_style: Style::default().add_modifier(Modifier::REVERSED),
             yank: String::new(),
         }
     }
@@ -935,19 +937,18 @@ impl<'a> TextArea<'a> {
             }
 
             if i == self.cursor.0 {
-                let cursor_style = Style::default().add_modifier(Modifier::REVERSED);
                 if let Some((i, c)) = l.char_indices().nth(self.cursor.1) {
                     let j = i + c.len_utf8();
                     spans.extend_from_slice(&[
                         Span::styled(&l[..i], self.cursor_line_style),
-                        Span::styled(&l[i..j], cursor_style),
+                        Span::styled(&l[i..j], self.cursor_style),
                         Span::styled(&l[j..], self.cursor_line_style),
                     ]);
                 } else {
                     // When cursor is at the end of line
                     spans.extend_from_slice(&[
                         Span::styled(l.as_str(), self.cursor_line_style),
-                        Span::styled(" ", cursor_style),
+                        Span::styled(" ", self.cursor_style),
                     ]);
                 }
             } else {
@@ -1098,6 +1099,16 @@ impl<'a> TextArea<'a> {
 
     /// Remove the style of line number which was set by [`TextArea::set_line_number_style`]. After calling this
     /// method, Line numbers will no longer be shown.
+    /// ```
+    /// use tui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.set_line_number_style(Style::default().bg(Color::DarkGray));
+    /// textarea.remove_line_number();
+    /// assert_eq!(textarea.line_number_style(), None);
+    /// ```
     pub fn remove_line_number(&mut self) {
         self.line_number_style = None;
     }
@@ -1105,6 +1116,27 @@ impl<'a> TextArea<'a> {
     /// Get the style of line number if set.
     pub fn line_number_style(&self) -> Option<Style> {
         self.line_number_style
+    }
+
+    /// Set the style of cursor. By default, a cursor is rendered in the reversed color. Setting the same style as
+    /// cursor line hides a cursor.
+    /// ```
+    /// use tui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// let style = Style::default().bg(Color::Red);
+    /// textarea.set_cursor_style(style);
+    /// assert_eq!(textarea.cursor_style(), style);
+    /// ```
+    pub fn set_cursor_style(&mut self, style: Style) {
+        self.cursor_style = style;
+    }
+
+    /// Get the style of cursor.
+    pub fn cursor_style(&self) -> Style {
+        self.cursor_style
     }
 
     /// Get slice of line texts. This method borrows the content, but not moves. Note that the returned slice will
