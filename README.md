@@ -33,8 +33,8 @@ If you're using tui-rs with [termion][], enable `termion` feature instead of `cr
 
 ```toml
 [dependencies]
-tui = { version = "*", default-features=false, features=["termion"] }
-tui-textarea = { version = "*", default-features=false, features=["termion"] }
+tui = { version = "*", default-features = false, features = ["termion"] }
+tui-textarea = { version = "*", default-features = false, features = ["termion"] }
 ```
 
 ## Examples
@@ -49,6 +49,7 @@ cargo run --example minimal
 
 - [minimal](./examples/minimal.rs): Minimal usage with [crossterm][] support
 - [termion](./examples/termion.rs): Minimal usage with [termion][] support
+- [multi](./examples/multi.rs): Two split textareas in a screen and switch them
 - [editor](./examples/editor.rs): Simple text editor to edit multiple files
 
 ## Minimal Usage
@@ -379,8 +380,8 @@ supports it. In the case, support for neither crossterm nor termion is necessary
 
 ```toml
 [dependencies]
-tui = { version = "*", default-features=false }
-tui-textarea = { version = "*", default-features=false }
+tui = { version = "*", default-features = false }
+tui-textarea = { version = "*", default-features = false }
 ```
 
 `tui_textarea::Input` is a type for backend-agnostic key input. What you need to do is converting key event in your own
@@ -480,7 +481,7 @@ loop {
 }
 ```
 
-See [`editor` example](./examples/editor.rs) for working example.
+See [`multi` example](./examples/multi.rs) and [`editor` example](./examples/editor.rs) for working example.
 
 ## Contributing to tui-textarea
 
@@ -498,7 +499,7 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 [crate]: https://crates.io/crates/tui-textarea
 [tui-rs]: https://github.com/fdehau/tui-rs
 [termion]: https://docs.rs/termion/latest/termion/
-[crosster]: https://docs.rs/crossterm/latest/crossterm/
+[crossterm]: https://docs.rs/crossterm/latest/crossterm/
 [doc]: https://docs.rs/tui-textarea/latest/tui_textarea
 [tui-backend]: https://docs.rs/tui/latest/tui/backend/trait.Backend.html
 [repo]: https://github.com/rhysd/tui-textarea
