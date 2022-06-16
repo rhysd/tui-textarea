@@ -28,3 +28,7 @@ required-features = ["crossterm"]
 [[example]]
 name = "multi"
 required-features = ["crossterm"]
+
+[[example]]
+name = "single_line"
+required-features = ["crossterm"]

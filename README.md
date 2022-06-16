@@ -50,6 +50,7 @@ cargo run --example minimal
 - [minimal](./examples/minimal.rs): Minimal usage with [crossterm][] support
 - [termion](./examples/termion.rs): Minimal usage with [termion][] support
 - [multi](./examples/multi.rs): Two split textareas in a screen and switch them
+- [single_line](./examples/single_line.rs): Single line input form with float number validation
 - [editor](./examples/editor.rs): Simple text editor to edit multiple files
 
 ## Minimal Usage
@@ -283,6 +284,8 @@ loop {
 
 let text = textarea.into_lines().remove(0); // Get input text
 ```
+
+See [`single_line` example](./examples/single_line.rs) for working example.
 
 ### Define your own key mappings
 
