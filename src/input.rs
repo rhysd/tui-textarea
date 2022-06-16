@@ -21,6 +21,7 @@ pub enum Key {
     End,
     PageUp,
     PageDown,
+    Esc,
     /// An invalid key input (this key is always ignored by [`TextArea`](crate::TextArea)).
     Null,
 }
@@ -104,6 +105,7 @@ impl From<KeyEvent> for Input {
             KeyCode::End => Key::End,
             KeyCode::PageUp => Key::PageUp,
             KeyCode::PageDown => Key::PageDown,
+            KeyCode::Esc => Key::Esc,
             _ => Key::Null,
         };
         Self { key, ctrl, alt }
@@ -150,6 +152,7 @@ impl From<TermionKey> for Input {
             PageDown => Key::PageDown,
             BackTab => Key::Tab,
             Delete => Key::Delete,
+            Esc => Key::Esc,
             _ => Key::Null,
         };
 
