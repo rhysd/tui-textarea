@@ -1,17 +1,18 @@
-use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event, KeyCode};
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
 use std::io;
 use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Direction, Layout};
+use tui::layout::{Constraint, Layout};
 use tui::widgets::{Block, Borders};
 use tui::Terminal;
-use tui_textarea::TextArea;
+use tui_textarea::{Input, Key, TextArea};
 
 fn main() -> io::Result<()> {
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
+
     enable_raw_mode()?;
     crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
@@ -23,9 +24,7 @@ fn main() -> io::Result<()> {
             .borders(Borders::ALL)
             .title("Crossterm Minimal Example"),
     );
-    let layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(1)].as_ref());
+    let layout = Layout::default().constraints([Constraint::Min(1)].as_slice());
 
     loop {
         term.draw(|f| {
@@ -33,11 +32,11 @@ fn main() -> io::Result<()> {
             let widget = textarea.widget();
             f.render_widget(widget, chunks[0]);
         })?;
-        if let Event::Key(key) = crossterm::event::read()? {
-            if key.code == KeyCode::Esc {
-                break;
+        match Input::from(crossterm::event::read()?) {
+            Input { key: Key::Esc, .. } => break,
+            input => {
+                textarea.input(input);
             }
-            textarea.input(key);
         }
     }
 
