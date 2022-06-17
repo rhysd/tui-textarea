@@ -3,6 +3,7 @@ use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, is_raw_mode_enabled, EnterAlternateScreen,
     LeaveAlternateScreen,
 };
+use std::borrow::Cow;
 use std::env;
 use std::fs;
 use std::io;
@@ -70,7 +71,7 @@ struct Editor<'a> {
     current: usize,
     buffers: Vec<Buffer<'a>>,
     term: Terminal<CrosstermBackend<io::Stdout>>,
-    message: Option<&'static str>,
+    message: Option<Cow<'static, str>>,
 }
 
 impl<'a> Editor<'a> {
@@ -133,7 +134,7 @@ impl<'a> Editor<'a> {
                 f.render_widget(status, chunks[1]);
 
                 let message = if let Some(message) = self.message.take() {
-                    Spans::from(message)
+                    Spans::from(Span::raw(message))
                 } else {
                     Spans::from(vec![
                         Span::raw("Press "),
@@ -159,10 +160,8 @@ impl<'a> Editor<'a> {
                     ctrl: true,
                     ..
                 } => {
-                    self.current += 1;
-                    if self.current >= self.buffers.len() {
-                        self.current = 0;
-                    }
+                    self.current = (self.current + 1) % self.buffers.len();
+                    self.message = Some(format!("Switched to buffer #{}", self.current + 1).into());
                 }
                 Input {
                     key: Key::Char('s'),
@@ -170,7 +169,7 @@ impl<'a> Editor<'a> {
                     ..
                 } => {
                     self.buffers[self.current].save()?;
-                    self.message = Some("Saved!");
+                    self.message = Some("Saved!".into());
                 }
                 input => {
                     let buffer = &mut self.buffers[self.current];

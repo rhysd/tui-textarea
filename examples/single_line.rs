@@ -36,11 +36,6 @@ fn main() -> io::Result<()> {
     let mut term = Terminal::new(backend)?;
 
     let mut textarea = TextArea::default();
-    textarea.set_block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title("Single Line Input"),
-    );
     textarea.set_cursor_line_style(Style::default());
     let layout =
         Layout::default().constraints([Constraint::Length(3), Constraint::Min(1)].as_slice());
