@@ -30,6 +30,7 @@ macro_rules! arbitrary_key_enum {
 
 arbitrary_key_enum!(
     Char(char),
+    F(u8),
     Backspace,
     Enter,
     Left,

@@ -9,6 +9,8 @@ use termion::event::{Event as TerimonEvent, Key as TermionKey};
 pub enum Key {
     /// Normal letter key input.
     Char(char),
+    /// F1, F2, F3, ... keys.
+    F(u8),
     Backspace,
     Enter,
     Left,
@@ -106,6 +108,7 @@ impl From<KeyEvent> for Input {
             KeyCode::PageUp => Key::PageUp,
             KeyCode::PageDown => Key::PageDown,
             KeyCode::Esc => Key::Esc,
+            KeyCode::F(x) => Key::F(x),
             _ => Key::Null,
         };
         Self { key, ctrl, alt }
@@ -153,6 +156,7 @@ impl From<TermionKey> for Input {
             BackTab => Key::Tab,
             Delete => Key::Delete,
             Esc => Key::Esc,
+            F(x) => Key::F(x),
             _ => Key::Null,
         };
 
