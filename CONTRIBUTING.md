@@ -20,5 +20,5 @@ To run fuzzer:
 [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) is necessary.
 
 ```sh
-cargo fuzz run edit
+cargo +nightly fuzz run edit
 ```
