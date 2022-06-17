@@ -14,3 +14,11 @@ To run linters:
 cargo clippy --all-features --examples
 cargo fmt -- --check
 ```
+
+To run fuzzer:
+
+[cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) is necessary.
+
+```sh
+cargo fuzz run edit
+```
