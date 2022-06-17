@@ -175,6 +175,22 @@ impl<'a> TextArea<'a> {
         let input = input.into();
         let modified = match input {
             Input {
+                key: Key::Char('m'),
+                ctrl: true,
+                alt: false,
+            }
+            | Input {
+                key: Key::Char('\n' | '\r'),
+                ctrl: false,
+                alt: false,
+            }
+            | Input {
+                key: Key::Enter, ..
+            } => {
+                self.insert_newline();
+                true
+            }
+            Input {
                 key: Key::Char(c),
                 ctrl: false,
                 alt: false,
@@ -207,17 +223,6 @@ impl<'a> TextArea<'a> {
                 ctrl: false,
                 alt: false,
             } => self.delete_next_char(),
-            Input {
-                key: Key::Char('m'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input {
-                key: Key::Enter, ..
-            } => {
-                self.insert_newline();
-                true
-            }
             Input {
                 key: Key::Char('k'),
                 ctrl: true,
