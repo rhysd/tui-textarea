@@ -4,7 +4,6 @@ use crossterm::terminal::{
 };
 use std::io;
 use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Layout};
 use tui::widgets::{Block, Borders};
 use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
@@ -24,13 +23,10 @@ fn main() -> io::Result<()> {
             .borders(Borders::ALL)
             .title("Crossterm Minimal Example"),
     );
-    let layout = Layout::default().constraints([Constraint::Min(1)].as_slice());
 
     loop {
         term.draw(|f| {
-            let chunks = layout.split(f.size());
-            let widget = textarea.widget();
-            f.render_widget(widget, chunks[0]);
+            f.render_widget(textarea.widget(), f.size());
         })?;
         match Input::from(crossterm::event::read()?) {
             Input { key: Key::Esc, .. } => break,

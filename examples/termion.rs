@@ -8,7 +8,6 @@ use termion::input::{MouseTerminal, TermRead};
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
-use tui::layout::{Constraint, Direction, Layout};
 use tui::widgets::{Block, Borders};
 use tui::Terminal;
 use tui_textarea::TextArea;
@@ -47,9 +46,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             .borders(Borders::ALL)
             .title("Termion Minimal Example"),
     );
-    let layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(1)].as_ref());
 
     loop {
         match events.recv()? {
@@ -60,9 +56,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             Event::Tick => {}
         }
         term.draw(|f| {
-            let chunks = layout.split(f.size());
             let widget = textarea.widget();
-            f.render_widget(widget, chunks[0]);
+            f.render_widget(widget, f.size());
         })?;
     }
 
