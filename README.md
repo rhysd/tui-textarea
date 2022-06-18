@@ -51,6 +51,7 @@ cargo run --example minimal
 - [termion](./examples/termion.rs): Minimal usage with [termion][] support
 - [multi](./examples/multi.rs): Two split textareas in a screen and switch them
 - [single_line](./examples/single_line.rs): Single line input form with float number validation
+- [variable](./examples/variable.rs): Simple textarea with variable height following the number of lines
 - [editor](./examples/editor.rs): Simple text editor to edit multiple files
 
 ## Minimal Usage
