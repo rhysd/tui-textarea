@@ -84,5 +84,7 @@ fn main() -> io::Result<()> {
     )?;
     term.show_cursor()?;
 
+    println!("Left textarea: {:?}", textarea[0].lines());
+    println!("Right textarea: {:?}", textarea[1].lines());
     Ok(())
 }

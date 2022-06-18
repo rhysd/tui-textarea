@@ -121,18 +121,29 @@ impl<'a> Editor<'a> {
                 let widget = textarea.widget();
                 f.render_widget(widget, chunks[0]);
 
+                // Render status line
                 let modified = if buffer.modified { " [modified]" } else { "" };
-                let status = format!(
-                    "[{}/{}] {:?}{}",
-                    self.current + 1,
-                    self.buffers.len(),
-                    buffer.path,
-                    modified,
-                );
-                let status =
-                    Paragraph::new(status).style(Style::default().add_modifier(Modifier::REVERSED));
-                f.render_widget(status, chunks[1]);
+                let slot = format!("[{}/{}]", self.current + 1, self.buffers.len());
+                let path = format!(" {}{} ", buffer.path.display(), modified);
+                let (row, col) = textarea.cursor();
+                let cursor = format!("({},{})", row + 1, col + 1);
+                let status_chunks = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints(
+                        [
+                            Constraint::Length(slot.len() as u16),
+                            Constraint::Min(1),
+                            Constraint::Length(cursor.len() as u16),
+                        ]
+                        .as_ref(),
+                    )
+                    .split(chunks[1]);
+                let status_style = Style::default().add_modifier(Modifier::REVERSED);
+                f.render_widget(Paragraph::new(slot).style(status_style), status_chunks[0]);
+                f.render_widget(Paragraph::new(path).style(status_style), status_chunks[1]);
+                f.render_widget(Paragraph::new(cursor).style(status_style), status_chunks[2]);
 
+                // Render message at bottom
                 let message = if let Some(message) = self.message.take() {
                     Spans::from(Span::raw(message))
                 } else {
