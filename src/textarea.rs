@@ -9,9 +9,9 @@ use tui::style::{Modifier, Style};
 use tui::text::{Span, Spans, Text};
 use tui::widgets::{Block, Paragraph, Widget};
 
-fn spaces(size: usize) -> &'static str {
+fn spaces(size: u8) -> &'static str {
     const SPACES: &str = "                                                                                                                                                                                                                                                                ";
-    &SPACES[..size]
+    &SPACES[..size as usize]
 }
 
 /// A type to manage state of textarea.
@@ -433,7 +433,7 @@ impl<'a> TextArea<'a> {
                 alt: false,
             } => self.redo(),
             Input {
-                key: Key::Char('y' | 'v'),
+                key: Key::Char('y'),
                 ctrl: true,
                 alt: false,
             } => self.paste(),
@@ -618,7 +618,7 @@ impl<'a> TextArea<'a> {
         if self.tab_len == 0 {
             return false;
         }
-        let len = self.tab_len as usize - self.cursor.1 % self.tab_len as usize;
+        let len = self.tab_len - (self.cursor.1 % self.tab_len as usize) as u8;
         self.insert_str(spaces(len))
     }
 
@@ -932,8 +932,8 @@ impl<'a> TextArea<'a> {
     /// }
     /// ```
     pub fn widget(&'a self) -> impl Widget + 'a {
-        fn num_digits(i: usize) -> usize {
-            f64::log10(i as f64) as usize + 1
+        fn num_digits(i: usize) -> u8 {
+            f64::log10(i as f64) as u8 + 1
         }
 
         let mut lines = Vec::with_capacity(self.lines.len());
