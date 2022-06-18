@@ -842,8 +842,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), [" bbb cccaaa"]);
     /// ```
     pub fn paste(&mut self) -> bool {
-        let yank = std::mem::take(&mut self.yank);
-        self.insert_str(yank)
+        self.insert_str(self.yank.to_string())
     }
 
     /// Move the cursor to the position specified by the [`CursorMove`] parameter. For each kind of cursor moves, see
