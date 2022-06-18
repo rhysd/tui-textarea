@@ -724,7 +724,7 @@ impl<'a> TextArea<'a> {
     }
 
     /// Delete string from cursor to end of the line. When the cursor is at end of line, the newline next to the cursor
-    /// will be removed. This method returns if some text was deleted or not in the textarea.
+    /// is removed. This method returns if some text was deleted or not in the textarea.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -738,7 +738,10 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["ab"]);
     /// ```
     pub fn delete_line_by_end(&mut self) -> bool {
-        self.delete_str(self.cursor.1, usize::MAX)
+        if self.delete_str(self.cursor.1, usize::MAX) {
+            return true;
+        }
+        self.delete_next_char() // At the end of the line. Try to delete next line
     }
 
     /// Delete string from cursor to head of the line. When the cursor is at head of line, the newline before the cursor
@@ -756,7 +759,10 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["cde"]);
     /// ```
     pub fn delete_line_by_head(&mut self) -> bool {
-        self.delete_str(0, self.cursor.1)
+        if self.delete_str(0, self.cursor.1) {
+            return true;
+        }
+        self.delete_newline()
     }
 
     /// Delete a word before cursor. Word boundary appears at spaces, punctuations, and others. For example `fn foo(a)`
