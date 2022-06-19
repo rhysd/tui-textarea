@@ -10,7 +10,7 @@ use tui::widgets::{Block, Borders};
 use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
 
-fn update(textarea: &mut TextArea) -> bool {
+fn validate(textarea: &mut TextArea) -> bool {
     if let Err(err) = textarea.lines()[0].parse::<f64>() {
         textarea.set_style(Style::default().fg(Color::LightRed));
         textarea.set_block(
@@ -39,7 +39,7 @@ fn main() -> io::Result<()> {
     textarea.set_cursor_line_style(Style::default());
     let layout =
         Layout::default().constraints([Constraint::Length(3), Constraint::Min(1)].as_slice());
-    let mut is_valid = update(&mut textarea);
+    let mut is_valid = validate(&mut textarea);
 
     loop {
         term.draw(|f| {
@@ -64,7 +64,7 @@ fn main() -> io::Result<()> {
             input => {
                 // TextArea::input returns if the input modified its text
                 if textarea.input(input) {
-                    is_valid = update(&mut textarea);
+                    is_valid = validate(&mut textarea);
                 }
             }
         }

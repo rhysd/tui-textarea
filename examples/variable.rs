@@ -2,9 +2,10 @@ use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use std::cmp;
 use std::io;
 use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Layout};
+use tui::layout::{Constraint, Direction, Layout};
 use tui::widgets::{Block, Borders};
 use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
@@ -27,9 +28,11 @@ fn main() -> io::Result<()> {
 
     loop {
         term.draw(|f| {
-            let len = textarea.lines().len() as u16 + 2; // + 2 for borders
+            const MIN_HEIGHT: usize = 3;
+            let height = cmp::max(textarea.lines().len(), MIN_HEIGHT) as u16 + 2; // + 2 for borders
             let chunks = Layout::default()
-                .constraints([Constraint::Length(len), Constraint::Min(1)].as_slice())
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(height), Constraint::Min(0)].as_slice())
                 .split(f.size());
             f.render_widget(textarea.widget(), chunks[0]);
         })?;
