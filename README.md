@@ -17,7 +17,24 @@ text editor can be easily put as part of your TUI application.
 
 [Documentation][doc]
 
-TODO: Screenshot
+## Examples
+
+- [`minimal`](./examples/minimal.rs): Minimal usage with [crossterm][] support
+  <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/minimal.gif" width=539 height=172 alt="minimal example">
+- [`editor`](./examples/editor.rs): Simple text editor to edit multiple files
+  <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/editor.gif" width=539 height=172 alt="editor example">
+- [`single_line`](./examples/single_line.rs): Single-line input form with float number validation
+  <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/single_line.gif" width=539 height=92 alt="single line example">
+- [`multi`](./examples/multi.rs): Two split textareas in a screen and switch them
+  <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/split.gif" width=539 height=124 alt="multiple textareas example">
+- [`termion`](./examples/termion.rs): Minimal usage with [termion][] support
+- [`variable`](./examples/variable.rs): Simple textarea with variable height following the number of lines
+
+Running `cargo run` in this repository can demonstrate usage of tui-textarea.
+
+```sh
+cargo run --example minimal
+```
 
 ## Installation
 
@@ -36,23 +53,6 @@ If you're using tui-rs with [termion][], enable `termion` feature instead of `cr
 tui = { version = "*", default-features = false, features = ["termion"] }
 tui-textarea = { version = "*", default-features = false, features = ["termion"] }
 ```
-
-## Examples
-
-Running `cargo run` in this repository can demonstrate usage of tui-textarea.
-
-```sh
-cargo run --example minimal
-```
-
-**Examples:**
-
-- [minimal](./examples/minimal.rs): Minimal usage with [crossterm][] support
-- [termion](./examples/termion.rs): Minimal usage with [termion][] support
-- [multi](./examples/multi.rs): Two split textareas in a screen and switch them
-- [single_line](./examples/single_line.rs): Single line input form with float number validation
-- [variable](./examples/variable.rs): Simple textarea with variable height following the number of lines
-- [editor](./examples/editor.rs): Simple text editor to edit multiple files
 
 ## Minimal Usage
 
@@ -256,9 +256,9 @@ textarea.set_max_histories(0);
 
 ## Advanced Usage
 
-### Single line input like `<input>` in HTML
+### Single-line input like `<input>` in HTML
 
-To use `TextArea` for single line input widget like `<input>` in HTML, ignore all key mappings which inserts newline.
+To use `TextArea` for single-line input widget like `<input>` in HTML, ignore all key mappings which inserts newline.
 
 ```rust
 use crossterm::event::{Event, read};
