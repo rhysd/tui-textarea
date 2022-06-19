@@ -25,7 +25,7 @@ text editor can be easily put as part of your TUI application.
   <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/editor.gif" width=539 height=172 alt="editor example">
 - [`single_line`](./examples/single_line.rs): Single-line input form with float number validation
   <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/single_line.gif" width=539 height=92 alt="single line example">
-- [`multi`](./examples/multi.rs): Two split textareas in a screen and switch them
+- [`split`](./examples/split.rs): Two split textareas in a screen and switch them
   <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/split.gif" width=539 height=124 alt="multiple textareas example">
 - [`termion`](./examples/termion.rs): Minimal usage with [termion][] support
 - [`variable`](./examples/variable.rs): Simple textarea with variable height following the number of lines
@@ -485,7 +485,7 @@ loop {
 }
 ```
 
-See [`multi` example](./examples/multi.rs) and [`editor` example](./examples/editor.rs) for working example.
+See [`split` example](./examples/split.rs) and [`editor` example](./examples/editor.rs) for working example.
 
 ## Contributing to tui-textarea
 

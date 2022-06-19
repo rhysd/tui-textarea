@@ -26,7 +26,7 @@ name = "editor"
 required-features = ["crossterm"]
 
 [[example]]
-name = "multi"
+name = "split"
 required-features = ["crossterm"]
 
 [[example]]
