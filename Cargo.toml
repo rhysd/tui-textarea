@@ -2,6 +2,23 @@
 name = "tui-textarea"
 version = "0.0.0"
 edition = "2021"
+authors = ["rhysd <lin90162@yahoo.co.jp>"]
+description = """
+tui-textarea is a simple yet powerful text editor widget for tui-rs. Multi-line
+text editor can be easily put as part of your TUI application.
+"""
+license = "MIT"
+homepage = "https://github.com/rhysd/tui-textarea#readme"
+repository = "https://github.com/rhysd/tui-textarea"
+readme = "README.md"
+categories = ["text-editors", "text-processing"]
+keywords = ["tui", "textarea", "editor", "input", "edit"]
+include = [
+    "/src",
+    "/examples",
+    "/README.md",
+    "/LICENSE.txt",
+]
 
 [features]
 default = ["crossterm"]
