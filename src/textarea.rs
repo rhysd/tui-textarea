@@ -1217,6 +1217,35 @@ impl<'a> TextArea<'a> {
     pub fn is_empty(&self) -> bool {
         self.lines == [""]
     }
+
+    /// Get the yanked text. Text is automatically yanked when deleting strings by [`TextArea::delete_line_by_head`],
+    /// [`TextArea::delete_line_by_end`], [`TextArea::delete_word`], [`TextArea::delete_next_word`].
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["abc"]);
+    ///
+    /// textarea.delete_next_word();
+    /// assert_eq!(textarea.yank_text(), "abc");
+    /// ```
+    pub fn yank_text(&'a self) -> &'a str {
+        &self.yank
+    }
+
+    /// Set a yanked text. The text can be inserted by [`TextArea::paste`]. The string passed to method must not contain
+    /// any newlines.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.set_yank_text("hello, world");
+    /// textarea.paste();
+    /// assert_eq!(textarea.lines(), ["hello, world"]);
+    /// ```
+    pub fn set_yank_text(&mut self, text: impl Into<String>) {
+        self.yank = text.into();
+    }
 }
 
 struct Renderer<'a> {
