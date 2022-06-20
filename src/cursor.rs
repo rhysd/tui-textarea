@@ -167,6 +167,23 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (0, 0));
     /// ```
     ParagraphBack,
+    /// Move cursor to (row, col) position. When the position points outside the text, the cursor position is made fit
+    /// within the text. Note that row and col are 0-based. (0, 0) means the first character of the first line.
+    ///
+    /// When there are 10 lines, jumping to row 15 moves the cursor to the last line (row is 9 in the case). When there
+    /// are 10 characters in the line, jumping to col 15 moves the cursor to end of the line (col is 10 in the case).
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["aaaa", "bbbb", "cccc"]);
+    ///
+    /// textarea.move_cursor(CursorMove::Jump(1, 2));
+    /// assert_eq!(textarea.cursor(), (1, 2));
+    ///
+    /// textarea.move_cursor(CursorMove::Jump(10,  10));
+    /// assert_eq!(textarea.cursor(), (2, 4));
+    /// ```
+    Jump(u16, u16),
 }
 
 impl CursorMove {
@@ -245,6 +262,11 @@ impl CursorMove {
                     prev_is_empty = is_empty;
                 }
                 Some((0, fit_col(col, &lines[0])))
+            }
+            Jump(row, col) => {
+                let row = cmp::min(*row as usize, lines.len() - 1);
+                let col = fit_col(*col as usize, &lines[row]);
+                Some((row, col))
             }
         }
     }
