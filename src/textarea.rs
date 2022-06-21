@@ -2,6 +2,7 @@ use crate::cursor::CursorMove;
 use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
 use crate::word::{find_word_end_forward, find_word_start_backward};
+use std::borrow::Cow;
 use std::sync::atomic::{AtomicU16, Ordering};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
@@ -905,6 +906,29 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    fn replace_tabs<'b>(&self, s: &'b str) -> Cow<'b, str> {
+        let tab = spaces(self.tab_len);
+        let mut buf = String::new();
+        for (i, c) in s.char_indices() {
+            if buf.is_empty() {
+                if c == '\t' {
+                    buf.reserve(s.len());
+                    buf.push_str(&s[..i]);
+                    buf.push_str(tab);
+                }
+            } else if c == '\t' {
+                buf.push_str(tab);
+            } else {
+                buf.push(c);
+            }
+        }
+        if buf.is_empty() {
+            Cow::Borrowed(s)
+        } else {
+            Cow::Owned(buf)
+        }
+    }
+
     /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this
     /// method can be rendered with [`tui::terminal::Frame::render_widget`].
     /// ```no_run
@@ -938,7 +962,7 @@ impl<'a> TextArea<'a> {
 
         let mut lines = Vec::with_capacity(self.lines.len());
         let line_number_len = num_digits(self.lines.len());
-        for (i, l) in self.lines.iter().enumerate() {
+        for (i, l) in self.lines.iter().map(String::as_str).enumerate() {
             let mut spans = vec![];
 
             if let Some(style) = self.line_number_style {
@@ -950,19 +974,19 @@ impl<'a> TextArea<'a> {
                 if let Some((i, c)) = l.char_indices().nth(self.cursor.1) {
                     let j = i + c.len_utf8();
                     spans.extend_from_slice(&[
-                        Span::styled(&l[..i], self.cursor_line_style),
-                        Span::styled(&l[i..j], self.cursor_style),
-                        Span::styled(&l[j..], self.cursor_line_style),
+                        Span::styled(self.replace_tabs(&l[..i]), self.cursor_line_style),
+                        Span::styled(self.replace_tabs(&l[i..j]), self.cursor_style),
+                        Span::styled(self.replace_tabs(&l[j..]), self.cursor_line_style),
                     ]);
                 } else {
                     // When cursor is at the end of line
                     spans.extend_from_slice(&[
-                        Span::styled(l.as_str(), self.cursor_line_style),
+                        Span::styled(self.replace_tabs(l), self.cursor_line_style),
                         Span::styled(" ", self.cursor_style),
                     ]);
                 }
             } else {
-                spans.push(Span::from(l.as_str()));
+                spans.push(Span::raw(self.replace_tabs(l)));
             }
 
             lines.push(Spans::from(spans));
