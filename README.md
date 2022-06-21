@@ -340,6 +340,7 @@ notify how to move the cursor.
 | `textarea.move_cursor(CursorMove::Head)`             | Move cursor to the head of line           |
 | `textarea.move_cursor(CursorMove::Top)`              | Move cursor to top of lines               |
 | `textarea.move_cursor(CursorMove::Bottom)`           | Move cursor to bottom of lines            |
+| `textarea.move_cursor(CursorMove::Jump(row, col))`   | Move cursor to (row, col) position        |
 
 To define your own key mappings, simply call the above methods in your code instead of `TextArea::input()` method. The
 following example defines modal key mappings like Vim.
