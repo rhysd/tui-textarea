@@ -41,6 +41,7 @@ pub struct TextArea<'a> {
     style: Style,
     cursor: (usize, usize), // 0-base
     tab_len: u8,
+    hard_tab: bool,
     history: History,
     cursor_line_style: Style,
     line_number_style: Option<Style>,
@@ -134,6 +135,7 @@ impl<'a> TextArea<'a> {
             style: Style::default(),
             cursor: (0, 0),
             tab_len: 4,
+            hard_tab: false,
             history: History::new(50),
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
             line_number_style: None,
@@ -619,8 +621,13 @@ impl<'a> TextArea<'a> {
         if self.tab_len == 0 {
             return false;
         }
-        let len = self.tab_len - (self.cursor.1 % self.tab_len as usize) as u8;
-        self.insert_str(spaces(len))
+        let tab = if self.hard_tab {
+            "\t"
+        } else {
+            let len = self.tab_len - (self.cursor.1 % self.tab_len as usize) as u8;
+            spaces(len)
+        };
+        self.insert_str(tab)
     }
 
     /// Insert a newline at current cursor position.
@@ -1077,6 +1084,55 @@ impl<'a> TextArea<'a> {
     /// Get how many spaces are used for representing tab character. The default value is 4.
     pub fn tab_length(&self) -> u8 {
         self.tab_len
+    }
+
+    /// Set if a hard tab is used or not for indent. When `true` is set, typing a tab key inserts a hard tab instead of
+    /// spaces. By default, hard tab is disabled.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.set_hard_tab(true);
+    /// textarea.insert_tab();
+    /// assert_eq!(textarea.lines(), ["\t"]);
+    /// ```
+    pub fn set_hard_tab(&mut self, enabled: bool) {
+        self.hard_tab = enabled;
+    }
+
+    /// Get if a hard tab is used for indent or not.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// assert!(!textarea.hard_tab());
+    /// textarea.set_hard_tab(true);
+    /// assert!(textarea.hard_tab());
+    /// ```
+    pub fn hard_tab(&self) -> bool {
+        self.hard_tab
+    }
+
+    /// Get a string for indent. It consists of spaces by default. When hard tab is enabled, it is a tab character.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// assert_eq!(textarea.indent(), "    ");
+    /// textarea.set_tab_length(2);
+    /// assert_eq!(textarea.indent(), "  ");
+    /// textarea.set_hard_tab(true);
+    /// assert_eq!(textarea.indent(), "\t");
+    /// ```
+    pub fn indent(&self) -> &'static str {
+        if self.hard_tab {
+            "\t"
+        } else {
+            spaces(self.tab_len)
+        }
     }
 
     /// Set how many modifications are remembered for undo/redo. Setting 0 disables undo/redo.

@@ -18,11 +18,8 @@ use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
 
 macro_rules! error {
-    ($fmt: expr, $($args:tt),+) => {{
-        Err(io::Error::new(io::ErrorKind::Other, format!($fmt, $($args),+)))
-    }};
-    ($msg: expr) => {{
-        Err(io::Error::new(io::ErrorKind::Other, $msg))
+    ($fmt: expr $(, $args:tt)*) => {{
+        Err(io::Error::new(io::ErrorKind::Other, format!($fmt $(, $args)*)))
     }};
 }
 
@@ -36,14 +33,17 @@ impl<'a> Buffer<'a> {
     fn new(path: PathBuf) -> io::Result<Self> {
         let mut textarea = if let Ok(md) = path.metadata() {
             if md.is_file() {
-                io::BufReader::new(fs::File::open(&path)?)
+                let mut textarea: TextArea = io::BufReader::new(fs::File::open(&path)?)
                     .lines()
-                    .collect::<Result<_, _>>()?
+                    .collect::<Result<_, _>>()?;
+                let hard_tab = textarea.lines().iter().any(|l| l.starts_with('\t'));
+                textarea.set_hard_tab(hard_tab);
+                textarea
             } else {
                 return error!("{:?} is not a file", path);
             }
         } else {
-            TextArea::default()
+            TextArea::default() // File does not exist
         };
         textarea.set_line_number_style(Style::default().fg(Color::DarkGray));
         Ok(Self {
