@@ -35,9 +35,10 @@ impl<'a> Buffer<'a> {
             if md.is_file() {
                 let mut textarea: TextArea = io::BufReader::new(fs::File::open(&path)?)
                     .lines()
-                    .collect::<Result<_, _>>()?;
-                let hard_tab = textarea.lines().iter().any(|l| l.starts_with('\t'));
-                textarea.set_hard_tab(hard_tab);
+                    .collect::<io::Result<_>>()?;
+                if textarea.lines().iter().any(|l| l.starts_with('\t')) {
+                    textarea.set_hard_tab_indent(true);
+                }
                 textarea
             } else {
                 return error!("{:?} is not a file", path);
