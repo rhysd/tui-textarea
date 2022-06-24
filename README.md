@@ -371,10 +371,21 @@ loop {
             Input { key: Key::Char('l'), .. } => textarea.move_cursor(CursorMove::Forward),
             Input { key: Key::Char('w'), .. } => textarea.move_cursor(CursorMove::WordForward),
             Input { key: Key::Char('b'), .. } => textarea.move_cursor(CursorMove::WordBack),
-            Input { key: Key::Char('D'), .. } => textarea.delete_line_by_end(),
-            Input { key: Key::Char('u'), .. } => textarea.undo(),
-            Input { key: Key::Char('R'), ctrl: true, .. } => textarea.redo(),
+            Input { key: Key::Char('^'), .. } => textarea.move_cursor(CursorMove::Home),
+            Input { key: Key::Char('$'), .. } => textarea.move_cursor(CursorMove::End),
+            Input { key: Key::Char('D'), .. } => { textarea.delete_line_by_end(); }
+            Input { key: Key::Char('p'), .. } => { textarea.paste(); }
+            Input { key: Key::Char('u'), .. } => { textarea.undo(); },
+            Input { key: Key::Char('R'), .. } => { textarea.redo(); },
             Input { key: Key::Char('i'), .. } => mode = Mode::Insert,
+            Input { key: Key::Char('A'), .. } => {
+                textarea.move_cursor(CursorMove::End);
+                mode = Mode::Insert;
+            }
+            Input { key: Key::Char('I'), .. } => {
+                textarea.move_cursor(CursorMove::Home);
+                mode = Mode::Insert;
+            }
             _ => {},
         },
         Mode::Insert => match Input::from(read()?) {
