@@ -1,3 +1,30 @@
+<a name="v0.1.2"></a>
+# [v0.1.2](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.2) - 25 Jun 2022
+
+- Indent with hard tab is now supported. `TextArea::set_hard_tab_indent` method enables indentation with a hard tab on hitting a tab key.
+  ```rust
+  let mut textarea = TextArea::default();
+
+  textarea.set_hard_tab_indent(true);
+  textarea.insert_tab();
+  assert_eq!(textarea.lines(), ["\t"]);
+  ```
+  Screencast with `cargo run --example editor`:
+  <img src="https://user-images.githubusercontent.com/823277/175755458-5bf60e84-e01f-410d-9194-d3117031eff6.gif" alt="screencast" width=452 height=140>
+- Add `TextArea::indent` method to get an indent string of textarea.
+  ```rust
+  let mut textarea = TextArea::default();
+
+  assert_eq!(textarea.indent(), "    ");
+  textarea.set_tab_length(2);
+  assert_eq!(textarea.indent(), "  ");
+  textarea.set_hard_tab_indent(true);
+  assert_eq!(textarea.indent(), "\t");
+  ```
+
+[Changes][v0.1.2]
+
+
 <a name="v0.1.1"></a>
 # [v0.1.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.1) - 21 Jun 2022
 
@@ -32,6 +59,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.1.2]: https://github.com/rhysd/tui-textarea/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/rhysd/tui-textarea/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/rhysd/tui-textarea/tree/v0.1.0
 
