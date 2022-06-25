@@ -53,3 +53,6 @@ required-features = ["crossterm"]
 [[example]]
 name = "variable"
 required-features = ["crossterm"]
+
+[package.metadata.docs.rs]
+all-features = true

@@ -67,7 +67,7 @@ pub struct Input {
 }
 
 impl Default for Input {
-    /// The default input is [`Key::Null`] without pressing Ctrl nor Alt, which means invalid input.
+    /// The default input is [`Key::Null`] without pressing any modifier keys, which means invalid input.
     fn default() -> Self {
         Input {
             key: Key::Null,
@@ -79,6 +79,7 @@ impl Default for Input {
 
 #[cfg(feature = "crossterm")]
 impl From<CrosstermEvent> for Input {
+    /// Convert [`crossterm::event::Event`] to [`Input`].
     fn from(event: CrosstermEvent) -> Self {
         if let CrosstermEvent::Key(key) = event {
             Self::from(key)
@@ -90,6 +91,7 @@ impl From<CrosstermEvent> for Input {
 
 #[cfg(feature = "crossterm")]
 impl From<KeyEvent> for Input {
+    /// Convert [`crossterm::event::KeyEvent`] to [`Input`].
     fn from(key: KeyEvent) -> Self {
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         let alt = key.modifiers.contains(KeyModifiers::ALT);
@@ -117,6 +119,7 @@ impl From<KeyEvent> for Input {
 
 #[cfg(feature = "termion")]
 impl From<TerimonEvent> for Input {
+    /// Convert [`termion::event::Event`] to [`Input`].
     fn from(event: TerimonEvent) -> Self {
         if let TerimonEvent::Key(key) = event {
             Self::from(key)
@@ -128,6 +131,7 @@ impl From<TerimonEvent> for Input {
 
 #[cfg(feature = "termion")]
 impl From<TermionKey> for Input {
+    /// Convert [`termion::event::Key`] to [`Input`].
     fn from(key: TermionKey) -> Self {
         use TermionKey::*;
 
