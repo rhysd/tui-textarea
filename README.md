@@ -1,6 +1,7 @@
 tui-textarea
 ============
 [![crate][crates-io-badge]][crate]
+[![docs][doc-badge]][doc]
 [![CI][ci-badge]][ci]
 
 [tui-textarea][crate] is a simple yet powerful text editor widget like `<textarea>` in HTML for [tui-rs][]. Multi-line
@@ -537,12 +538,13 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 
 [crates-io-badge]: https://img.shields.io/crates/v/tui-textarea.svg
 [crate]: https://crates.io/crates/tui-textarea
+[doc-badge]: https://docs.rs/tui-textarea/badge.svg
+[doc]: https://docs.rs/tui-textarea/latest/tui_textarea/
 [ci-badge]: https://github.com/rhysd/tui-textarea/actions/workflows/ci.yml/badge.svg?event=push
 [ci]: https://github.com/rhysd/tui-textarea/actions/workflows/ci.yml
 [tui-rs]: https://github.com/fdehau/tui-rs
 [termion]: https://docs.rs/termion/latest/termion/
 [crossterm]: https://docs.rs/crossterm/latest/crossterm/
-[doc]: https://docs.rs/tui-textarea/latest/tui_textarea/
 [tui-backend]: https://docs.rs/tui/latest/tui/backend/trait.Backend.html
 [repo]: https://github.com/rhysd/tui-textarea
 [new-issue]: https://github.com/rhysd/tui-textarea/issues/new
