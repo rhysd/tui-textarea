@@ -24,9 +24,11 @@ include = [
 default = ["crossterm"]
 crossterm = ["dep:crossterm", "tui/crossterm"]
 termion = ["dep:termion", "tui/termion"]
+search = ["dep:regex"]
 
 [dependencies]
 crossterm = { version = "0.23", optional = true }
+regex = { version = "1", optional = true }
 termion = { version = "1.5", optional = true }
 tui = { version = "0.18", default-features = false }
 
@@ -40,7 +42,7 @@ required-features = ["termion"]
 
 [[example]]
 name = "editor"
-required-features = ["crossterm"]
+required-features = ["crossterm", "search"]
 
 [[example]]
 name = "split"

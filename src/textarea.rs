@@ -2,6 +2,8 @@ use crate::cursor::CursorMove;
 use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
 use crate::word::{find_word_end_forward, find_word_start_backward};
+#[cfg(feature = "search")]
+use regex::Regex;
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicU16, Ordering};
 use tui::buffer::Buffer;
@@ -48,6 +50,8 @@ pub struct TextArea<'a> {
     scroll_top: (AtomicU16, AtomicU16),
     cursor_style: Style,
     yank: String,
+    #[cfg(feature = "search")]
+    search: Option<Regex>,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -142,6 +146,8 @@ impl<'a> TextArea<'a> {
             scroll_top: (AtomicU16::new(0), AtomicU16::new(0)),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
             yank: String::new(),
+            #[cfg(feature = "search")]
+            search: None,
         }
     }
 
@@ -1325,6 +1331,103 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn set_yank_text(&mut self, text: impl Into<String>) {
         self.yank = text.into();
+    }
+
+    #[cfg(feature = "search")]
+    pub fn set_search_pattern(&mut self, query: impl AsRef<str>) -> Result<(), regex::Error> {
+        let query = query.as_ref();
+        match &self.search {
+            Some(r) if r.as_str() == query => {}
+            _ if query.is_empty() => self.search = None,
+            _ => self.search = Some(Regex::new(query)?),
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "search")]
+    pub fn search_forward(&mut self) -> bool {
+        let pat = if let Some(pat) = &self.search {
+            pat
+        } else {
+            return false;
+        };
+        let (row, col) = self.cursor;
+
+        // Search current line
+        {
+            let line = &self.lines[row];
+            // Avoid matching to current cursor position
+            if let Some((i, _)) = line.char_indices().nth(col + 1) {
+                if let Some(m) = pat.find_at(line, i) {
+                    let col = col + 1 + line[i..m.start()].chars().count();
+                    self.cursor = (row, col);
+                    return true;
+                }
+            }
+        }
+
+        // Search lines after cursor
+        for (i, line) in self.lines[row + 1..].iter().enumerate() {
+            if let Some(m) = pat.find(line) {
+                let col = line[..m.start()].chars().count();
+                self.cursor = (row + 1 + i, col);
+                return true;
+            }
+        }
+
+        // Search lines before cursor (wrap)
+        for (i, line) in self.lines[..row].iter().enumerate() {
+            if let Some(m) = pat.find(line) {
+                let col = line[..m.start()].chars().count();
+                self.cursor = (i, col);
+                return true;
+            }
+        }
+
+        false
+    }
+
+    #[cfg(feature = "search")]
+    pub fn search_back(&mut self) -> bool {
+        let pat = if let Some(pat) = &self.search {
+            pat
+        } else {
+            return false;
+        };
+        let (row, col) = self.cursor;
+
+        // Search current line
+        if col > 0 {
+            let line = &self.lines[row];
+            // Avoid matching to current cursor position
+            if let Some((i, _)) = line.char_indices().nth(col - 1) {
+                if let Some(m) = pat.find_iter(line).take_while(|m| m.start() <= i).last() {
+                    let col = line[..m.start()].chars().count();
+                    self.cursor = (row, col);
+                    return true;
+                }
+            }
+        }
+
+        // Search lines before cursor
+        for (i, line) in self.lines[..row].iter().enumerate().rev() {
+            if let Some(m) = pat.find(line) {
+                let col = line[..m.start()].chars().count();
+                self.cursor = (i, col);
+                return true;
+            }
+        }
+
+        // Search lines after cursor (wrap)
+        for (i, line) in self.lines[row + 1..].iter().enumerate().rev() {
+            if let Some(m) = pat.find(line) {
+                let col = line[..m.start()].chars().count();
+                self.cursor = (row + 1 + i, col);
+                return true;
+            }
+        }
+
+        false
     }
 }
 
