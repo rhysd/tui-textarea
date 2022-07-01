@@ -1,4 +1,6 @@
 #![allow(clippy::needless_range_loop)]
+#![forbid(unsafe_code)]
+#![warn(clippy::dbg_macro, clippy::print_stdout)]
 #![doc = include_str!("../README.md")]
 
 mod cursor;
