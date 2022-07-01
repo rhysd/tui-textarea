@@ -5,16 +5,52 @@ use crate::word::{find_word_end_forward, find_word_start_backward};
 #[cfg(feature = "search")]
 use regex::Regex;
 use std::borrow::Cow;
+use std::cmp;
 use std::sync::atomic::{AtomicU16, Ordering};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
-use tui::style::{Modifier, Style};
+use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans, Text};
 use tui::widgets::{Block, Paragraph, Widget};
 
 fn spaces(size: u8) -> &'static str {
     const SPACES: &str = "                                                                                                                                                                                                                                                                ";
     &SPACES[..size as usize]
+}
+
+fn num_digits(i: usize) -> u8 {
+    f64::log10(i as f64) as u8 + 1
+}
+
+// Highlight boundary in line
+enum Boundary {
+    Cursor(Style),
+    #[cfg(feature = "search")]
+    Search(Style),
+    End,
+}
+
+impl Boundary {
+    fn cmp(&self, other: &Boundary) -> cmp::Ordering {
+        fn rank(b: &Boundary) -> u8 {
+            match b {
+                Boundary::Cursor(_) => 2,
+                #[cfg(feature = "search")]
+                Boundary::Search(_) => 1,
+                Boundary::End => 0,
+            }
+        }
+        rank(self).cmp(&rank(other))
+    }
+
+    fn style(&self) -> Option<Style> {
+        match self {
+            Boundary::Cursor(s) => Some(*s),
+            #[cfg(feature = "search")]
+            Boundary::Search(s) => Some(*s),
+            Boundary::End => None,
+        }
+    }
 }
 
 /// A type to manage state of textarea.
@@ -51,7 +87,9 @@ pub struct TextArea<'a> {
     cursor_style: Style,
     yank: String,
     #[cfg(feature = "search")]
-    search: Option<Regex>,
+    search_pat: Option<Regex>,
+    #[cfg(feature = "search")]
+    search_style: Style,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -147,7 +185,9 @@ impl<'a> TextArea<'a> {
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
             yank: String::new(),
             #[cfg(feature = "search")]
-            search: None,
+            search_pat: None,
+            #[cfg(feature = "search")]
+            search_style: Style::default().bg(Color::Blue),
         }
     }
 
@@ -942,6 +982,77 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Vec<Span<'b>> {
+        let mut spans = vec![];
+
+        if let Some(style) = self.line_number_style {
+            let pad = spaces(lnum_len - num_digits(row + 1) + 1);
+            spans.push(Span::styled(format!("{}{} ", pad, row + 1), style));
+        }
+
+        let mut boundaries = vec![]; // TODO: Consider smallvec
+        let mut cursor_at_end = false;
+
+        let style_begin = if row == self.cursor.0 {
+            if let Some((start, c)) = line.char_indices().nth(self.cursor.1) {
+                boundaries.push((Boundary::Cursor(self.cursor_style), start));
+                boundaries.push((Boundary::End, start + c.len_utf8()));
+            } else {
+                cursor_at_end = true;
+            }
+            self.cursor_line_style
+        } else {
+            Style::default()
+        };
+
+        #[cfg(feature = "search")]
+        if let Some(pat) = &self.search_pat {
+            for m in pat.find_iter(line) {
+                boundaries.push((Boundary::Search(self.search_style), m.start()));
+                boundaries.push((Boundary::End, m.end()));
+            }
+        }
+
+        if boundaries.is_empty() {
+            spans.push(Span::raw(self.replace_tabs(line)));
+            return spans;
+        }
+
+        boundaries.sort_unstable_by(|(l, i), (r, j)| match i.cmp(j) {
+            cmp::Ordering::Equal => l.cmp(r),
+            o => o,
+        });
+
+        let mut boundaries = boundaries.into_iter();
+        let mut style = style_begin;
+        let mut start = 0;
+        let mut stack = vec![];
+
+        loop {
+            if let Some((next_boundary, end)) = boundaries.next() {
+                if start < end {
+                    spans.push(Span::styled(self.replace_tabs(&line[start..end]), style));
+                }
+
+                style = if let Some(s) = next_boundary.style() {
+                    stack.push(style);
+                    s
+                } else {
+                    stack.pop().unwrap_or(style_begin)
+                };
+                start = end;
+            } else {
+                if start != line.len() {
+                    spans.push(Span::styled(self.replace_tabs(&line[start..]), style));
+                }
+                if cursor_at_end {
+                    spans.push(Span::styled(" ", self.cursor_style));
+                }
+                return spans;
+            }
+        }
+    }
+
     /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this
     /// method can be rendered with [`tui::terminal::Frame::render_widget`].
     /// ```no_run
@@ -969,39 +1080,10 @@ impl<'a> TextArea<'a> {
     /// }
     /// ```
     pub fn widget(&'a self) -> impl Widget + 'a {
-        fn num_digits(i: usize) -> u8 {
-            f64::log10(i as f64) as u8 + 1
-        }
-
         let mut lines = Vec::with_capacity(self.lines.len());
-        let line_number_len = num_digits(self.lines.len());
+        let lnum_len = num_digits(self.lines.len());
         for (i, l) in self.lines.iter().map(String::as_str).enumerate() {
-            let mut spans = vec![];
-
-            if let Some(style) = self.line_number_style {
-                let pad = spaces(line_number_len - num_digits(i + 1) + 1);
-                spans.push(Span::styled(format!("{}{} ", pad, i + 1), style));
-            }
-
-            if i == self.cursor.0 {
-                if let Some((i, c)) = l.char_indices().nth(self.cursor.1) {
-                    let j = i + c.len_utf8();
-                    spans.extend_from_slice(&[
-                        Span::styled(self.replace_tabs(&l[..i]), self.cursor_line_style),
-                        Span::styled(self.replace_tabs(&l[i..j]), self.cursor_style),
-                        Span::styled(self.replace_tabs(&l[j..]), self.cursor_line_style),
-                    ]);
-                } else {
-                    // When cursor is at the end of line
-                    spans.extend_from_slice(&[
-                        Span::styled(self.replace_tabs(l), self.cursor_line_style),
-                        Span::styled(" ", self.cursor_style),
-                    ]);
-                }
-            } else {
-                spans.push(Span::raw(self.replace_tabs(l)));
-            }
-
+            let spans = self.line_spans(l, i, lnum_len);
             lines.push(Spans::from(spans));
         }
 
@@ -1336,17 +1418,17 @@ impl<'a> TextArea<'a> {
     #[cfg(feature = "search")]
     pub fn set_search_pattern(&mut self, query: impl AsRef<str>) -> Result<(), regex::Error> {
         let query = query.as_ref();
-        match &self.search {
+        match &self.search_pat {
             Some(r) if r.as_str() == query => {}
-            _ if query.is_empty() => self.search = None,
-            _ => self.search = Some(Regex::new(query)?),
+            _ if query.is_empty() => self.search_pat = None,
+            _ => self.search_pat = Some(Regex::new(query)?),
         }
         Ok(())
     }
 
     #[cfg(feature = "search")]
     pub fn search_forward(&mut self) -> bool {
-        let pat = if let Some(pat) = &self.search {
+        let pat = if let Some(pat) = &self.search_pat {
             pat
         } else {
             return false;
@@ -1389,7 +1471,7 @@ impl<'a> TextArea<'a> {
 
     #[cfg(feature = "search")]
     pub fn search_back(&mut self) -> bool {
-        let pat = if let Some(pat) = &self.search {
+        let pat = if let Some(pat) = &self.search_pat {
             pat
         } else {
             return false;
@@ -1428,6 +1510,16 @@ impl<'a> TextArea<'a> {
         }
 
         false
+    }
+
+    #[cfg(feature = "search")]
+    pub fn search_style(&self) -> Style {
+        self.search_style
+    }
+
+    #[cfg(feature = "search")]
+    pub fn set_search_style(&mut self, style: Style) {
+        self.search_style = style;
     }
 }
 
