@@ -35,9 +35,7 @@ jobs:
           components: rustfmt, clippy
           override: true
       - uses: Swatinem/rust-cache@v1
-      - name: rustfmt
-        run: cargo fmt -- --check
-      - name: clippy
-        run: cargo clippy --examples --all-features -- -D warnings
-      - name: clippy with --no-default-features
-        run: cargo clippy --no-default-features -- -D warnings
+      - run: cargo fmt -- --check
+      - run: cargo clippy --examples --all-features -- -D warnings
+      - run: cargo clippy --no-default-features -- -D warnings
+      - run: cargo clippy --no-default-features --features termion -- -D warnings

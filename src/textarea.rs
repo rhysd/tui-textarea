@@ -9,7 +9,7 @@ use std::cmp;
 use std::sync::atomic::{AtomicU16, Ordering};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
-use tui::style::{Color, Modifier, Style};
+use tui::style::{Modifier, Style};
 use tui::text::{Span, Spans, Text};
 use tui::widgets::{Block, Paragraph, Widget};
 
@@ -187,7 +187,7 @@ impl<'a> TextArea<'a> {
             #[cfg(feature = "search")]
             search_pat: None,
             #[cfg(feature = "search")]
-            search_style: Style::default().bg(Color::Blue),
+            search_style: Style::default().bg(tui::style::Color::Blue),
         }
     }
 
