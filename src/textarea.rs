@@ -1015,6 +1015,9 @@ impl<'a> TextArea<'a> {
 
         if boundaries.is_empty() {
             spans.push(Span::raw(self.replace_tabs(line)));
+            if cursor_at_end {
+                spans.push(Span::styled(" ", self.cursor_style));
+            }
             return spans;
         }
 
