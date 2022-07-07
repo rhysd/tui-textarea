@@ -1437,17 +1437,15 @@ impl<'a> TextArea<'a> {
             return false;
         };
         let (row, col) = self.cursor;
+        let current_line = &self.lines[row];
 
         // Search current line after cursor
-        {
-            let line = &self.lines[row];
-            let start_col = if match_current { col } else { col + 1 };
-            if let Some((i, _)) = line.char_indices().nth(start_col) {
-                if let Some(m) = pat.find_at(line, i) {
-                    let col = start_col + line[i..m.start()].chars().count();
-                    self.cursor = (row, col);
-                    return true;
-                }
+        let start_col = if match_current { col } else { col + 1 };
+        if let Some((i, _)) = current_line.char_indices().nth(start_col) {
+            if let Some(m) = pat.find_at(current_line, i) {
+                let col = start_col + current_line[i..m.start()].chars().count();
+                self.cursor = (row, col);
+                return true;
             }
         }
 
@@ -1469,6 +1467,23 @@ impl<'a> TextArea<'a> {
             }
         }
 
+        // Search current line before cursor
+        if col > 0 {
+            let col_idx = current_line
+                .char_indices()
+                .nth(col - 1)
+                .map(|(i, _)| i)
+                .unwrap_or(current_line.len());
+            if let Some(m) = pat.find(current_line) {
+                let i = m.start();
+                if i <= col_idx {
+                    let col = current_line[..i].chars().count();
+                    self.cursor = (row, col);
+                    return true;
+                }
+            }
+        }
+
         false
     }
 
@@ -1480,14 +1495,18 @@ impl<'a> TextArea<'a> {
             return false;
         };
         let (row, col) = self.cursor;
+        let current_line = &self.lines[row];
 
         // Search current line before cursor
         if col > 0 {
             let start_col = if match_current { col } else { col - 1 };
-            let line = &self.lines[row];
-            if let Some((i, _)) = line.char_indices().nth(start_col) {
-                if let Some(m) = pat.find_iter(line).take_while(|m| m.start() <= i).last() {
-                    let col = line[..m.start()].chars().count();
+            if let Some((i, _)) = current_line.char_indices().nth(start_col) {
+                if let Some(m) = pat
+                    .find_iter(current_line)
+                    .take_while(|m| m.start() <= i)
+                    .last()
+                {
+                    let col = current_line[..m.start()].chars().count();
                     self.cursor = (row, col);
                     return true;
                 }
@@ -1496,7 +1515,7 @@ impl<'a> TextArea<'a> {
 
         // Search lines before cursor
         for (i, line) in self.lines[..row].iter().enumerate().rev() {
-            if let Some(m) = pat.find(line) {
+            if let Some(m) = pat.find_iter(line).last() {
                 let col = line[..m.start()].chars().count();
                 self.cursor = (i, col);
                 return true;
@@ -1505,9 +1524,22 @@ impl<'a> TextArea<'a> {
 
         // Search lines after cursor (wrap)
         for (i, line) in self.lines[row + 1..].iter().enumerate().rev() {
-            if let Some(m) = pat.find(line) {
+            if let Some(m) = pat.find_iter(line).last() {
                 let col = line[..m.start()].chars().count();
                 self.cursor = (row + 1 + i, col);
+                return true;
+            }
+        }
+
+        // Search current line after cursor
+        if let Some((i, _)) = current_line.char_indices().nth(col + 1) {
+            if let Some(m) = pat
+                .find_iter(current_line)
+                .skip_while(|m| m.start() < i)
+                .last()
+            {
+                let col = col + 1 + current_line[i..m.start()].chars().count();
+                self.cursor = (row, col);
                 return true;
             }
         }
