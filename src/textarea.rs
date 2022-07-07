@@ -1427,7 +1427,7 @@ impl<'a> TextArea<'a> {
     }
 
     #[cfg(feature = "search")]
-    pub fn search_forward(&mut self) -> bool {
+    pub fn search_forward(&mut self, match_current: bool) -> bool {
         let pat = if let Some(pat) = &self.search_pat {
             pat
         } else {
@@ -1435,13 +1435,13 @@ impl<'a> TextArea<'a> {
         };
         let (row, col) = self.cursor;
 
-        // Search current line
+        // Search current line after cursor
         {
             let line = &self.lines[row];
-            // Avoid matching to current cursor position
-            if let Some((i, _)) = line.char_indices().nth(col + 1) {
+            let start_col = if match_current { col } else { col + 1 };
+            if let Some((i, _)) = line.char_indices().nth(start_col) {
                 if let Some(m) = pat.find_at(line, i) {
-                    let col = col + 1 + line[i..m.start()].chars().count();
+                    let col = start_col + line[i..m.start()].chars().count();
                     self.cursor = (row, col);
                     return true;
                 }
@@ -1470,7 +1470,7 @@ impl<'a> TextArea<'a> {
     }
 
     #[cfg(feature = "search")]
-    pub fn search_back(&mut self) -> bool {
+    pub fn search_back(&mut self, match_current: bool) -> bool {
         let pat = if let Some(pat) = &self.search_pat {
             pat
         } else {
@@ -1478,11 +1478,11 @@ impl<'a> TextArea<'a> {
         };
         let (row, col) = self.cursor;
 
-        // Search current line
+        // Search current line before cursor
         if col > 0 {
+            let start_col = if match_current { col } else { col - 1 };
             let line = &self.lines[row];
-            // Avoid matching to current cursor position
-            if let Some((i, _)) = line.char_indices().nth(col - 1) {
+            if let Some((i, _)) = line.char_indices().nth(start_col) {
                 if let Some(m) = pat.find_iter(line).take_while(|m| m.start() <= i).last() {
                     let col = line[..m.start()].chars().count();
                     self.cursor = (row, col);
