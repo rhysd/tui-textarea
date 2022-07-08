@@ -70,7 +70,7 @@ impl<'a> SearchBox<'a> {
                 key: Key::Char('m'),
                 ctrl: true,
                 ..
-            } => None,
+            } => None, // Disable shortcuts which inserts a newline. See `single_line` example
             input => {
                 let modified = self.textarea.input(input);
                 modified.then(|| self.textarea.lines()[0].as_str())

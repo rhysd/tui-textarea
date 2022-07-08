@@ -1418,6 +1418,35 @@ impl<'a> TextArea<'a> {
         self.yank = text.into();
     }
 
+    /// Set a regular expression pattern for text search. Setting an empty string stops the text search.
+    /// When a valid pattern is set, all matches will be highlighted in the textarea. Note that the cursor does not
+    /// move. To move the cursor, use [`TextArea::search_forward`] and [`TextArea::search_back`].
+    ///
+    /// Grammar of regular expression follows [regex crate](https://docs.rs/regex/latest/regex). Patterns don't match
+    /// to newlines so match passes across no newline.
+    ///
+    /// When the pattern is invalid, the search pattern will not be updated and an error will be returned.
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["hello, world", "goodbye, world"]);
+    ///
+    /// // Search "world"
+    /// textarea.set_search_pattern("world").unwrap();
+    ///
+    /// assert_eq!(textarea.cursor(), (0, 0));
+    /// textarea.search_forward(false);
+    /// assert_eq!(textarea.cursor(), (0, 7));
+    /// textarea.search_forward(false);
+    /// assert_eq!(textarea.cursor(), (1, 9));
+    ///
+    /// // Stop the text search
+    /// textarea.set_search_pattern("");
+    ///
+    /// // Invalid search pattern
+    /// assert!(textarea.set_search_pattern("(hello").is_err());
+    /// ```
     #[cfg(feature = "search")]
     pub fn set_search_pattern(&mut self, query: impl AsRef<str>) -> Result<(), regex::Error> {
         let query = query.as_ref();
@@ -1429,6 +1458,61 @@ impl<'a> TextArea<'a> {
         Ok(())
     }
 
+    /// Get a regular expression which was set by [`TextArea::set_search_pattern`]. When no text search is ongoing, this
+    /// method returns `None`.
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// assert!(textarea.search_pattern().is_none());
+    /// textarea.set_search_pattern("hello+").unwrap();
+    /// assert!(textarea.search_pattern().is_some());
+    /// assert_eq!(textarea.search_pattern().unwrap().as_str(), "hello+");
+    /// ```
+    #[cfg(feature = "search")]
+    pub fn search_pattern(&self) -> Option<&Regex> {
+        self.search_pat.as_ref()
+    }
+
+    /// Search the pattern set by [`TextArea::set_search_pattern`] forward and move the cursor to the next match
+    /// position based on the current cursor position. Text search wraps around a text buffer. It returns `true` when
+    /// some match was found. Otherwise it returns `false`.
+    ///
+    /// The `match_cursor` parameter represents if the search matches to the current cursor position or not. When `true`
+    /// is set and the cursor position matches to the pattern, the cursor will not move. When `false`, the cursor will
+    /// move to the next match ignoring the match at the current position.
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["hello", "helloo", "hellooo"]);
+    ///
+    /// textarea.set_search_pattern("hello+").unwrap();
+    ///
+    /// // Move to next position
+    /// let match_found = textarea.search_forward(false);
+    /// assert!(match_found);
+    /// assert_eq!(textarea.cursor(), (1, 0));
+    ///
+    /// // Since the cursor position matches to "hello+", it does not move
+    /// textarea.search_forward(true);
+    /// assert_eq!(textarea.cursor(), (1, 0));
+    ///
+    /// // When `match_current` parameter is set to `false`, match at the cursor position is ignored
+    /// textarea.search_forward(false);
+    /// assert_eq!(textarea.cursor(), (2, 0));
+    ///
+    /// // Text search wrap around the buffer
+    /// textarea.search_forward(false);
+    /// assert_eq!(textarea.cursor(), (0, 0));
+    ///
+    /// // `false` is returned when no match was found
+    /// textarea.set_search_pattern("bye+").unwrap();
+    /// let match_found = textarea.search_forward(false);
+    /// assert!(!match_found);
+    /// ```
     #[cfg(feature = "search")]
     pub fn search_forward(&mut self, match_cursor: bool) -> bool {
         let pat = if let Some(pat) = &self.search_pat {
@@ -1485,6 +1569,39 @@ impl<'a> TextArea<'a> {
         false
     }
 
+    /// Search the pattern set by [`TextArea::set_search_pattern`] backward and move the cursor to the next match
+    /// position based on the current cursor position. Text search wraps around a text buffer. It returns `true` when
+    /// some match was found. Otherwise it returns `false`.
+    ///
+    /// The `match_cursor` parameter represents if the search matches to the current cursor position or not. When `true`
+    /// is set and the cursor position matches to the pattern, the cursor will not move. When `false`, the cursor will
+    /// move to the next match ignoring the match at the current position.
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["hello", "helloo", "hellooo"]);
+    ///
+    /// textarea.set_search_pattern("hello+").unwrap();
+    ///
+    /// // Move to next position with wrapping around the text buffer
+    /// let match_found = textarea.search_back(false);
+    /// assert!(match_found);
+    /// assert_eq!(textarea.cursor(), (2, 0));
+    ///
+    /// // Since the cursor position matches to "hello+", it does not move
+    /// textarea.search_back(true);
+    /// assert_eq!(textarea.cursor(), (2, 0));
+    ///
+    /// // When `match_current` parameter is set to `false`, match at the cursor position is ignored
+    /// textarea.search_back(false);
+    /// assert_eq!(textarea.cursor(), (1, 0));
+    ///
+    /// // `false` is returned when no match was found
+    /// textarea.set_search_pattern("bye+").unwrap();
+    /// let match_found = textarea.search_back(false);
+    /// assert!(!match_found);
+    /// ```
     #[cfg(feature = "search")]
     pub fn search_back(&mut self, match_cursor: bool) -> bool {
         let pat = if let Some(pat) = &self.search_pat {
@@ -1496,7 +1613,7 @@ impl<'a> TextArea<'a> {
         let current_line = &self.lines[row];
 
         // Search current line before cursor
-        if col > 0 {
+        if col > 0 || match_cursor {
             let start_col = if match_cursor { col } else { col - 1 };
             if let Some((i, _)) = current_line.char_indices().nth(start_col) {
                 if let Some(m) = pat
@@ -1545,11 +1662,33 @@ impl<'a> TextArea<'a> {
         false
     }
 
+    /// Get the text style at matches of text search. The default style is colored with blue in background.
+    ///
+    /// ```
+    /// use tui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let textarea = TextArea::default();
+    ///
+    /// assert_eq!(textarea.search_style(), Style::default().bg(Color::Blue));
+    /// ```
     #[cfg(feature = "search")]
     pub fn search_style(&self) -> Style {
         self.search_style
     }
 
+    /// Set the text style at matches of text search. The default style is colored with blue in background.
+    /// ```
+    /// use tui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// let red_bg = Style::default().bg(Color::Red);
+    /// textarea.set_search_style(red_bg);
+    ///
+    /// assert_eq!(textarea.search_style(), red_bg);
+    /// ```
     #[cfg(feature = "search")]
     pub fn set_search_style(&mut self, style: Style) {
         self.search_style = style;
