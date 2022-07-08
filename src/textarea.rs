@@ -1008,8 +1008,10 @@ impl<'a> TextArea<'a> {
         #[cfg(feature = "search")]
         if let Some(pat) = &self.search_pat {
             for m in pat.find_iter(line) {
-                boundaries.push((Boundary::Search(self.search_style), m.start()));
-                boundaries.push((Boundary::End, m.end()));
+                if m.start() != m.end() {
+                    boundaries.push((Boundary::Search(self.search_style), m.start()));
+                    boundaries.push((Boundary::End, m.end()));
+                }
             }
         }
 
