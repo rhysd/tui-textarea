@@ -15,7 +15,7 @@ use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, Paragraph};
 use tui::Terminal;
-use tui_textarea::{Input, Key, TextArea};
+use tui_textarea::{CursorMove, Input, Key, TextArea};
 
 macro_rules! error {
     ($fmt: expr $(, $args:tt)*) => {{
@@ -46,9 +46,10 @@ impl<'a> SearchBox<'a> {
 
     fn close(&mut self) {
         self.open = false;
-        let block = self.textarea.block().unwrap().clone();
-        self.textarea = TextArea::default();
-        self.textarea.set_block(block);
+        // Remove input for next search. Do not recreate `self.textarea` instance to keep undo history so that users can
+        // restore previous input easily.
+        self.textarea.move_cursor(CursorMove::End);
+        self.textarea.delete_line_by_head();
     }
 
     fn height(&self) -> u16 {
