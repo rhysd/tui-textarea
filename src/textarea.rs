@@ -1430,7 +1430,7 @@ impl<'a> TextArea<'a> {
     }
 
     #[cfg(feature = "search")]
-    pub fn search_forward(&mut self, match_current: bool) -> bool {
+    pub fn search_forward(&mut self, match_cursor: bool) -> bool {
         let pat = if let Some(pat) = &self.search_pat {
             pat
         } else {
@@ -1440,7 +1440,7 @@ impl<'a> TextArea<'a> {
         let current_line = &self.lines[row];
 
         // Search current line after cursor
-        let start_col = if match_current { col } else { col + 1 };
+        let start_col = if match_cursor { col } else { col + 1 };
         if let Some((i, _)) = current_line.char_indices().nth(start_col) {
             if let Some(m) = pat.find_at(current_line, i) {
                 let col = start_col + current_line[i..m.start()].chars().count();
@@ -1468,19 +1468,17 @@ impl<'a> TextArea<'a> {
         }
 
         // Search current line before cursor
-        if col > 0 {
-            let col_idx = current_line
-                .char_indices()
-                .nth(col - 1)
-                .map(|(i, _)| i)
-                .unwrap_or(current_line.len());
-            if let Some(m) = pat.find(current_line) {
-                let i = m.start();
-                if i <= col_idx {
-                    let col = current_line[..i].chars().count();
-                    self.cursor = (row, col);
-                    return true;
-                }
+        let col_idx = current_line
+            .char_indices()
+            .nth(col)
+            .map(|(i, _)| i)
+            .unwrap_or(current_line.len());
+        if let Some(m) = pat.find(current_line) {
+            let i = m.start();
+            if i <= col_idx {
+                let col = current_line[..i].chars().count();
+                self.cursor = (row, col);
+                return true;
             }
         }
 
@@ -1488,7 +1486,7 @@ impl<'a> TextArea<'a> {
     }
 
     #[cfg(feature = "search")]
-    pub fn search_back(&mut self, match_current: bool) -> bool {
+    pub fn search_back(&mut self, match_cursor: bool) -> bool {
         let pat = if let Some(pat) = &self.search_pat {
             pat
         } else {
@@ -1499,7 +1497,7 @@ impl<'a> TextArea<'a> {
 
         // Search current line before cursor
         if col > 0 {
-            let start_col = if match_current { col } else { col - 1 };
+            let start_col = if match_cursor { col } else { col - 1 };
             if let Some((i, _)) = current_line.char_indices().nth(start_col) {
                 if let Some(m) = pat
                     .find_iter(current_line)
@@ -1532,7 +1530,7 @@ impl<'a> TextArea<'a> {
         }
 
         // Search current line after cursor
-        if let Some((i, _)) = current_line.char_indices().nth(col + 1) {
+        if let Some((i, _)) = current_line.char_indices().nth(col) {
             if let Some(m) = pat
                 .find_iter(current_line)
                 .skip_while(|m| m.start() < i)
