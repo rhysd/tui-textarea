@@ -20,7 +20,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - run: cargo test --all-features -- --skip src/lib.rs
         if: ${{ matrix.os != 'windows-latest' }}
-      - run: cargo test --all-features -- --skip src\lib.rs
+      - run: cargo test --features=search -- --skip src\lib.rs
         if: ${{ matrix.os == 'windows-latest' }}
   lint:
     runs-on: ubuntu-latest
