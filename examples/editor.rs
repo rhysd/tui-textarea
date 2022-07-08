@@ -5,6 +5,7 @@ use crossterm::terminal::{
 };
 use std::borrow::Cow;
 use std::env;
+use std::fmt::Display;
 use std::fs;
 use std::io;
 use std::io::{BufRead, Write};
@@ -75,6 +76,18 @@ impl<'a> SearchBox<'a> {
                 modified.then(|| self.textarea.lines()[0].as_str())
             }
         }
+    }
+
+    fn set_error(&mut self, err: Option<impl Display>) {
+        let b = if let Some(err) = err {
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!("Search: {}", err))
+                .style(Style::default().fg(Color::Red))
+        } else {
+            Block::default().borders(Borders::ALL).title("Search")
+        };
+        self.textarea.set_block(b);
     }
 }
 
@@ -283,10 +296,8 @@ impl<'a> Editor<'a> {
                     }
                     input => {
                         if let Some(query) = self.search.input(input) {
-                            if let Err(err) = textarea.set_search_pattern(query) {
-                                self.message =
-                                    Some(format!("Invalid search pattern: {}", err).into());
-                            }
+                            let maybe_err = textarea.set_search_pattern(query).err();
+                            self.search.set_error(maybe_err);
                         }
                     }
                 }
