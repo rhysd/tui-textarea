@@ -232,12 +232,12 @@ impl<'a> Editor<'a> {
                         Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
                         Span::raw(" to close, "),
                         Span::styled(
-                            "^G or ^→ or ^N",
+                            "^G or ↓ or ^N",
                             Style::default().add_modifier(Modifier::BOLD),
                         ),
                         Span::raw(" to search next, "),
                         Span::styled(
-                            "M-G or ^← or ^P",
+                            "M-G or ↑ or ^P",
                             Style::default().add_modifier(Modifier::BOLD),
                         ),
                         Span::raw(" to search previous"),
@@ -262,10 +262,11 @@ impl<'a> Editor<'a> {
                 let textarea = &mut self.buffers[self.current].textarea;
                 match Input::from(crossterm::event::read()?) {
                     Input {
-                        key: Key::Char('g' | 'n') | Key::Left,
+                        key: Key::Char('g' | 'n'),
                         ctrl: true,
                         alt: false,
-                    } => {
+                    }
+                    | Input { key: Key::Down, .. } => {
                         if !textarea.search_forward(false) {
                             self.search.set_error(Some("Pattern not found"));
                         }
@@ -276,10 +277,11 @@ impl<'a> Editor<'a> {
                         alt: true,
                     }
                     | Input {
-                        key: Key::Right | Key::Char('p'),
+                        key: Key::Char('p'),
                         ctrl: true,
                         alt: false,
-                    } => {
+                    }
+                    | Input { key: Key::Up, .. } => {
                         if !textarea.search_back(false) {
                             self.search.set_error(Some("Pattern not found"));
                         }
