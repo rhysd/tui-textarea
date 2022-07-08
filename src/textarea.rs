@@ -1655,7 +1655,7 @@ impl<'a> TextArea<'a> {
                 .skip_while(|m| m.start() < i)
                 .last()
             {
-                let col = col + 1 + current_line[i..m.start()].chars().count();
+                let col = col + current_line[i..m.start()].chars().count();
                 self.cursor = (row, col);
                 return true;
             }
