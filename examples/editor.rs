@@ -266,7 +266,7 @@ impl<'a> Editor<'a> {
                         ..
                     } => {
                         if !textarea.search_forward(false) {
-                            self.message = Some("Pattern not found".into());
+                            self.search.set_error(Some("Pattern not found"));
                         }
                     }
                     Input {
@@ -280,13 +280,15 @@ impl<'a> Editor<'a> {
                         ..
                     } => {
                         if !textarea.search_back(false) {
-                            self.message = Some("Pattern not found".into());
+                            self.search.set_error(Some("Pattern not found"));
                         }
                     }
                     Input {
                         key: Key::Enter, ..
                     } => {
-                        textarea.search_forward(true);
+                        if !textarea.search_forward(true) {
+                            self.message = Some("Pattern not found".into());
+                        }
                         self.search.close();
                         textarea.set_search_pattern("").unwrap();
                     }
