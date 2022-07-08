@@ -1,3 +1,16 @@
+<a name="v0.1.3"></a>
+# [v0.1.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.3) - 08 Jul 2022
+
+- Text search was implemented. Text search is gated behind `search` feature flag to avoid depending on `regex` crate until it is necessary. See [the usage document](https://github.com/rhysd/tui-textarea#text-search-with-regular-expressions), [the API document](https://docs.rs/tui-textarea/latest/tui_textarea/struct.TextArea.html), and [the working example](https://github.com/rhysd/tui-textarea/blob/main/examples/editor.rs) for more details.
+  - `TextArea::set_search_pattern` sets a search pattern in regular expression. This updates highlights at matches in textarea, but does not move the cursor.
+  - `TextArea::search_forward` moves cursor to the next match of the text search based on current cursor position.
+  - `TextArea::search_back` moves cursor to the previous match of the text search based on current cursor position.
+  - `TextArea::set_search_style` sets the text style for highlighting matches of text search.
+  <img src="https://user-images.githubusercontent.com/823277/177961514-f63e65de-a562-46d9-b858-4c19e55f8772.gif" width=546 height=156 alt="search in editor example">
+
+[Changes][v0.1.3]
+
+
 <a name="v0.1.2"></a>
 # [v0.1.2](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.2) - 25 Jun 2022
 
@@ -9,7 +22,7 @@
   textarea.insert_tab();
   assert_eq!(textarea.lines(), ["\t"]);
   ```
-  Screencast with `cargo run --example editor`:
+  Demo with `cargo run --example editor`:
   <img src="https://user-images.githubusercontent.com/823277/175755458-5bf60e84-e01f-410d-9194-d3117031eff6.gif" alt="screencast" width=452 height=140>
 - Add `TextArea::indent` method to get an indent string of textarea.
   ```rust
@@ -59,6 +72,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.1.3]: https://github.com/rhysd/tui-textarea/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/rhysd/tui-textarea/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/rhysd/tui-textarea/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/rhysd/tui-textarea/tree/v0.1.0
