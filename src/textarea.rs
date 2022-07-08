@@ -2,7 +2,10 @@ use crate::cursor::CursorMove;
 use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
 use crate::word::{find_word_end_forward, find_word_start_backward};
+#[cfg(feature = "search")]
+use regex::Regex;
 use std::borrow::Cow;
+use std::cmp;
 use std::sync::atomic::{AtomicU16, Ordering};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
@@ -13,6 +16,41 @@ use tui::widgets::{Block, Paragraph, Widget};
 fn spaces(size: u8) -> &'static str {
     const SPACES: &str = "                                                                                                                                                                                                                                                                ";
     &SPACES[..size as usize]
+}
+
+fn num_digits(i: usize) -> u8 {
+    f64::log10(i as f64) as u8 + 1
+}
+
+// Highlight boundary in line
+enum Boundary {
+    Cursor(Style),
+    #[cfg(feature = "search")]
+    Search(Style),
+    End,
+}
+
+impl Boundary {
+    fn cmp(&self, other: &Boundary) -> cmp::Ordering {
+        fn rank(b: &Boundary) -> u8 {
+            match b {
+                Boundary::Cursor(_) => 2,
+                #[cfg(feature = "search")]
+                Boundary::Search(_) => 1,
+                Boundary::End => 0,
+            }
+        }
+        rank(self).cmp(&rank(other))
+    }
+
+    fn style(&self) -> Option<Style> {
+        match self {
+            Boundary::Cursor(s) => Some(*s),
+            #[cfg(feature = "search")]
+            Boundary::Search(s) => Some(*s),
+            Boundary::End => None,
+        }
+    }
 }
 
 /// A type to manage state of textarea.
@@ -48,6 +86,10 @@ pub struct TextArea<'a> {
     scroll_top: (AtomicU16, AtomicU16),
     cursor_style: Style,
     yank: String,
+    #[cfg(feature = "search")]
+    search_pat: Option<Regex>,
+    #[cfg(feature = "search")]
+    search_style: Style,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -142,6 +184,10 @@ impl<'a> TextArea<'a> {
             scroll_top: (AtomicU16::new(0), AtomicU16::new(0)),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
             yank: String::new(),
+            #[cfg(feature = "search")]
+            search_pat: None,
+            #[cfg(feature = "search")]
+            search_style: Style::default().bg(tui::style::Color::Blue),
         }
     }
 
@@ -936,6 +982,82 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Vec<Span<'b>> {
+        let mut spans = vec![];
+
+        if let Some(style) = self.line_number_style {
+            let pad = spaces(lnum_len - num_digits(row + 1) + 1);
+            spans.push(Span::styled(format!("{}{} ", pad, row + 1), style));
+        }
+
+        let mut boundaries = vec![]; // TODO: Consider smallvec
+        let mut cursor_at_end = false;
+
+        let style_begin = if row == self.cursor.0 {
+            if let Some((start, c)) = line.char_indices().nth(self.cursor.1) {
+                boundaries.push((Boundary::Cursor(self.cursor_style), start));
+                boundaries.push((Boundary::End, start + c.len_utf8()));
+            } else {
+                cursor_at_end = true;
+            }
+            self.cursor_line_style
+        } else {
+            Style::default()
+        };
+
+        #[cfg(feature = "search")]
+        if let Some(pat) = &self.search_pat {
+            for m in pat.find_iter(line) {
+                if m.start() != m.end() {
+                    boundaries.push((Boundary::Search(self.search_style), m.start()));
+                    boundaries.push((Boundary::End, m.end()));
+                }
+            }
+        }
+
+        if boundaries.is_empty() {
+            spans.push(Span::raw(self.replace_tabs(line)));
+            if cursor_at_end {
+                spans.push(Span::styled(" ", self.cursor_style));
+            }
+            return spans;
+        }
+
+        boundaries.sort_unstable_by(|(l, i), (r, j)| match i.cmp(j) {
+            cmp::Ordering::Equal => l.cmp(r),
+            o => o,
+        });
+
+        let mut boundaries = boundaries.into_iter();
+        let mut style = style_begin;
+        let mut start = 0;
+        let mut stack = vec![];
+
+        loop {
+            if let Some((next_boundary, end)) = boundaries.next() {
+                if start < end {
+                    spans.push(Span::styled(self.replace_tabs(&line[start..end]), style));
+                }
+
+                style = if let Some(s) = next_boundary.style() {
+                    stack.push(style);
+                    s
+                } else {
+                    stack.pop().unwrap_or(style_begin)
+                };
+                start = end;
+            } else {
+                if start != line.len() {
+                    spans.push(Span::styled(self.replace_tabs(&line[start..]), style));
+                }
+                if cursor_at_end {
+                    spans.push(Span::styled(" ", self.cursor_style));
+                }
+                return spans;
+            }
+        }
+    }
+
     /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this
     /// method can be rendered with [`tui::terminal::Frame::render_widget`].
     /// ```no_run
@@ -963,39 +1085,10 @@ impl<'a> TextArea<'a> {
     /// }
     /// ```
     pub fn widget(&'a self) -> impl Widget + 'a {
-        fn num_digits(i: usize) -> u8 {
-            f64::log10(i as f64) as u8 + 1
-        }
-
         let mut lines = Vec::with_capacity(self.lines.len());
-        let line_number_len = num_digits(self.lines.len());
+        let lnum_len = num_digits(self.lines.len());
         for (i, l) in self.lines.iter().map(String::as_str).enumerate() {
-            let mut spans = vec![];
-
-            if let Some(style) = self.line_number_style {
-                let pad = spaces(line_number_len - num_digits(i + 1) + 1);
-                spans.push(Span::styled(format!("{}{} ", pad, i + 1), style));
-            }
-
-            if i == self.cursor.0 {
-                if let Some((i, c)) = l.char_indices().nth(self.cursor.1) {
-                    let j = i + c.len_utf8();
-                    spans.extend_from_slice(&[
-                        Span::styled(self.replace_tabs(&l[..i]), self.cursor_line_style),
-                        Span::styled(self.replace_tabs(&l[i..j]), self.cursor_style),
-                        Span::styled(self.replace_tabs(&l[j..]), self.cursor_line_style),
-                    ]);
-                } else {
-                    // When cursor is at the end of line
-                    spans.extend_from_slice(&[
-                        Span::styled(self.replace_tabs(l), self.cursor_line_style),
-                        Span::styled(" ", self.cursor_style),
-                    ]);
-                }
-            } else {
-                spans.push(Span::raw(self.replace_tabs(l)));
-            }
-
+            let spans = self.line_spans(l, i, lnum_len);
             lines.push(Spans::from(spans));
         }
 
@@ -1325,6 +1418,282 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn set_yank_text(&mut self, text: impl Into<String>) {
         self.yank = text.into();
+    }
+
+    /// Set a regular expression pattern for text search. Setting an empty string stops the text search.
+    /// When a valid pattern is set, all matches will be highlighted in the textarea. Note that the cursor does not
+    /// move. To move the cursor, use [`TextArea::search_forward`] and [`TextArea::search_back`].
+    ///
+    /// Grammar of regular expression follows [regex crate](https://docs.rs/regex/latest/regex). Patterns don't match
+    /// to newlines so match passes across no newline.
+    ///
+    /// When the pattern is invalid, the search pattern will not be updated and an error will be returned.
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["hello, world", "goodbye, world"]);
+    ///
+    /// // Search "world"
+    /// textarea.set_search_pattern("world").unwrap();
+    ///
+    /// assert_eq!(textarea.cursor(), (0, 0));
+    /// textarea.search_forward(false);
+    /// assert_eq!(textarea.cursor(), (0, 7));
+    /// textarea.search_forward(false);
+    /// assert_eq!(textarea.cursor(), (1, 9));
+    ///
+    /// // Stop the text search
+    /// textarea.set_search_pattern("");
+    ///
+    /// // Invalid search pattern
+    /// assert!(textarea.set_search_pattern("(hello").is_err());
+    /// ```
+    #[cfg(feature = "search")]
+    pub fn set_search_pattern(&mut self, query: impl AsRef<str>) -> Result<(), regex::Error> {
+        let query = query.as_ref();
+        match &self.search_pat {
+            Some(r) if r.as_str() == query => {}
+            _ if query.is_empty() => self.search_pat = None,
+            _ => self.search_pat = Some(Regex::new(query)?),
+        }
+        Ok(())
+    }
+
+    /// Get a regular expression which was set by [`TextArea::set_search_pattern`]. When no text search is ongoing, this
+    /// method returns `None`.
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// assert!(textarea.search_pattern().is_none());
+    /// textarea.set_search_pattern("hello+").unwrap();
+    /// assert!(textarea.search_pattern().is_some());
+    /// assert_eq!(textarea.search_pattern().unwrap().as_str(), "hello+");
+    /// ```
+    #[cfg(feature = "search")]
+    pub fn search_pattern(&self) -> Option<&Regex> {
+        self.search_pat.as_ref()
+    }
+
+    /// Search the pattern set by [`TextArea::set_search_pattern`] forward and move the cursor to the next match
+    /// position based on the current cursor position. Text search wraps around a text buffer. It returns `true` when
+    /// some match was found. Otherwise it returns `false`.
+    ///
+    /// The `match_cursor` parameter represents if the search matches to the current cursor position or not. When `true`
+    /// is set and the cursor position matches to the pattern, the cursor will not move. When `false`, the cursor will
+    /// move to the next match ignoring the match at the current position.
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["hello", "helloo", "hellooo"]);
+    ///
+    /// textarea.set_search_pattern("hello+").unwrap();
+    ///
+    /// // Move to next position
+    /// let match_found = textarea.search_forward(false);
+    /// assert!(match_found);
+    /// assert_eq!(textarea.cursor(), (1, 0));
+    ///
+    /// // Since the cursor position matches to "hello+", it does not move
+    /// textarea.search_forward(true);
+    /// assert_eq!(textarea.cursor(), (1, 0));
+    ///
+    /// // When `match_current` parameter is set to `false`, match at the cursor position is ignored
+    /// textarea.search_forward(false);
+    /// assert_eq!(textarea.cursor(), (2, 0));
+    ///
+    /// // Text search wrap around the buffer
+    /// textarea.search_forward(false);
+    /// assert_eq!(textarea.cursor(), (0, 0));
+    ///
+    /// // `false` is returned when no match was found
+    /// textarea.set_search_pattern("bye+").unwrap();
+    /// let match_found = textarea.search_forward(false);
+    /// assert!(!match_found);
+    /// ```
+    #[cfg(feature = "search")]
+    pub fn search_forward(&mut self, match_cursor: bool) -> bool {
+        let pat = if let Some(pat) = &self.search_pat {
+            pat
+        } else {
+            return false;
+        };
+        let (row, col) = self.cursor;
+        let current_line = &self.lines[row];
+
+        // Search current line after cursor
+        let start_col = if match_cursor { col } else { col + 1 };
+        if let Some((i, _)) = current_line.char_indices().nth(start_col) {
+            if let Some(m) = pat.find_at(current_line, i) {
+                let col = start_col + current_line[i..m.start()].chars().count();
+                self.cursor = (row, col);
+                return true;
+            }
+        }
+
+        // Search lines after cursor
+        for (i, line) in self.lines[row + 1..].iter().enumerate() {
+            if let Some(m) = pat.find(line) {
+                let col = line[..m.start()].chars().count();
+                self.cursor = (row + 1 + i, col);
+                return true;
+            }
+        }
+
+        // Search lines before cursor (wrap)
+        for (i, line) in self.lines[..row].iter().enumerate() {
+            if let Some(m) = pat.find(line) {
+                let col = line[..m.start()].chars().count();
+                self.cursor = (i, col);
+                return true;
+            }
+        }
+
+        // Search current line before cursor
+        let col_idx = current_line
+            .char_indices()
+            .nth(col)
+            .map(|(i, _)| i)
+            .unwrap_or(current_line.len());
+        if let Some(m) = pat.find(current_line) {
+            let i = m.start();
+            if i <= col_idx {
+                let col = current_line[..i].chars().count();
+                self.cursor = (row, col);
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Search the pattern set by [`TextArea::set_search_pattern`] backward and move the cursor to the next match
+    /// position based on the current cursor position. Text search wraps around a text buffer. It returns `true` when
+    /// some match was found. Otherwise it returns `false`.
+    ///
+    /// The `match_cursor` parameter represents if the search matches to the current cursor position or not. When `true`
+    /// is set and the cursor position matches to the pattern, the cursor will not move. When `false`, the cursor will
+    /// move to the next match ignoring the match at the current position.
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["hello", "helloo", "hellooo"]);
+    ///
+    /// textarea.set_search_pattern("hello+").unwrap();
+    ///
+    /// // Move to next position with wrapping around the text buffer
+    /// let match_found = textarea.search_back(false);
+    /// assert!(match_found);
+    /// assert_eq!(textarea.cursor(), (2, 0));
+    ///
+    /// // Since the cursor position matches to "hello+", it does not move
+    /// textarea.search_back(true);
+    /// assert_eq!(textarea.cursor(), (2, 0));
+    ///
+    /// // When `match_current` parameter is set to `false`, match at the cursor position is ignored
+    /// textarea.search_back(false);
+    /// assert_eq!(textarea.cursor(), (1, 0));
+    ///
+    /// // `false` is returned when no match was found
+    /// textarea.set_search_pattern("bye+").unwrap();
+    /// let match_found = textarea.search_back(false);
+    /// assert!(!match_found);
+    /// ```
+    #[cfg(feature = "search")]
+    pub fn search_back(&mut self, match_cursor: bool) -> bool {
+        let pat = if let Some(pat) = &self.search_pat {
+            pat
+        } else {
+            return false;
+        };
+        let (row, col) = self.cursor;
+        let current_line = &self.lines[row];
+
+        // Search current line before cursor
+        if col > 0 || match_cursor {
+            let start_col = if match_cursor { col } else { col - 1 };
+            if let Some((i, _)) = current_line.char_indices().nth(start_col) {
+                if let Some(m) = pat
+                    .find_iter(current_line)
+                    .take_while(|m| m.start() <= i)
+                    .last()
+                {
+                    let col = current_line[..m.start()].chars().count();
+                    self.cursor = (row, col);
+                    return true;
+                }
+            }
+        }
+
+        // Search lines before cursor
+        for (i, line) in self.lines[..row].iter().enumerate().rev() {
+            if let Some(m) = pat.find_iter(line).last() {
+                let col = line[..m.start()].chars().count();
+                self.cursor = (i, col);
+                return true;
+            }
+        }
+
+        // Search lines after cursor (wrap)
+        for (i, line) in self.lines[row + 1..].iter().enumerate().rev() {
+            if let Some(m) = pat.find_iter(line).last() {
+                let col = line[..m.start()].chars().count();
+                self.cursor = (row + 1 + i, col);
+                return true;
+            }
+        }
+
+        // Search current line after cursor
+        if let Some((i, _)) = current_line.char_indices().nth(col) {
+            if let Some(m) = pat
+                .find_iter(current_line)
+                .skip_while(|m| m.start() < i)
+                .last()
+            {
+                let col = col + current_line[i..m.start()].chars().count();
+                self.cursor = (row, col);
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Get the text style at matches of text search. The default style is colored with blue in background.
+    ///
+    /// ```
+    /// use tui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let textarea = TextArea::default();
+    ///
+    /// assert_eq!(textarea.search_style(), Style::default().bg(Color::Blue));
+    /// ```
+    #[cfg(feature = "search")]
+    pub fn search_style(&self) -> Style {
+        self.search_style
+    }
+
+    /// Set the text style at matches of text search. The default style is colored with blue in background.
+    /// ```
+    /// use tui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// let red_bg = Style::default().bg(Color::Red);
+    /// textarea.set_search_style(red_bg);
+    ///
+    /// assert_eq!(textarea.search_style(), red_bg);
+    /// ```
+    #[cfg(feature = "search")]
+    pub fn set_search_style(&mut self, style: Style) {
+        self.search_style = style;
     }
 }
 
