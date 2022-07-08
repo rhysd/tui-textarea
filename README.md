@@ -14,6 +14,7 @@ text editor can be easily put as part of your TUI application.
 - Undo/Redo
 - Line number
 - Cursor line highlight
+- Search with regular expressions
 - Yank support. Paste text deleted with `C-k`, `C-j`, ...
 - Backend agnostic. [crossterm][], [termion][], and your own backend are all supported
 - Multiple textarea widgets in the same screen
@@ -24,11 +25,11 @@ text editor can be easily put as part of your TUI application.
 
 Running `cargo run --example` in this repository can demonstrate usage of tui-textarea.
 
+### [`minimal`](./examples/minimal.rs)
+
 ```sh
 cargo run --example minimal
 ```
-
-### [`minimal`](./examples/minimal.rs)
 
 Minimal usage with [crossterm][] support.
 
@@ -36,11 +37,19 @@ Minimal usage with [crossterm][] support.
 
 ### [`editor`](./examples/editor.rs)
 
+```sh
+cargo run --example editor --features search file.txt
+```
+
 Simple text editor to edit multiple files.
 
-<img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/editor.gif" width=539 height=172 alt="editor example">
+<img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/editor.gif" width=560 height=236 alt="editor example">
 
 ### [`single_line`](./examples/single_line.rs)
+
+```sh
+cargo run --example single_line
+```
 
 Single-line input form with float number validation.
 
@@ -48,15 +57,27 @@ Single-line input form with float number validation.
 
 ### [`split`](./examples/split.rs)
 
+```sh
+cargo run --example split
+```
+
 Two split textareas in a screen and switch them. An example for multiple textarea instances.
 
 <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/split.gif" width=539 height=124 alt="multiple textareas example">
 
 ### [`termion`](./examples/termion.rs)
 
-Minimal usage with [termion][] support. To run this example, `termion` feature needs to be enabled.
+```sh
+cargo run --example termion --features=termion
+```
+
+Minimal usage with [termion][] support.
 
 ### [`variable`](./examples/variable.rs)
+
+```sh
+cargo run --example variable
+```
 
 Simple textarea with variable height following the number of lines.
 
@@ -68,6 +89,15 @@ Add `tui-textarea` crate to dependencies in your `Cargo.toml`. This enables cros
 [dependencies]
 tui = "*"
 tui-textarea = "*"
+```
+
+If you need text search with regular expressions, enable `search` feature. It adds [regex crate][regex] crate as
+dependency.
+
+```toml
+[dependencies]
+tui = "*"
+tui-textarea = { version = "*", features = ["search"] }
 ```
 
 If you're using tui-rs with [termion][], enable `termion` feature instead of `crossterm` feature.
@@ -278,6 +308,44 @@ Setting 0 disables undo/redo.
 textarea.set_max_histories(0);
 ```
 
+### Text search with regular expressions
+
+To search text in textarea, set a regular expression pattern with `TextArea::set_search_pattern()` and move cursor with
+`TextArea::search_forward()` for forward search or `TextArea::search_back()` backward search. The regular expression is
+handled by [`regex` crate][regex].
+
+Text search wraps around the textarea. When searching forward and no match found until the end of textarea, it searches
+the pattern from start of the file.
+
+Matches are highlighted in textarea. The text style to highlight matches can be changed with
+`TextArea::set_search_style()`. Setting an empty string to `TextArea::set_search_pattern()` stops the text search.
+
+```rust
+// Start text search matching to "hello" or "hi". This highlights matches in textarea but does not move cursor.
+// `regex::Error` is returned on invalid pattern.
+textarea.set_search_pattern("(hello|hi)").unwrap();
+
+textarea.search_forward(false); // Move cursor to the next match
+textarea.search_back(false);    // Move cursor to the previous match
+
+// Setting empty string stops the search
+textarea.set_search_pattern("").unwrap();
+```
+
+No UI is provided for text search. You need to provide your own UI to input search query. It is recommended to use
+another `TextArea` for search form. To build a single-line input form, see 'Single-line input like `<input>` in HTML' in
+'Advanced Usage' section below.
+
+[`editor` example](./examples/editor.rs) implements a text search with search form built on `TextArea`. See the
+implementation for working example.
+
+To use text search, `search` feature needs to be enabled in your `Cargo.toml`. It is disabled by default to avoid
+depending on `regex` crate until it is necessary.
+
+```toml
+tui-textarea = { version = "*", features = ["search"] }
+```
+
 ## Advanced Usage
 
 ### Single-line input like `<input>` in HTML
@@ -317,31 +385,34 @@ See [`single_line` example](./examples/single_line.rs) for working example.
 All editor operations are defined as public methods of `TextArea`. To move cursor, use `tui_textarea::CursorMove` to
 notify how to move the cursor.
 
-| Method                                               | Operation                                 |
-|------------------------------------------------------|-------------------------------------------|
-| `textarea.delete_char()`                             | Delete one character before cursor        |
-| `textarea.delete_next_char()`                        | Delete one character next to cursor       |
-| `textarea.insert_newline()`                          | Insert newline                            |
-| `textarea.delete_line_by_end()`                      | Delete from cursor until the end of line  |
-| `textarea.delete_line_by_head()`                     | Delete from cursor until the head of line |
-| `textarea.delete_word()`                             | Delete one word before cursor             |
-| `textarea.delete_next_word()`                        | Delete one word next to cursor            |
-| `textarea.undo()`                                    | Undo                                      |
-| `textarea.redo()`                                    | Redo                                      |
-| `textarea.paste()`                                   | Paste yanked text                         |
-| `textarea.move_cursor(CursorMove::Forward)`          | Move cursor forward by one character      |
-| `textarea.move_cursor(CursorMove::Back)`             | Move cursor backward by one character     |
-| `textarea.move_cursor(CursorMove::Up)`               | Move cursor up by one line                |
-| `textarea.move_cursor(CursorMove::Down)`             | Move cursor down by one line              |
-| `textarea.move_cursor(CursorMove::WordForward)`      | Move cursor forward by word               |
-| `textarea.move_cursor(CursorMove::WordBack)`         | Move cursor backward by word              |
-| `textarea.move_cursor(CursorMove::ParagraphForward)` | Move cursor up by paragraph               |
-| `textarea.move_cursor(CursorMove::ParagraphBack)`    | Move cursor down by paragraph             |
-| `textarea.move_cursor(CursorMove::End)`              | Move cursor to the end of line            |
-| `textarea.move_cursor(CursorMove::Head)`             | Move cursor to the head of line           |
-| `textarea.move_cursor(CursorMove::Top)`              | Move cursor to top of lines               |
-| `textarea.move_cursor(CursorMove::Bottom)`           | Move cursor to bottom of lines            |
-| `textarea.move_cursor(CursorMove::Jump(row, col))`   | Move cursor to (row, col) position        |
+| Method                                               | Operation                                    |
+|------------------------------------------------------|----------------------------------------------|
+| `textarea.delete_char()`                             | Delete one character before cursor           |
+| `textarea.delete_next_char()`                        | Delete one character next to cursor          |
+| `textarea.insert_newline()`                          | Insert newline                               |
+| `textarea.delete_line_by_end()`                      | Delete from cursor until the end of line     |
+| `textarea.delete_line_by_head()`                     | Delete from cursor until the head of line    |
+| `textarea.delete_word()`                             | Delete one word before cursor                |
+| `textarea.delete_next_word()`                        | Delete one word next to cursor               |
+| `textarea.undo()`                                    | Undo                                         |
+| `textarea.redo()`                                    | Redo                                         |
+| `textarea.paste()`                                   | Paste yanked text                            |
+| `textarea.move_cursor(CursorMove::Forward)`          | Move cursor forward by one character         |
+| `textarea.move_cursor(CursorMove::Back)`             | Move cursor backward by one character        |
+| `textarea.move_cursor(CursorMove::Up)`               | Move cursor up by one line                   |
+| `textarea.move_cursor(CursorMove::Down)`             | Move cursor down by one line                 |
+| `textarea.move_cursor(CursorMove::WordForward)`      | Move cursor forward by word                  |
+| `textarea.move_cursor(CursorMove::WordBack)`         | Move cursor backward by word                 |
+| `textarea.move_cursor(CursorMove::ParagraphForward)` | Move cursor up by paragraph                  |
+| `textarea.move_cursor(CursorMove::ParagraphBack)`    | Move cursor down by paragraph                |
+| `textarea.move_cursor(CursorMove::End)`              | Move cursor to the end of line               |
+| `textarea.move_cursor(CursorMove::Head)`             | Move cursor to the head of line              |
+| `textarea.move_cursor(CursorMove::Top)`              | Move cursor to top of lines                  |
+| `textarea.move_cursor(CursorMove::Bottom)`           | Move cursor to bottom of lines               |
+| `textarea.move_cursor(CursorMove::Jump(row, col))`   | Move cursor to (row, col) position           |
+| `textarea.set_search_pattern(pattern)`               | Set a pattern for text search                |
+| `textarea.search_forward(match_cursor)`              | Move cursor to next match of text search     |
+| `textarea.search_back(match_cursor)`                 | Move cursor to previous match of text search |
 
 To define your own key mappings, simply call the above methods in your code instead of `TextArea::input()` method. The
 following example defines modal key mappings like Vim.
@@ -549,3 +620,4 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 [repo]: https://github.com/rhysd/tui-textarea
 [new-issue]: https://github.com/rhysd/tui-textarea/issues/new
 [pulls]: https://github.com/rhysd/tui-textarea/pulls
+[regex]: https://docs.rs/regex/latest/regex/
