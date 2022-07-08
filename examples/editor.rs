@@ -231,9 +231,15 @@ impl<'a> Editor<'a> {
                         Span::raw(" to jump to first match and close, "),
                         Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
                         Span::raw(" to close, "),
-                        Span::styled("^G or ^→", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled(
+                            "^G or ^→ or ^N",
+                            Style::default().add_modifier(Modifier::BOLD),
+                        ),
                         Span::raw(" to search next, "),
-                        Span::styled("M-G or ^←", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled(
+                            "M-G or ^← or ^P",
+                            Style::default().add_modifier(Modifier::BOLD),
+                        ),
                         Span::raw(" to search previous"),
                     ])
                 } else {
@@ -256,14 +262,9 @@ impl<'a> Editor<'a> {
                 let textarea = &mut self.buffers[self.current].textarea;
                 match Input::from(crossterm::event::read()?) {
                     Input {
-                        key: Key::Char('g'),
+                        key: Key::Char('g' | 'n') | Key::Left,
                         ctrl: true,
                         alt: false,
-                    }
-                    | Input {
-                        key: Key::Left,
-                        ctrl: true,
-                        ..
                     } => {
                         if !textarea.search_forward(false) {
                             self.search.set_error(Some("Pattern not found"));
@@ -275,9 +276,9 @@ impl<'a> Editor<'a> {
                         alt: true,
                     }
                     | Input {
-                        key: Key::Right,
+                        key: Key::Right | Key::Char('p'),
                         ctrl: true,
-                        ..
+                        alt: false,
                     } => {
                         if !textarea.search_back(false) {
                             self.search.set_error(Some("Pattern not found"));
