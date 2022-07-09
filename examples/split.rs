@@ -59,7 +59,7 @@ fn main() -> io::Result<()> {
                 f.render_widget(widget, chunk);
             }
         })?;
-        match Input::from(crossterm::event::read()?) {
+        match crossterm::event::read()?.into() {
             Input { key: Key::Esc, .. } => break,
             Input {
                 key: Key::Char('x'),

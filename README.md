@@ -366,7 +366,7 @@ loop {
 
     // Using `Input` is not mandatory, but it's useful for pattern match
     // Ignore Ctrl+m and Enter. Otherwise handle keys as usual
-    match Input::from(read()?) {
+    match read()?.into() {
         Input { key: Key::Char('m'), ctrl: true, alt: false }
         | Input { key: Key::Enter, .. } => continue,
         input => {
@@ -436,7 +436,7 @@ loop {
     // ...
 
     match mode {
-        Mode::Normal => match Input::from(read()?) {
+        Mode::Normal => match read()?.into() {
             Input { key: Key::Char('h'), .. } => textarea.move_cursor(CursorMove::Back),
             Input { key: Key::Char('j'), .. } => textarea.move_cursor(CursorMove::Down),
             Input { key: Key::Char('k'), .. } => textarea.move_cursor(CursorMove::Up),
@@ -460,7 +460,7 @@ loop {
             }
             _ => {},
         },
-        Mode::Insert => match Input::from(read()?) {
+        Mode::Insert => match read()?.into() {
             Input { key: Key::Esc, .. } => {
                 mode = Mode::Normal;
             }
@@ -477,7 +477,7 @@ If you don't want to use default key mappings, `TextArea::input_without_shortcut
 newlines.
 
 ```rust
-match Input::from(read()?) {
+match read()?.into() {
     // Handle your own key mappings here
     // ...
     input => textarea.input_without_shortcuts(input),
@@ -583,7 +583,7 @@ loop {
         }
     })?;
 
-    match Input::from(read()?) {
+    match read()?.into() {
         // Switch focused textarea by Ctrl+S
         Input { key: Key::Char('s'), ctrl: true, .. } => focused = (focused + 1) % 2;
         // Handle input by the focused editor

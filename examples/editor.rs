@@ -260,7 +260,7 @@ impl<'a> Editor<'a> {
 
             if search_height > 0 {
                 let textarea = &mut self.buffers[self.current].textarea;
-                match Input::from(crossterm::event::read()?) {
+                match crossterm::event::read()?.into() {
                     Input {
                         key: Key::Char('g' | 'n'),
                         ctrl: true,
@@ -307,7 +307,7 @@ impl<'a> Editor<'a> {
                     }
                 }
             } else {
-                match Input::from(crossterm::event::read()?) {
+                match crossterm::event::read()?.into() {
                     Input {
                         key: Key::Char('q'),
                         ctrl: true,

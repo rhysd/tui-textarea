@@ -36,7 +36,7 @@ fn main() -> io::Result<()> {
                 .split(f.size());
             f.render_widget(textarea.widget(), chunks[0]);
         })?;
-        match Input::from(crossterm::event::read()?) {
+        match crossterm::event::read()?.into() {
             Input { key: Key::Esc, .. } => break,
             input => {
                 textarea.input(input);

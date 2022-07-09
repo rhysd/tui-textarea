@@ -28,7 +28,7 @@ fn main() -> io::Result<()> {
         term.draw(|f| {
             f.render_widget(textarea.widget(), f.size());
         })?;
-        match Input::from(crossterm::event::read()?) {
+        match crossterm::event::read()?.into() {
             Input { key: Key::Esc, .. } => break,
             input => {
                 textarea.input(input);

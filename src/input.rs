@@ -36,9 +36,14 @@ pub enum Key {
 /// use crossterm::event::{Event, read};
 ///
 /// let event = read().unwrap();
+///
+/// // `Input::from` can convert backend-native event into `Input`
 /// let input = Input::from(event);
+/// // or `Into::into`
+/// let input: Input = event.into();
+/// // Conversion from `KeyEvent` value is also available
 /// if let Event::Key(key) = event {
-///     let input = Input::from(key); // Conversion from `KeyEvent` value is also available
+///     let input = Input::from(key);
 /// }
 /// ```
 ///
