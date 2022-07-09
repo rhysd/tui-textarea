@@ -40,3 +40,20 @@ To run fuzzer:
 ```sh
 cargo +nightly fuzz run edit
 ```
+
+## Run benchmark
+
+Benchmarks are available using [Criterion.rs][criterion].
+
+To separate `criterion` crate dependency, benchmark suites are separated as another crate in [bench/](./bench).
+
+To run benchmarks:
+
+```sh
+cd ./bench
+cargo bench --benches
+```
+
+See [README in bench/](./bench/README.md) for more details.
+
+[criterion]: https://github.com/bheisler/criterion.rs

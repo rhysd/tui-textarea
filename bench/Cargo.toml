@@ -1,0 +1,20 @@
+[package]
+name = "tui-textarea-bench"
+version = "0.0.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+bench = false
+
+[dependencies]
+tui-textarea = { path = "..", default-features = false }
+tui = { version = "0.18", default-features = false }
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "insert"
+harness = false

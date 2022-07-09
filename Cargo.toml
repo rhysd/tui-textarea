@@ -56,5 +56,13 @@ required-features = ["crossterm"]
 name = "variable"
 required-features = ["crossterm"]
 
+[workspace]
+members = [
+    "bench",
+]
+
+[profile.bench]
+lto = "thin"
+
 [package.metadata.docs.rs]
 all-features = true
