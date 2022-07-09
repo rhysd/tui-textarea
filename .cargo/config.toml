@@ -1,0 +1,3 @@
+[alias]
+watch-check = ["watch", "-x", "check --examples --all-features"]
+watch-test = ["watch", "-x", "test --all-features -- --skip=src/lib.rs", "-w", "src"]
