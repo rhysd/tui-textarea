@@ -6,6 +6,8 @@
 mod cursor;
 mod history;
 mod input;
+#[cfg(feature = "search")]
+mod search;
 mod textarea;
 mod word;
 

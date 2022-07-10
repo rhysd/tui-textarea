@@ -1,9 +1,9 @@
 use crate::cursor::CursorMove;
 use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
-use crate::word::{find_word_end_forward, find_word_start_backward};
 #[cfg(feature = "search")]
-use regex::Regex;
+use crate::search::Search;
+use crate::word::{find_word_end_forward, find_word_start_backward};
 use std::borrow::Cow;
 use std::cmp;
 use std::sync::atomic::{AtomicU16, Ordering};
@@ -87,9 +87,7 @@ pub struct TextArea<'a> {
     cursor_style: Style,
     yank: String,
     #[cfg(feature = "search")]
-    search_pat: Option<Regex>,
-    #[cfg(feature = "search")]
-    search_style: Style,
+    search: Search,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -185,9 +183,7 @@ impl<'a> TextArea<'a> {
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
             yank: String::new(),
             #[cfg(feature = "search")]
-            search_pat: None,
-            #[cfg(feature = "search")]
-            search_style: Style::default().bg(tui::style::Color::Blue),
+            search: Search::default(),
         }
     }
 
@@ -1007,11 +1003,11 @@ impl<'a> TextArea<'a> {
         };
 
         #[cfg(feature = "search")]
-        if let Some(pat) = &self.search_pat {
-            for m in pat.find_iter(line) {
-                if m.start() != m.end() {
-                    boundaries.push((Boundary::Search(self.search_style), m.start()));
-                    boundaries.push((Boundary::End, m.end()));
+        if let Some(matches) = self.search.matches(line) {
+            for (start, end) in matches {
+                if start != end {
+                    boundaries.push((Boundary::Search(self.search.style), start));
+                    boundaries.push((Boundary::End, end));
                 }
             }
         }
@@ -1452,13 +1448,7 @@ impl<'a> TextArea<'a> {
     /// ```
     #[cfg(feature = "search")]
     pub fn set_search_pattern(&mut self, query: impl AsRef<str>) -> Result<(), regex::Error> {
-        let query = query.as_ref();
-        match &self.search_pat {
-            Some(r) if r.as_str() == query => {}
-            _ if query.is_empty() => self.search_pat = None,
-            _ => self.search_pat = Some(Regex::new(query)?),
-        }
-        Ok(())
+        self.search.set_pattern(query.as_ref())
     }
 
     /// Get a regular expression which was set by [`TextArea::set_search_pattern`]. When no text search is ongoing, this
@@ -1475,8 +1465,8 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.search_pattern().unwrap().as_str(), "hello+");
     /// ```
     #[cfg(feature = "search")]
-    pub fn search_pattern(&self) -> Option<&Regex> {
-        self.search_pat.as_ref()
+    pub fn search_pattern(&self) -> Option<&regex::Regex> {
+        self.search.pat.as_ref()
     }
 
     /// Search the pattern set by [`TextArea::set_search_pattern`] forward and move the cursor to the next match
@@ -1518,58 +1508,12 @@ impl<'a> TextArea<'a> {
     /// ```
     #[cfg(feature = "search")]
     pub fn search_forward(&mut self, match_cursor: bool) -> bool {
-        let pat = if let Some(pat) = &self.search_pat {
-            pat
+        if let Some(cursor) = self.search.forward(&self.lines, self.cursor, match_cursor) {
+            self.cursor = cursor;
+            true
         } else {
-            return false;
-        };
-        let (row, col) = self.cursor;
-        let current_line = &self.lines[row];
-
-        // Search current line after cursor
-        let start_col = if match_cursor { col } else { col + 1 };
-        if let Some((i, _)) = current_line.char_indices().nth(start_col) {
-            if let Some(m) = pat.find_at(current_line, i) {
-                let col = start_col + current_line[i..m.start()].chars().count();
-                self.cursor = (row, col);
-                return true;
-            }
+            false
         }
-
-        // Search lines after cursor
-        for (i, line) in self.lines[row + 1..].iter().enumerate() {
-            if let Some(m) = pat.find(line) {
-                let col = line[..m.start()].chars().count();
-                self.cursor = (row + 1 + i, col);
-                return true;
-            }
-        }
-
-        // Search lines before cursor (wrap)
-        for (i, line) in self.lines[..row].iter().enumerate() {
-            if let Some(m) = pat.find(line) {
-                let col = line[..m.start()].chars().count();
-                self.cursor = (i, col);
-                return true;
-            }
-        }
-
-        // Search current line before cursor
-        let col_idx = current_line
-            .char_indices()
-            .nth(col)
-            .map(|(i, _)| i)
-            .unwrap_or(current_line.len());
-        if let Some(m) = pat.find(current_line) {
-            let i = m.start();
-            if i <= col_idx {
-                let col = current_line[..i].chars().count();
-                self.cursor = (row, col);
-                return true;
-            }
-        }
-
-        false
     }
 
     /// Search the pattern set by [`TextArea::set_search_pattern`] backward and move the cursor to the next match
@@ -1607,62 +1551,12 @@ impl<'a> TextArea<'a> {
     /// ```
     #[cfg(feature = "search")]
     pub fn search_back(&mut self, match_cursor: bool) -> bool {
-        let pat = if let Some(pat) = &self.search_pat {
-            pat
+        if let Some(cursor) = self.search.back(&self.lines, self.cursor, match_cursor) {
+            self.cursor = cursor;
+            true
         } else {
-            return false;
-        };
-        let (row, col) = self.cursor;
-        let current_line = &self.lines[row];
-
-        // Search current line before cursor
-        if col > 0 || match_cursor {
-            let start_col = if match_cursor { col } else { col - 1 };
-            if let Some((i, _)) = current_line.char_indices().nth(start_col) {
-                if let Some(m) = pat
-                    .find_iter(current_line)
-                    .take_while(|m| m.start() <= i)
-                    .last()
-                {
-                    let col = current_line[..m.start()].chars().count();
-                    self.cursor = (row, col);
-                    return true;
-                }
-            }
+            false
         }
-
-        // Search lines before cursor
-        for (i, line) in self.lines[..row].iter().enumerate().rev() {
-            if let Some(m) = pat.find_iter(line).last() {
-                let col = line[..m.start()].chars().count();
-                self.cursor = (i, col);
-                return true;
-            }
-        }
-
-        // Search lines after cursor (wrap)
-        for (i, line) in self.lines[row + 1..].iter().enumerate().rev() {
-            if let Some(m) = pat.find_iter(line).last() {
-                let col = line[..m.start()].chars().count();
-                self.cursor = (row + 1 + i, col);
-                return true;
-            }
-        }
-
-        // Search current line after cursor
-        if let Some((i, _)) = current_line.char_indices().nth(col) {
-            if let Some(m) = pat
-                .find_iter(current_line)
-                .skip_while(|m| m.start() < i)
-                .last()
-            {
-                let col = col + current_line[i..m.start()].chars().count();
-                self.cursor = (row, col);
-                return true;
-            }
-        }
-
-        false
     }
 
     /// Get the text style at matches of text search. The default style is colored with blue in background.
@@ -1677,7 +1571,7 @@ impl<'a> TextArea<'a> {
     /// ```
     #[cfg(feature = "search")]
     pub fn search_style(&self) -> Style {
-        self.search_style
+        self.search.style
     }
 
     /// Set the text style at matches of text search. The default style is colored with blue in background.
@@ -1694,7 +1588,7 @@ impl<'a> TextArea<'a> {
     /// ```
     #[cfg(feature = "search")]
     pub fn set_search_style(&mut self, style: Style) {
-        self.search_style = style;
+        self.search.style = style;
     }
 }
 
