@@ -4,11 +4,13 @@
 #![doc = include_str!("../README.md")]
 
 mod cursor;
+mod highlight;
 mod history;
 mod input;
 #[cfg(feature = "search")]
 mod search;
 mod textarea;
+mod util;
 mod word;
 
 pub use cursor::CursorMove;

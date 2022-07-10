@@ -1,57 +1,17 @@
 use crate::cursor::CursorMove;
+use crate::highlight::LineHighlighter;
 use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
 #[cfg(feature = "search")]
 use crate::search::Search;
+use crate::util::{num_digits, spaces};
 use crate::word::{find_word_end_forward, find_word_start_backward};
-use std::borrow::Cow;
-use std::cmp;
 use std::sync::atomic::{AtomicU16, Ordering};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
 use tui::style::{Modifier, Style};
-use tui::text::{Span, Spans, Text};
+use tui::text::{Spans, Text};
 use tui::widgets::{Block, Paragraph, Widget};
-
-fn spaces(size: u8) -> &'static str {
-    const SPACES: &str = "                                                                                                                                                                                                                                                                ";
-    &SPACES[..size as usize]
-}
-
-fn num_digits(i: usize) -> u8 {
-    f64::log10(i as f64) as u8 + 1
-}
-
-// Highlight boundary in line
-enum Boundary {
-    Cursor(Style),
-    #[cfg(feature = "search")]
-    Search(Style),
-    End,
-}
-
-impl Boundary {
-    fn cmp(&self, other: &Boundary) -> cmp::Ordering {
-        fn rank(b: &Boundary) -> u8 {
-            match b {
-                Boundary::Cursor(_) => 2,
-                #[cfg(feature = "search")]
-                Boundary::Search(_) => 1,
-                Boundary::End => 0,
-            }
-        }
-        rank(self).cmp(&rank(other))
-    }
-
-    fn style(&self) -> Option<Style> {
-        match self {
-            Boundary::Cursor(s) => Some(*s),
-            #[cfg(feature = "search")]
-            Boundary::Search(s) => Some(*s),
-            Boundary::End => None,
-        }
-    }
-}
 
 /// A type to manage state of textarea.
 ///
@@ -956,103 +916,23 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    fn replace_tabs<'b>(&self, s: &'b str) -> Cow<'b, str> {
-        let tab = spaces(self.tab_len);
-        let mut buf = String::new();
-        for (i, c) in s.char_indices() {
-            if buf.is_empty() {
-                if c == '\t' {
-                    buf.reserve(s.len());
-                    buf.push_str(&s[..i]);
-                    buf.push_str(tab);
-                }
-            } else if c == '\t' {
-                buf.push_str(tab);
-            } else {
-                buf.push(c);
-            }
-        }
-        if buf.is_empty() {
-            Cow::Borrowed(s)
-        } else {
-            Cow::Owned(buf)
-        }
-    }
-
-    fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Vec<Span<'b>> {
-        let mut spans = vec![];
+    fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Spans<'b> {
+        let mut hl = LineHighlighter::new(line, self.cursor_style, self.tab_len);
 
         if let Some(style) = self.line_number_style {
-            let pad = spaces(lnum_len - num_digits(row + 1) + 1);
-            spans.push(Span::styled(format!("{}{} ", pad, row + 1), style));
+            hl.line_number(row, lnum_len, style);
         }
 
-        let mut boundaries = vec![]; // TODO: Consider smallvec
-        let mut cursor_at_end = false;
-
-        let style_begin = if row == self.cursor.0 {
-            if let Some((start, c)) = line.char_indices().nth(self.cursor.1) {
-                boundaries.push((Boundary::Cursor(self.cursor_style), start));
-                boundaries.push((Boundary::End, start + c.len_utf8()));
-            } else {
-                cursor_at_end = true;
-            }
-            self.cursor_line_style
-        } else {
-            Style::default()
-        };
+        if row == self.cursor.0 {
+            hl.cursor_line(self.cursor.1, self.cursor_line_style);
+        }
 
         #[cfg(feature = "search")]
         if let Some(matches) = self.search.matches(line) {
-            for (start, end) in matches {
-                if start != end {
-                    boundaries.push((Boundary::Search(self.search.style), start));
-                    boundaries.push((Boundary::End, end));
-                }
-            }
+            hl.search(matches, self.search.style);
         }
 
-        if boundaries.is_empty() {
-            spans.push(Span::styled(self.replace_tabs(line), style_begin));
-            if cursor_at_end {
-                spans.push(Span::styled(" ", self.cursor_style));
-            }
-            return spans;
-        }
-
-        boundaries.sort_unstable_by(|(l, i), (r, j)| match i.cmp(j) {
-            cmp::Ordering::Equal => l.cmp(r),
-            o => o,
-        });
-
-        let mut boundaries = boundaries.into_iter();
-        let mut style = style_begin;
-        let mut start = 0;
-        let mut stack = vec![];
-
-        loop {
-            if let Some((next_boundary, end)) = boundaries.next() {
-                if start < end {
-                    spans.push(Span::styled(self.replace_tabs(&line[start..end]), style));
-                }
-
-                style = if let Some(s) = next_boundary.style() {
-                    stack.push(style);
-                    s
-                } else {
-                    stack.pop().unwrap_or(style_begin)
-                };
-                start = end;
-            } else {
-                if start != line.len() {
-                    spans.push(Span::styled(self.replace_tabs(&line[start..]), style));
-                }
-                if cursor_at_end {
-                    spans.push(Span::styled(" ", self.cursor_style));
-                }
-                return spans;
-            }
-        }
+        hl.into_spans()
     }
 
     /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this
@@ -1085,8 +965,7 @@ impl<'a> TextArea<'a> {
         let mut lines = Vec::with_capacity(self.lines.len());
         let lnum_len = num_digits(self.lines.len());
         for (i, l) in self.lines.iter().map(String::as_str).enumerate() {
-            let spans = self.line_spans(l, i, lnum_len);
-            lines.push(Spans::from(spans));
+            lines.push(self.line_spans(l, i, lnum_len));
         }
 
         let inner = Paragraph::new(Text::from(lines)).style(self.style);
