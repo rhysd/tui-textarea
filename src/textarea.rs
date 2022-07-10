@@ -632,7 +632,8 @@ impl<'a> TextArea<'a> {
             return false;
         }
 
-        let row = self.cursor.0;
+        let cursor_before = self.cursor;
+        let row = cursor_before.0;
         let line = &mut self.lines[row];
         if let Some((i, _)) = line.char_indices().nth(col) {
             let bytes = line[i..]
@@ -644,7 +645,7 @@ impl<'a> TextArea<'a> {
             line.replace_range(i..i + bytes, "");
 
             self.cursor = (row, col);
-            self.push_history(EditKind::Remove(removed.clone(), i), (row, col));
+            self.push_history(EditKind::Remove(removed.clone(), i), cursor_before);
             self.yank = removed;
             true
         } else {
