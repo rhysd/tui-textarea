@@ -9,7 +9,7 @@ license = "MIT"
 bench = false
 
 [dependencies]
-tui-textarea = { path = "..", default-features = false }
+tui-textarea = { path = "..", default-features = false, features = ["search"] }
 tui = { version = "0.18", default-features = false }
 
 [dev-dependencies]
@@ -18,4 +18,8 @@ rand = { version = "0.8.5", features = ["small_rng"] }
 
 [[bench]]
 name = "insert"
+harness = false
+
+[[bench]]
+name = "search"
 harness = false

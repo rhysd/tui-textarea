@@ -6,6 +6,21 @@ use tui::backend::Backend;
 use tui::buffer::Cell;
 use tui::layout::Rect;
 use tui::Terminal;
+use tui_textarea::TextArea;
+
+pub const LOREM: &[&str] = &[
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do",
+    "eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim",
+    "ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut",
+    "aliquip ex ea commodo consequat. Duis aute irure dolor in",
+    "reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla",
+    "pariatur. Excepteur sint occaecat cupidatat non proident, sunt in",
+    "culpa qui officia deserunt mollit anim id est laborum.",
+];
+pub const SEED: [u8; 32] = [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+    27, 28, 29, 30, 31, 32,
+];
 
 pub struct DummyBackend {
     width: u16,
@@ -68,4 +83,15 @@ impl Backend for DummyBackend {
 
 pub fn dummy_terminal() -> Terminal<DummyBackend> {
     Terminal::new(DummyBackend::default()).unwrap()
+}
+
+pub trait TerminalExt {
+    fn draw_textarea(&mut self, textarea: &TextArea<'_>);
+}
+
+impl TerminalExt for Terminal<DummyBackend> {
+    fn draw_textarea(&mut self, textarea: &TextArea<'_>) {
+        self.draw(|f| f.render_widget(textarea.widget(), f.size()))
+            .unwrap();
+    }
 }
