@@ -1,3 +1,12 @@
+<a name="v0.1.4"></a>
+# [v0.1.4](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.4) - 10 Jul 2022
+
+- Fix the cursor line style was not applied when a cursor is at the end of line.
+- Fix the cursor position after undoing the modification by 'delete until head of line' (`^J` by default).
+
+[Changes][v0.1.4]
+
+
 <a name="v0.1.3"></a>
 # [v0.1.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.3) - 08 Jul 2022
 
@@ -72,6 +81,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.1.4]: https://github.com/rhysd/tui-textarea/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/rhysd/tui-textarea/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/rhysd/tui-textarea/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/rhysd/tui-textarea/compare/v0.1.0...v0.1.1
