@@ -1,6 +1,6 @@
 [package]
 name = "tui-textarea"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["rhysd <lin90162@yahoo.co.jp>"]
 description = """
