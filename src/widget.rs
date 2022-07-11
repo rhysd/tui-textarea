@@ -1,6 +1,6 @@
 use crate::textarea::TextArea;
 use crate::util::num_digits;
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
 use tui::text::Text;
@@ -15,18 +15,17 @@ use tui::widgets::{Block, Paragraph, Widget};
 // manage states of textarea instances separately.
 // https://docs.rs/tui/latest/tui/terminal/struct.Frame.html#method.render_stateful_widget
 #[derive(Default)]
-pub struct ScrollTop(AtomicU16, AtomicU16);
+pub struct ScrollTop(AtomicU32);
 
 impl ScrollTop {
     fn load(&self) -> (u16, u16) {
-        let row = self.0.load(Ordering::Relaxed);
-        let col = self.1.load(Ordering::Relaxed);
-        (row, col)
+        let u = self.0.load(Ordering::Relaxed);
+        ((u >> 16) as u16, u as u16)
     }
 
     fn store(&self, row: u16, col: u16) {
-        self.0.store(row, Ordering::Relaxed);
-        self.1.store(col, Ordering::Relaxed);
+        let u = ((row as u32) << 16) | col as u32;
+        self.0.store(u, Ordering::Relaxed);
     }
 }
 
