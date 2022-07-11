@@ -4,14 +4,12 @@ use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
 #[cfg(feature = "search")]
 use crate::search::Search;
-use crate::util::{num_digits, spaces};
+use crate::util::spaces;
+use crate::widget::{Renderer, ScrollTop};
 use crate::word::{find_word_end_forward, find_word_start_backward};
-use std::sync::atomic::{AtomicU16, Ordering};
-use tui::buffer::Buffer;
-use tui::layout::Rect;
 use tui::style::{Modifier, Style};
-use tui::text::{Spans, Text};
-use tui::widgets::{Block, Paragraph, Widget};
+use tui::text::Spans;
+use tui::widgets::{Block, Widget};
 
 /// A type to manage state of textarea.
 ///
@@ -43,7 +41,7 @@ pub struct TextArea<'a> {
     history: History,
     cursor_line_style: Style,
     line_number_style: Option<Style>,
-    scroll_top: (AtomicU16, AtomicU16),
+    pub(crate) scroll_top: ScrollTop,
     cursor_style: Style,
     yank: String,
     #[cfg(feature = "search")]
@@ -139,7 +137,7 @@ impl<'a> TextArea<'a> {
             history: History::new(50),
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
             line_number_style: None,
-            scroll_top: (AtomicU16::new(0), AtomicU16::new(0)),
+            scroll_top: ScrollTop::default(),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
             yank: String::new(),
             #[cfg(feature = "search")]
@@ -916,7 +914,7 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Spans<'b> {
+    pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Spans<'b> {
         let mut hl = LineHighlighter::new(line, self.cursor_style, self.tab_len);
 
         if let Some(style) = self.line_number_style {
@@ -962,19 +960,7 @@ impl<'a> TextArea<'a> {
     /// }
     /// ```
     pub fn widget(&'a self) -> impl Widget + 'a {
-        let mut lines = Vec::with_capacity(self.lines.len());
-        let lnum_len = num_digits(self.lines.len());
-        for (i, l) in self.lines.iter().map(String::as_str).enumerate() {
-            lines.push(self.line_spans(l, i, lnum_len));
-        }
-
-        let inner = Paragraph::new(Text::from(lines)).style(self.style);
-        Renderer {
-            scroll_top: &self.scroll_top,
-            cursor: (self.cursor.0 as u16, self.cursor.1 as u16),
-            block: self.block.clone(),
-            inner,
-        }
+        Renderer::new(self)
     }
 
     /// Set the style of textarea. By default, textarea is not styled.
@@ -1468,59 +1454,5 @@ impl<'a> TextArea<'a> {
     #[cfg(feature = "search")]
     pub fn set_search_style(&mut self, style: Style) {
         self.search.style = style;
-    }
-}
-
-struct Renderer<'a> {
-    // &mut 'a (u16, u16) is not available since TextAreaWidget instance totally takes over the ownership of TextArea
-    // instance. In the case, the TextArea instance cannot be accessed from any other objects since it is mutablly
-    // borrowed.
-    //
-    // `tui::terminal::Frame::render_stateful_widget` would be an assumed way to render a stateful widget. But at this
-    // point we stick with using `tui::terminal::Frame::render_widget` because it is simpler API. Users don't need to
-    // manage states of textarea instances separately.
-    // https://docs.rs/tui/latest/tui/terminal/struct.Frame.html#method.render_stateful_widget
-    scroll_top: &'a (AtomicU16, AtomicU16),
-    cursor: (u16, u16),
-    block: Option<Block<'a>>,
-    inner: Paragraph<'a>,
-}
-
-impl<'a> Widget for Renderer<'a> {
-    fn render(mut self, area: Rect, buf: &mut Buffer) {
-        let inner_area = if let Some(b) = self.block.take() {
-            let area = b.inner(area);
-            self.inner = self.inner.block(b);
-            area
-        } else {
-            area
-        };
-
-        let top_row = self.scroll_top.0.load(Ordering::Relaxed);
-        let top_col = self.scroll_top.1.load(Ordering::Relaxed);
-
-        fn next_scroll_top(prev_top: u16, cursor: u16, width: u16) -> u16 {
-            if cursor < prev_top {
-                cursor
-            } else if prev_top + width <= cursor {
-                cursor + 1 - width
-            } else {
-                prev_top
-            }
-        }
-
-        let row = next_scroll_top(top_row, self.cursor.0, inner_area.height);
-        let col = next_scroll_top(top_col, self.cursor.1, inner_area.width);
-
-        let scroll = (row, col);
-        if scroll != (0, 0) {
-            self.inner = self.inner.scroll(scroll);
-        }
-
-        // Store scroll top position for rendering on the next tick
-        self.scroll_top.0.store(row, Ordering::Relaxed);
-        self.scroll_top.1.store(col, Ordering::Relaxed);
-
-        self.inner.render(area, buf);
     }
 }

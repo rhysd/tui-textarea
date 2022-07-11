@@ -11,6 +11,7 @@ mod input;
 mod search;
 mod textarea;
 mod util;
+mod widget;
 mod word;
 
 pub use cursor::CursorMove;
