@@ -31,6 +31,7 @@ use tui::widgets::{Block, Widget};
 /// // Get lines as String.
 /// println!("Lines: {:?}", textarea.lines());
 /// ```
+#[derive(Clone)]
 pub struct TextArea<'a> {
     lines: Vec<String>,
     block: Option<Block<'a>>,

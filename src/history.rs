@@ -54,6 +54,7 @@ impl EditKind {
     }
 }
 
+#[derive(Clone)]
 pub struct Edit {
     kind: EditKind,
     cursor_before: (usize, usize),
@@ -92,6 +93,7 @@ impl Edit {
     }
 }
 
+#[derive(Clone)]
 pub struct History {
     index: usize,
     max_items: usize,

@@ -17,6 +17,13 @@ use tui::widgets::{Block, Paragraph, Widget};
 #[derive(Default)]
 pub struct ScrollTop(AtomicU32);
 
+impl Clone for ScrollTop {
+    fn clone(&self) -> Self {
+        let u = self.0.load(Ordering::Relaxed);
+        ScrollTop(AtomicU32::new(u))
+    }
+}
+
 impl ScrollTop {
     fn load(&self) -> (u16, u16) {
         let u = self.0.load(Ordering::Relaxed);

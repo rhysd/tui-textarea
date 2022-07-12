@@ -1,6 +1,7 @@
 use regex::Regex;
 use tui::style::{Color, Style};
 
+#[derive(Clone)]
 pub struct Search {
     pub pat: Option<Regex>,
     pub style: Style,
