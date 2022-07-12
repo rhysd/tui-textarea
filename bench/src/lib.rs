@@ -31,8 +31,8 @@ pub struct DummyBackend {
 impl Default for DummyBackend {
     fn default() -> Self {
         Self {
-            width: 80,
-            height: 24,
+            width: 40,
+            height: 12,
             cursor: (0, 0),
         }
     }
