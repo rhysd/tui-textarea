@@ -27,3 +27,7 @@ harness = false
 [[bench]]
 name = "cursor"
 harness = false
+
+[[bench]]
+name = "delete"
+harness = false
