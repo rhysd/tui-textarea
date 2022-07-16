@@ -10,10 +10,8 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-arbitrary = { version = "1", features = ["derive"] }
-
-[dependencies.tui-textarea]
-path = ".."
+arbitrary = "1"
+tui-textarea = { path = "..", features = ["search", "arbitrary"] }
 
 # Prevent this from interfering with workspaces
 [workspace]

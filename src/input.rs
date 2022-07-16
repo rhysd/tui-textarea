@@ -1,3 +1,5 @@
+#[cfg(feature = "arbitrary")]
+use arbitrary::Arbitrary;
 #[cfg(feature = "crossterm")]
 use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEvent, KeyModifiers};
 #[cfg(feature = "termion")]
@@ -6,6 +8,7 @@ use termion::event::{Event as TerimonEvent, Key as TermionKey};
 /// Backend-agnostic key input kind.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub enum Key {
     /// Normal letter key input.
     Char(char),
@@ -62,6 +65,7 @@ pub enum Key {
 /// });
 /// ```
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct Input {
     /// Typed key.
     pub key: Key,
