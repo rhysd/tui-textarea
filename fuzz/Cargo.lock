@@ -290,12 +290,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "tui-textarea-bench"
+version = "0.0.0"
+dependencies = [
+ "tui",
+ "tui-textarea",
+]
+
+[[package]]
 name = "tui-textarea-fuzz"
 version = "0.0.0"
 dependencies = [
  "arbitrary",
  "libfuzzer-sys",
  "tui-textarea",
+ "tui-textarea-bench",
 ]
 
 [[package]]

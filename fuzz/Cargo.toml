@@ -12,6 +12,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 arbitrary = "1"
 tui-textarea = { path = "..", features = ["search", "arbitrary"] }
+tui-textarea-bench = { path = "../bench" }
 
 # Prevent this from interfering with workspaces
 [workspace]

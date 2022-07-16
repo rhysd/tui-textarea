@@ -29,6 +29,7 @@ pub struct DummyBackend {
 }
 
 impl Default for DummyBackend {
+    #[inline]
     fn default() -> Self {
         Self {
             width: 40,
@@ -39,6 +40,7 @@ impl Default for DummyBackend {
 }
 
 impl Backend for DummyBackend {
+    #[inline]
     fn draw<'a, I>(&mut self, _content: I) -> Result<(), io::Error>
     where
         I: Iterator<Item = (u16, u16, &'a Cell)>,
@@ -46,27 +48,33 @@ impl Backend for DummyBackend {
         Ok(())
     }
 
+    #[inline]
     fn hide_cursor(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
 
+    #[inline]
     fn show_cursor(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
 
+    #[inline]
     fn get_cursor(&mut self) -> Result<(u16, u16), io::Error> {
         Ok(self.cursor)
     }
 
+    #[inline]
     fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
         self.cursor = (x, y);
         Ok(())
     }
 
+    #[inline]
     fn clear(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
 
+    #[inline]
     fn size(&self) -> Result<Rect, io::Error> {
         Ok(Rect {
             x: 0,
@@ -76,11 +84,13 @@ impl Backend for DummyBackend {
         })
     }
 
+    #[inline]
     fn flush(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
 }
 
+#[inline]
 pub fn dummy_terminal() -> Terminal<DummyBackend> {
     Terminal::new(DummyBackend::default()).unwrap()
 }
@@ -90,6 +100,7 @@ pub trait TerminalExt {
 }
 
 impl TerminalExt for Terminal<DummyBackend> {
+    #[inline]
     fn draw_textarea(&mut self, textarea: &TextArea<'_>) {
         self.draw(|f| f.render_widget(textarea.widget(), f.size()))
             .unwrap();
