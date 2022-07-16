@@ -63,21 +63,25 @@ fn random_lorem(repeat: usize) -> usize {
 }
 
 fn append(c: &mut Criterion) {
-    c.bench_function("append::1_lorem", |b| b.iter(|| black_box(append_lorem(1))));
-    c.bench_function("append::10_lorem", |b| {
+    c.bench_function("insert::append::1_lorem", |b| {
+        b.iter(|| black_box(append_lorem(1)))
+    });
+    c.bench_function("insert::append::10_lorem", |b| {
         b.iter(|| black_box(append_lorem(10)))
     });
-    c.bench_function("append::50_lorem", |b| {
+    c.bench_function("insert::append::50_lorem", |b| {
         b.iter(|| black_box(append_lorem(50)))
     });
 }
 
 fn random(c: &mut Criterion) {
-    c.bench_function("random::1_lorem", |b| b.iter(|| black_box(random_lorem(1))));
-    c.bench_function("random::10_lorem", |b| {
+    c.bench_function("insert::random::1_lorem", |b| {
+        b.iter(|| black_box(random_lorem(1)))
+    });
+    c.bench_function("insert::random::10_lorem", |b| {
         b.iter(|| black_box(random_lorem(10)))
     });
-    c.bench_function("random::50_lorem", |b| {
+    c.bench_function("insert::random::50_lorem", |b| {
         b.iter(|| black_box(random_lorem(50)))
     });
 }
