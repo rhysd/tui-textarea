@@ -1,10 +1,11 @@
 use crate::textarea::TextArea;
 use crate::util::num_digits;
+use std::cmp;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
 use tui::text::Text;
-use tui::widgets::{Block, Paragraph, Widget};
+use tui::widgets::{Paragraph, Widget};
 
 // &mut 'a (u16, u16) is not available since TextAreaWidget instance totally takes over the ownership of TextArea
 // instance. In the case, the TextArea instance cannot be accessed from any other objects since it is mutablly
@@ -36,40 +37,30 @@ impl ScrollTop {
     }
 }
 
-pub struct Renderer<'a> {
-    scroll_top: &'a ScrollTop,
-    cursor: (u16, u16),
-    block: Option<Block<'a>>,
-    inner: Paragraph<'a>,
-}
+pub struct Renderer<'a>(&'a TextArea<'a>);
 
 impl<'a> Renderer<'a> {
     pub fn new(textarea: &'a TextArea<'a>) -> Self {
-        let lnum_len = num_digits(textarea.lines().len());
-        let lines: Vec<_> = textarea
-            .lines()
-            .iter()
-            .map(String::as_str)
-            .enumerate()
-            .map(|(row, line)| textarea.line_spans(line, row, lnum_len))
-            .collect();
-        let inner = Paragraph::new(Text::from(lines)).style(textarea.style());
-        let cursor = textarea.cursor();
-        Self {
-            scroll_top: &textarea.scroll_top,
-            cursor: (cursor.0 as u16, cursor.1 as u16),
-            block: textarea.block().cloned(),
-            inner,
+        Self(textarea)
+    }
+
+    #[inline]
+    fn text(&self, top_row: usize, height: usize) -> Text<'a> {
+        let lines_len = self.0.lines().len();
+        let lnum_len = num_digits(lines_len);
+        let bottom_row = cmp::min(top_row + height, lines_len);
+        let mut lines = Vec::with_capacity(bottom_row - top_row);
+        for (i, line) in self.0.lines()[top_row..bottom_row].iter().enumerate() {
+            lines.push(self.0.line_spans(line.as_str(), top_row + i, lnum_len));
         }
+        Text::from(lines)
     }
 }
 
 impl<'a> Widget for Renderer<'a> {
-    fn render(mut self, area: Rect, buf: &mut Buffer) {
-        let inner_area = if let Some(b) = self.block.take() {
-            let area = b.inner(area);
-            self.inner = self.inner.block(b);
-            area
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let inner_area = if let Some(b) = self.0.block() {
+            b.inner(area)
         } else {
             area
         };
@@ -84,18 +75,23 @@ impl<'a> Widget for Renderer<'a> {
             }
         }
 
-        let (top_row, top_col) = self.scroll_top.load();
-        let row = next_scroll_top(top_row, self.cursor.0, inner_area.height);
-        let col = next_scroll_top(top_col, self.cursor.1, inner_area.width);
+        let cursor = self.0.cursor();
+        let (top_row, top_col) = self.0.scroll_top.load();
+        let top_row = next_scroll_top(top_row, cursor.0 as u16, inner_area.height);
+        let top_col = next_scroll_top(top_col, cursor.1 as u16, inner_area.width);
 
-        let scroll = (row, col);
-        if scroll != (0, 0) {
-            self.inner = self.inner.scroll(scroll);
+        let text = self.text(top_row as usize, inner_area.height as usize);
+        let mut inner = Paragraph::new(text).style(self.0.style());
+        if let Some(b) = self.0.block() {
+            inner = inner.block(b.clone());
+        }
+        if top_col != 0 {
+            inner = inner.scroll((0, top_col));
         }
 
         // Store scroll top position for rendering on the next tick
-        self.scroll_top.store(row, col);
+        self.0.scroll_top.store(top_row, top_col);
 
-        self.inner.render(area, buf);
+        inner.render(area, buf);
     }
 }
