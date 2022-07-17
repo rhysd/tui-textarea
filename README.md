@@ -458,6 +458,13 @@ loop {
                 textarea.move_cursor(CursorMove::Home);
                 mode = Mode::Insert;
             }
+            Input { key: Key::Char('/'), .. } => {
+                let pat = ...;
+                textarea.set_search_pattern(pat)?;
+            }
+            Input { key: Key::Esc, .. } => textarea.set_search_pattern("").unwrap(),
+            Input { key: Key::Char('n'), .. } => textarea.search_forward(),
+            Input { key: Key::Char('N'), .. } => textarea.search_back(),
             _ => {},
         },
         Mode::Insert => match read()?.into() {
@@ -593,6 +600,15 @@ loop {
 ```
 
 See [`split` example](./examples/split.rs) and [`editor` example](./examples/editor.rs) for working example.
+
+## Versioning
+
+This crate is not reaching v1.0.0 yet. There is no plan to bump the major version for now. Current versioning policy is
+as follows:
+
+- Major: Fixed to 0
+- Minor: Bump on breaking change
+- Patch: Bump on new feature or bug fix
 
 ## Contributing to tui-textarea
 
