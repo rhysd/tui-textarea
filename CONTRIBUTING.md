@@ -33,15 +33,17 @@ cargo clippy --all-features --examples
 cargo fmt -- --check
 ```
 
-To run fuzzer:
+If you use [cargo-watch][], `cargo watch-check` alias is useful to run checks automatically on writing to a file.
 
-[cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) is necessary.
+## Running a fuzzer
+
+To run fuzzing tests, [cargo-fuzz][] is necessary.
 
 ```sh
 cargo +nightly fuzz run edit
 ```
 
-## Run benchmark
+## Running benchmark suites
 
 Benchmarks are available using [Criterion.rs][criterion].
 
@@ -56,4 +58,6 @@ cargo bench --benches
 
 See [README in bench/](./bench/README.md) for more details.
 
+[cargo-watch]: https://crates.io/crates/cargo-watch
+[cargo-fuzz]: https://github.com/rust-fuzz/cargo-fuzz
 [criterion]: https://github.com/bheisler/criterion.rs
