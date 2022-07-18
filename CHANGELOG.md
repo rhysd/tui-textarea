@@ -1,3 +1,16 @@
+<a name="v0.1.5"></a>
+# [v0.1.5](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.5) - 18 Jul 2022
+
+- Improve performance to render a textarea widget. When number of lines increases, now rendering lines is **about 2~8x faster** according to [our benchmark suites](https://github.com/rhysd/tui-textarea/tree/main/bench). See [the commit](https://github.com/rhysd/tui-textarea/commit/4e5b684baf4401337bb2e30fd663fa967321f1c1) for more details of the benchmark results. This was archived by managing a vertical scroll position by ourselves instead of scroll handling by `Paragraph`. Previously, a cost of rendering lines was `O(n)` where `n` was number of all lines. Now the cost is `O(1)`.
+- Implement `Clone` for `TextArea` so that textarea instances can be copied easily. It is useful when you create multiple textarea instances with the same configuration. Create a first `TextArea` instance with configuring blocks and styles, then simply clone it.
+- Add `arbitrary` feature which is disabled by default. By enabling it, `Input`, `Key` and `CursorMove` can be randomly generated via [arbitrary](https://crates.io/crates/arbitrary) crate. This feature aims to be used by fuzzing tests.
+- Add many benchmark suites to track performance; insert/delete lines/characters, text search, moving a cursor.
+- Improve fuzzing tests to include rendering a textarea to a dummy terminal backend and moving a cursor randomly.
+- Refactor `TextArea` implementation. The implementation of text search was separated to `src/search.rs`. The implementation of highlighting was separated to `src/highlight.rs`. And the implementation of widget rendered by tui-rs was separated to `src/widget.rs`. There is no public API change by these refactorings.
+
+[Changes][v0.1.5]
+
+
 <a name="v0.1.4"></a>
 # [v0.1.4](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.4) - 10 Jul 2022
 
@@ -81,6 +94,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.1.5]: https://github.com/rhysd/tui-textarea/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/rhysd/tui-textarea/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/rhysd/tui-textarea/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/rhysd/tui-textarea/compare/v0.1.1...v0.1.2
