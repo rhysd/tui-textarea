@@ -1,8 +1,11 @@
 use crate::word::{find_word_start_backward, find_word_start_forward};
+#[cfg(feature = "arbitrary")]
+use arbitrary::Arbitrary;
 use std::cmp;
 
 /// Specify how to move the cursor.
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub enum CursorMove {
     /// Move cursor forward by one character. When the cursor is at the end of line, it moves to the head of next line.
     /// ```
