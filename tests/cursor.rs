@@ -66,3 +66,61 @@ fn test_back() {
         assert_eq!(t.cursor(), pos);
     }
 }
+
+#[test]
+fn test_up() {
+    let mut t = TextArea::from(["abc", "def", "ghi"]);
+
+    for col in 0..=3 {
+        let mut row = 2;
+
+        t.move_cursor(CursorMove::Jump(2 as u16, col as u16));
+        assert_eq!(t.cursor(), (row, col));
+
+        while row > 0 {
+            t.move_cursor(CursorMove::Up);
+            row -= 1;
+            assert_eq!(t.cursor(), (row, col));
+        }
+    }
+}
+
+#[test]
+fn test_up_trim() {
+    let mut t = TextArea::from(["", "a", "bcd", "efgh"]);
+    t.move_cursor(CursorMove::Jump(3, 3));
+
+    for expected in [(2, 3), (1, 1), (0, 0)] {
+        t.move_cursor(CursorMove::Up);
+        assert_eq!(t.cursor(), expected);
+    }
+}
+
+#[test]
+fn test_down() {
+    let mut t = TextArea::from(["abc", "def", "ghi"]);
+
+    for col in 0..=3 {
+        let mut row = 0;
+
+        t.move_cursor(CursorMove::Jump(0, col as u16));
+        assert_eq!(t.cursor(), (row, col));
+
+        while row < 2 {
+            t.move_cursor(CursorMove::Down);
+            row += 1;
+            assert_eq!(t.cursor(), (row, col));
+        }
+    }
+}
+
+#[test]
+fn test_down_trim() {
+    let mut t = TextArea::from(["abcd", "efg", "h", ""]);
+    t.move_cursor(CursorMove::Jump(0, 3));
+
+    for expected in [(1, 3), (2, 1), (3, 0)] {
+        t.move_cursor(CursorMove::Down);
+        assert_eq!(t.cursor(), expected);
+    }
+}
