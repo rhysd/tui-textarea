@@ -601,6 +601,10 @@ loop {
 
 See [`split` example](./examples/split.rs) and [`editor` example](./examples/editor.rs) for working example.
 
+## Minimum Supported Rust Version
+
+MSRV of this crate is depending on `tui` crate. Currently MSRV is 1.56.1.
+
 ## Versioning
 
 This crate is not reaching v1.0.0 yet. There is no plan to bump the major version for now. Current versioning policy is

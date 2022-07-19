@@ -2,6 +2,7 @@
 name = "tui-textarea"
 version = "0.1.5"
 edition = "2021"
+rust-version = "1.56.1"
 authors = ["rhysd <lin90162@yahoo.co.jp>"]
 description = """
 tui-textarea is a simple yet powerful text editor widget for tui-rs. Multi-line
