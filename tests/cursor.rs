@@ -3,7 +3,7 @@ use tui_textarea::{CursorMove, TextArea};
 const BOTTOM_RIGHT: CursorMove = CursorMove::Jump(u16::MAX, u16::MAX);
 
 #[test]
-fn test_empty_textarea() {
+fn empty_textarea() {
     use CursorMove::*;
 
     let mut t = TextArea::default();
@@ -29,7 +29,7 @@ fn test_empty_textarea() {
 }
 
 #[test]
-fn test_forward() {
+fn forward() {
     let mut t = TextArea::from(["abc", "def"]);
 
     for pos in [
@@ -48,7 +48,7 @@ fn test_forward() {
 }
 
 #[test]
-fn test_back() {
+fn back() {
     let mut t = TextArea::from(["abc", "def"]);
     t.move_cursor(BOTTOM_RIGHT);
 
@@ -68,7 +68,7 @@ fn test_back() {
 }
 
 #[test]
-fn test_up() {
+fn up() {
     let mut t = TextArea::from(["abc", "def", "ghi"]);
 
     for col in 0..=3 {
@@ -86,7 +86,7 @@ fn test_up() {
 }
 
 #[test]
-fn test_up_trim() {
+fn up_trim() {
     let mut t = TextArea::from(["", "a", "bcd", "efgh"]);
     t.move_cursor(CursorMove::Jump(3, 3));
 
@@ -97,7 +97,7 @@ fn test_up_trim() {
 }
 
 #[test]
-fn test_down() {
+fn down() {
     let mut t = TextArea::from(["abc", "def", "ghi"]);
 
     for col in 0..=3 {
@@ -115,12 +115,38 @@ fn test_down() {
 }
 
 #[test]
-fn test_down_trim() {
+fn down_trim() {
     let mut t = TextArea::from(["abcd", "efg", "h", ""]);
     t.move_cursor(CursorMove::Jump(0, 3));
 
     for expected in [(1, 3), (2, 1), (3, 0)] {
         t.move_cursor(CursorMove::Down);
         assert_eq!(t.cursor(), expected);
+    }
+}
+
+#[test]
+fn head() {
+    let mut t = TextArea::from(["efg", "h", ""]);
+    for row in 0..t.lines().len() {
+        let len = t.lines()[row].len();
+        for col in [0, len / 2, len] {
+            t.move_cursor(CursorMove::Jump(row as u16, col as u16));
+            t.move_cursor(CursorMove::Head);
+            assert_eq!(t.cursor(), (row, 0));
+        }
+    }
+}
+
+#[test]
+fn end() {
+    let mut t = TextArea::from(["efg", "h", ""]);
+    for row in 0..t.lines().len() {
+        let len = t.lines()[row].len();
+        for col in [0, len / 2, len] {
+            t.move_cursor(CursorMove::Jump(row as u16, col as u16));
+            t.move_cursor(CursorMove::End);
+            assert_eq!(t.cursor(), (row, len));
+        }
     }
 }
