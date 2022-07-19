@@ -30,123 +30,186 @@ fn empty_textarea() {
 
 #[test]
 fn forward() {
-    let mut t = TextArea::from(["abc", "def"]);
-
-    for pos in [
-        (0, 1),
-        (0, 2),
-        (0, 3),
-        (1, 0),
-        (1, 1),
-        (1, 2),
-        (1, 3),
-        (1, 3),
+    for (text, positions) in [
+        (
+            ["abc", "def"],
+            [
+                (0, 1),
+                (0, 2),
+                (0, 3),
+                (1, 0),
+                (1, 1),
+                (1, 2),
+                (1, 3),
+                (1, 3),
+            ],
+        ),
+        (
+            ["あいう", "🐶🐱👪"],
+            [
+                (0, 1),
+                (0, 2),
+                (0, 3),
+                (1, 0),
+                (1, 1),
+                (1, 2),
+                (1, 3),
+                (1, 3),
+            ],
+        ),
     ] {
-        t.move_cursor(CursorMove::Forward);
-        assert_eq!(t.cursor(), pos);
+        let mut t = TextArea::from(text);
+
+        for pos in positions {
+            t.move_cursor(CursorMove::Forward);
+            assert_eq!(t.cursor(), pos, "{:?}", t.lines());
+        }
     }
 }
 
 #[test]
 fn back() {
-    let mut t = TextArea::from(["abc", "def"]);
-    t.move_cursor(BOTTOM_RIGHT);
-
-    for pos in [
-        (1, 2),
-        (1, 1),
-        (1, 0),
-        (0, 3),
-        (0, 2),
-        (0, 1),
-        (0, 0),
-        (0, 0),
+    for (text, positions) in [
+        (
+            ["abc", "def"],
+            [
+                (1, 2),
+                (1, 1),
+                (1, 0),
+                (0, 3),
+                (0, 2),
+                (0, 1),
+                (0, 0),
+                (0, 0),
+            ],
+        ),
+        (
+            ["あいう", "🐶🐱👪"],
+            [
+                (1, 2),
+                (1, 1),
+                (1, 0),
+                (0, 3),
+                (0, 2),
+                (0, 1),
+                (0, 0),
+                (0, 0),
+            ],
+        ),
     ] {
-        t.move_cursor(CursorMove::Back);
-        assert_eq!(t.cursor(), pos);
+        let mut t = TextArea::from(text);
+        t.move_cursor(BOTTOM_RIGHT);
+
+        for pos in positions {
+            t.move_cursor(CursorMove::Back);
+            assert_eq!(t.cursor(), pos, "{:?}", t.lines());
+        }
     }
 }
 
 #[test]
 fn up() {
-    let mut t = TextArea::from(["abc", "def", "ghi"]);
+    for text in [
+        ["abc", "def", "ghi"],
+        ["あいう", "🐶🐱🐰", "👪🤟🏿👩🏻‍❤️‍💋‍👨🏾"],
+    ] {
+        let mut t = TextArea::from(text);
 
-    for col in 0..=3 {
-        let mut row = 2;
+        for col in 0..=3 {
+            let mut row = 2;
 
-        t.move_cursor(CursorMove::Jump(2 as u16, col as u16));
-        assert_eq!(t.cursor(), (row, col));
+            t.move_cursor(CursorMove::Jump(2, col as u16));
+            assert_eq!(t.cursor(), (row, col), "{:?}", t.lines());
 
-        while row > 0 {
-            t.move_cursor(CursorMove::Up);
-            row -= 1;
-            assert_eq!(t.cursor(), (row, col));
+            while row > 0 {
+                t.move_cursor(CursorMove::Up);
+                row -= 1;
+                assert_eq!(t.cursor(), (row, col), "{:?}", t.lines());
+            }
         }
     }
 }
 
 #[test]
 fn up_trim() {
-    let mut t = TextArea::from(["", "a", "bcd", "efgh"]);
-    t.move_cursor(CursorMove::Jump(3, 3));
+    for text in [["", "a", "bcd", "efgh"], ["", "👪", "🐶!🐱", "あ?い!"]] {
+        let mut t = TextArea::from(text);
+        t.move_cursor(CursorMove::Jump(3, 3));
 
-    for expected in [(2, 3), (1, 1), (0, 0)] {
-        t.move_cursor(CursorMove::Up);
-        assert_eq!(t.cursor(), expected);
+        for expected in [(2, 3), (1, 1), (0, 0)] {
+            t.move_cursor(CursorMove::Up);
+            assert_eq!(t.cursor(), expected, "{:?}", t.lines());
+        }
     }
 }
 
 #[test]
 fn down() {
-    let mut t = TextArea::from(["abc", "def", "ghi"]);
+    for text in [
+        ["abc", "def", "ghi"],
+        ["あいう", "🐶🐱🐰", "👪🤟🏿👩🏻‍❤️‍💋‍👨🏾"],
+    ] {
+        let mut t = TextArea::from(text);
 
-    for col in 0..=3 {
-        let mut row = 0;
+        for col in 0..=3 {
+            let mut row = 0;
 
-        t.move_cursor(CursorMove::Jump(0, col as u16));
-        assert_eq!(t.cursor(), (row, col));
+            t.move_cursor(CursorMove::Jump(0, col as u16));
+            assert_eq!(t.cursor(), (row, col), "{:?}", t.lines());
 
-        while row < 2 {
-            t.move_cursor(CursorMove::Down);
-            row += 1;
-            assert_eq!(t.cursor(), (row, col));
+            while row < 2 {
+                t.move_cursor(CursorMove::Down);
+                row += 1;
+                assert_eq!(t.cursor(), (row, col), "{:?}", t.lines());
+            }
         }
     }
 }
 
 #[test]
 fn down_trim() {
-    let mut t = TextArea::from(["abcd", "efg", "h", ""]);
-    t.move_cursor(CursorMove::Jump(0, 3));
+    for text in [["abcd", "efg", "h", ""], ["あ?い!", "🐶!🐱", "👪", ""]] {
+        let mut t = TextArea::from(text);
+        t.move_cursor(CursorMove::Jump(0, 3));
 
-    for expected in [(1, 3), (2, 1), (3, 0)] {
-        t.move_cursor(CursorMove::Down);
-        assert_eq!(t.cursor(), expected);
+        for expected in [(1, 3), (2, 1), (3, 0)] {
+            t.move_cursor(CursorMove::Down);
+            assert_eq!(t.cursor(), expected, "{:?}", t.lines());
+        }
     }
 }
 
 #[test]
 fn head() {
-    let mut t = TextArea::from(["efg", "h", ""]);
-    for row in 0..t.lines().len() {
-        let len = t.lines()[row].len();
-        for col in [0, len / 2, len] {
-            t.move_cursor(CursorMove::Jump(row as u16, col as u16));
-            t.move_cursor(CursorMove::Head);
-            assert_eq!(t.cursor(), (row, 0));
+    for text in [["efg", "h", ""], ["あいう", "👪", ""]] {
+        let mut t = TextArea::from(text);
+        for row in 0..t.lines().len() {
+            let len = t.lines()[row].len();
+            for col in [0, len / 2, len] {
+                t.move_cursor(CursorMove::Jump(row as u16, col as u16));
+                t.move_cursor(CursorMove::Head);
+                assert_eq!(t.cursor(), (row, 0), "{:?}", t.lines());
+            }
         }
     }
 }
 
 #[test]
 fn end() {
-    let mut t = TextArea::from(["efg", "h", ""]);
-    for row in 0..t.lines().len() {
-        let len = t.lines()[row].len();
-        for col in [0, len / 2, len] {
-            t.move_cursor(CursorMove::Jump(row as u16, col as u16));
-            t.move_cursor(CursorMove::End);
-            assert_eq!(t.cursor(), (row, len));
+    for text in [["efg", "h", ""], ["あいう", "👪", ""]] {
+        let mut t = TextArea::from(text);
+        for row in 0..t.lines().len() {
+            let len = match row {
+                0 => 3,
+                1 => 1,
+                2 => 0,
+                _ => unreachable!(),
+            };
+            for col in [0, len / 2, len] {
+                t.move_cursor(CursorMove::Jump(row as u16, col as u16));
+                t.move_cursor(CursorMove::End);
+                assert_eq!(t.cursor(), (row, len), "{:?}", t.lines());
+            }
         }
     }
 }
