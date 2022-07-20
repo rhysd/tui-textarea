@@ -213,3 +213,69 @@ fn end() {
         }
     }
 }
+
+#[test]
+fn top() {
+    for text in [
+        ["abc", "def", "ghi"],
+        ["あいう", "🐶🐱🐰", "👪🤟🏿👩🏻‍❤️‍💋‍👨🏾"],
+    ] {
+        let mut t = TextArea::from(text);
+        for row in 0..=2 {
+            for col in 0..=3 {
+                t.move_cursor(CursorMove::Jump(row, col));
+                t.move_cursor(CursorMove::Top);
+                assert_eq!(t.cursor(), (0, col as usize), "{:?}", t.lines());
+            }
+        }
+    }
+}
+
+#[test]
+fn top_trim() {
+    for lines in [
+        &["a", "bc"][..],
+        &["あ", "🐶🐱"][..],
+        &["a", "bcd", "ef"][..],
+        &["", "犬"][..],
+    ] {
+        let mut t: TextArea = lines.iter().cloned().collect();
+        t.move_cursor(CursorMove::Jump(u16::MAX, u16::MAX));
+        t.move_cursor(CursorMove::Top);
+        let col = t.lines()[0].chars().count();
+        assert_eq!(t.cursor(), (0, col), "{:?}", t.lines());
+    }
+}
+
+#[test]
+fn bottom() {
+    for text in [
+        ["abc", "def", "ghi"],
+        ["あいう", "🐶🐱🐰", "👪🤟🏿👩🏻‍❤️‍💋‍👨🏾"],
+    ] {
+        let mut t = TextArea::from(text);
+        for row in 0..=2 {
+            for col in 0..=3 {
+                t.move_cursor(CursorMove::Jump(row, col));
+                t.move_cursor(CursorMove::Bottom);
+                assert_eq!(t.cursor(), (2, col as usize), "{:?}", t.lines());
+            }
+        }
+    }
+}
+
+#[test]
+fn bottom_trim() {
+    for lines in [
+        &["bc", "a"][..],
+        &["🐶🐱", "🐰"][..],
+        &["ef", "bcd", "a"][..],
+        &["犬", ""][..],
+    ] {
+        let mut t: TextArea = lines.iter().cloned().collect();
+        t.move_cursor(CursorMove::Jump(0, u16::MAX));
+        t.move_cursor(CursorMove::Bottom);
+        let col = t.lines().last().unwrap().chars().count();
+        assert_eq!(t.cursor(), (t.lines().len() - 1, col), "{:?}", t.lines());
+    }
+}
