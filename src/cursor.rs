@@ -1,3 +1,4 @@
+use crate::widget::Viewport;
 use crate::word::{find_word_start_backward, find_word_start_forward};
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
@@ -187,6 +188,7 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (2, 4));
     /// ```
     Jump(u16, u16),
+    InViewport,
 }
 
 impl CursorMove {
@@ -194,6 +196,7 @@ impl CursorMove {
         &self,
         (row, col): (usize, usize),
         lines: &[String],
+        viewport: &Viewport,
     ) -> Option<(usize, usize)> {
         use CursorMove::*;
 
@@ -269,6 +272,16 @@ impl CursorMove {
             Jump(row, col) => {
                 let row = cmp::min(*row as usize, lines.len() - 1);
                 let col = fit_col(*col as usize, &lines[row]);
+                Some((row, col))
+            }
+            InViewport => {
+                let (row_top, col_top, row_bottom, col_bottom) = viewport.position();
+
+                let row = row.clamp(row_top as usize, row_bottom as usize);
+                let row = cmp::min(row, lines.len() - 1);
+                let col = col.clamp(col_top as usize, col_bottom as usize);
+                let col = fit_col(col, &lines[row]);
+
                 Some((row, col))
             }
         }

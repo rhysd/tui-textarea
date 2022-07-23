@@ -5,7 +5,7 @@ use crate::input::{Input, Key};
 #[cfg(feature = "search")]
 use crate::search::Search;
 use crate::util::spaces;
-use crate::widget::{Renderer, ScrollTop};
+use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
 use tui::style::{Modifier, Style};
 use tui::text::Spans;
@@ -42,7 +42,7 @@ pub struct TextArea<'a> {
     history: History,
     cursor_line_style: Style,
     line_number_style: Option<Style>,
-    pub(crate) scroll_top: ScrollTop,
+    pub(crate) viewport: Viewport,
     cursor_style: Style,
     yank: String,
     #[cfg(feature = "search")]
@@ -138,7 +138,7 @@ impl<'a> TextArea<'a> {
             history: History::new(50),
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
             line_number_style: None,
-            scroll_top: ScrollTop::default(),
+            viewport: Viewport::default(),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
             yank: String::new(),
             #[cfg(feature = "search")]
@@ -868,7 +868,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.cursor(), (1, 1));
     /// ```
     pub fn move_cursor(&mut self, m: CursorMove) {
-        if let Some(cursor) = m.next_cursor(self.cursor, &self.lines) {
+        if let Some(cursor) = m.next_cursor(self.cursor, &self.lines, &self.viewport) {
             self.cursor = cursor;
         }
     }
@@ -1461,5 +1461,10 @@ impl<'a> TextArea<'a> {
     #[cfg_attr(docsrs, doc(cfg(feature = "search")))]
     pub fn set_search_style(&mut self, style: Style) {
         self.search.style = style;
+    }
+
+    pub fn scroll(&mut self, delta_row: i16, delta_col: i16) {
+        self.viewport.scroll(delta_row, delta_col);
+        self.move_cursor(CursorMove::InViewport);
     }
 }
