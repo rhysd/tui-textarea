@@ -519,6 +519,20 @@ impl<'a> TextArea<'a> {
                 self.insert_newline();
                 true
             }
+            Input {
+                key: Key::MouseScrollDown,
+                ..
+            } => {
+                self.scroll(1, 0);
+                false
+            }
+            Input {
+                key: Key::MouseScrollUp,
+                ..
+            } => {
+                self.scroll(-1, 0);
+                false
+            }
             _ => false,
         }
     }
@@ -1460,6 +1474,7 @@ impl<'a> TextArea<'a> {
     }
 
     /// Set the text style at matches of text search. The default style is colored with blue in background.
+    ///
     /// ```
     /// use tui::style::{Style, Color};
     /// use tui_textarea::TextArea;
@@ -1477,6 +1492,45 @@ impl<'a> TextArea<'a> {
         self.search.style = style;
     }
 
+    /// Scroll the textarea by `delta_row` rows (vertically) and `delta_col` columns (horizontally). Positive scroll
+    /// amount means scrolling down or right. And negative scroll amount means scrolling up or left. The cursor will not
+    /// move until it goes out the viewport. When the cursor position is outside the viewport after scroll, the cursor
+    /// position will be adjusted to stay in the viewport using the same logic as [`CursorMove::InViewport`].
+    ///
+    /// ```
+    /// # use tui::buffer::Buffer;
+    /// # use tui::layout::Rect;
+    /// # use tui::widgets::Widget;
+    /// use tui_textarea::TextArea;
+    ///
+    /// // Let's say terminal height is 8.
+    ///
+    /// // Create textarea with 20 lines "0", "1", "2", "3", ...
+    /// let mut textarea: TextArea = (0..20).into_iter().map(|i| i.to_string()).collect();
+    /// # // Call `render` at least once to populate terminal size
+    /// # let r = Rect { x: 0, y: 0, width: 24, height: 8 };
+    /// # let mut b = Buffer::empty(r.clone());
+    /// # textarea.widget().render(r, &mut b);
+    ///
+    /// // Scroll down by 15 lines. Since terminal height is 8, cursor will go out
+    /// // the viewport.
+    /// textarea.scroll(15, 0);
+    /// // So the cursor position was updated to stay in the viewport after the scrolling.
+    /// assert_eq!(textarea.cursor(), (15, 0));
+    ///
+    /// // Scroll up by 5 lines. Since the scroll amount is smaller than the terminal
+    /// // height, cursor position will not be updated.
+    /// textarea.scroll(-5, 0);
+    /// assert_eq!(textarea.cursor(), (15, 0));
+    ///
+    /// // Scroll up by 5 lines again. The terminal height is 8. So a cursor reaches to
+    /// // the top of viewport after scrolling up by 7 lines. Since we have already
+    /// // scrolled up by 5 lines, scrolling up by 5 lines again makes the cursor overrun
+    /// // the viewport by 5 - 2 = 3 lines. To keep the cursor stay in the viewport, the
+    /// // cursor position will be adjusted from line 15 to line 12.
+    /// textarea.scroll(-5, 0);
+    /// assert_eq!(textarea.cursor(), (12, 0));
+    /// ```
     pub fn scroll(&mut self, delta_row: i16, delta_col: i16) {
         self.viewport.scroll(delta_row, delta_col);
         self.move_cursor(CursorMove::InViewport);
