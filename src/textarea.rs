@@ -441,6 +441,20 @@ impl<'a> TextArea<'a> {
                 ctrl: true,
                 alt: false,
             } => self.paste(),
+            Input {
+                key: Key::MouseScrollDown,
+                ..
+            } => {
+                self.scroll(1, 0);
+                false
+            }
+            Input {
+                key: Key::MouseScrollUp,
+                ..
+            } => {
+                self.scroll(-1, 0);
+                false
+            }
             _ => false,
         };
 

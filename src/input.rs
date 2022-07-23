@@ -1,9 +1,12 @@
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
 #[cfg(feature = "crossterm")]
-use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{
+    Event as CrosstermEvent, KeyCode, KeyEvent, KeyModifiers, MouseEvent as CrosstermMouseEvent,
+    MouseEventKind as CrosstermMouseEventKind,
+};
 #[cfg(feature = "termion")]
-use termion::event::{Event as TerimonEvent, Key as TermionKey};
+use termion::event::{Event as TermionEvent, Key as TermionKey, MouseEvent as TermionMouseEvent};
 
 /// Backend-agnostic key input kind.
 #[non_exhaustive]
@@ -27,6 +30,10 @@ pub enum Key {
     PageUp,
     PageDown,
     Esc,
+    /// Virtual key to scroll down by mouse
+    MouseScrollDown,
+    /// Virtual key to scroll up by mouse
+    MouseScrollUp,
     /// An invalid key input (this key is always ignored by [`TextArea`](crate::TextArea)).
     Null,
 }
@@ -90,10 +97,10 @@ impl Default for Input {
 impl From<CrosstermEvent> for Input {
     /// Convert [`crossterm::event::Event`] to [`Input`].
     fn from(event: CrosstermEvent) -> Self {
-        if let CrosstermEvent::Key(key) = event {
-            Self::from(key)
-        } else {
-            Self::default()
+        match event {
+            CrosstermEvent::Key(key) => Self::from(key),
+            CrosstermEvent::Mouse(mouse) => Self::from(mouse),
+            _ => Self::default(),
         }
     }
 }
@@ -126,14 +133,29 @@ impl From<KeyEvent> for Input {
     }
 }
 
+#[cfg(feature = "crossterm")]
+impl From<CrosstermMouseEvent> for Input {
+    /// Convert [`crossterm::event::MouseEvent`] to [`Input`].
+    fn from(mouse: CrosstermMouseEvent) -> Self {
+        let key = match mouse.kind {
+            CrosstermMouseEventKind::ScrollDown => Key::MouseScrollDown,
+            CrosstermMouseEventKind::ScrollUp => Key::MouseScrollUp,
+            _ => return Self::default(),
+        };
+        let ctrl = mouse.modifiers.contains(KeyModifiers::CONTROL);
+        let alt = mouse.modifiers.contains(KeyModifiers::ALT);
+        Self { key, ctrl, alt }
+    }
+}
+
 #[cfg(feature = "termion")]
-impl From<TerimonEvent> for Input {
+impl From<TermionEvent> for Input {
     /// Convert [`termion::event::Event`] to [`Input`].
-    fn from(event: TerimonEvent) -> Self {
-        if let TerimonEvent::Key(key) = event {
-            Self::from(key)
-        } else {
-            Self::default()
+    fn from(event: TermionEvent) -> Self {
+        match event {
+            TermionEvent::Key(key) => Self::from(key),
+            TermionEvent::Mouse(mouse) => Self::from(mouse),
+            _ => Self::default(),
         }
     }
 }
@@ -174,5 +196,23 @@ impl From<TermionKey> for Input {
         };
 
         Input { key, ctrl, alt }
+    }
+}
+
+#[cfg(feature = "termion")]
+impl From<TermionMouseEvent> for Input {
+    /// Convert [`termion::event::MouseEvent`] to [`Input`].
+    fn from(mouse: TermionMouseEvent) -> Self {
+        use termion::event::MouseButton;
+        let key = match mouse {
+            TermionMouseEvent::Press(MouseButton::WheelUp, ..) => Key::MouseScrollUp,
+            TermionMouseEvent::Press(MouseButton::WheelDown, ..) => Key::MouseScrollDown,
+            _ => return Self::default(),
+        };
+        Self {
+            key,
+            ctrl: false,
+            alt: false,
+        }
     }
 }

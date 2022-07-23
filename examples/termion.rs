@@ -3,17 +3,17 @@ use std::io;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use termion::event::Key;
+use termion::event::Event as TermEvent;
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
 use tui::widgets::{Block, Borders};
 use tui::Terminal;
-use tui_textarea::TextArea;
+use tui_textarea::{Input, Key, TextArea};
 
 enum Event {
-    Key(Key),
+    Term(TermEvent),
     Tick,
 }
 
@@ -25,12 +25,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut term = Terminal::new(backend)?;
 
     let events = {
-        let keys = io::stdin().keys();
+        let events = io::stdin().events();
         let (tx, rx) = mpsc::channel();
         let keys_tx = tx.clone();
         thread::spawn(move || {
-            for key in keys.flatten() {
-                keys_tx.send(Event::Key(key)).unwrap();
+            for event in events.flatten() {
+                keys_tx.send(Event::Term(event)).unwrap();
             }
         });
         thread::spawn(move || loop {
@@ -49,10 +49,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         match events.recv()? {
-            Event::Key(Key::Esc) => break,
-            Event::Key(key) => {
-                textarea.input(key);
-            }
+            Event::Term(event) => match event.into() {
+                Input { key: Key::Esc, .. } => break,
+                input => {
+                    textarea.input(input);
+                }
+            },
             Event::Tick => {}
         }
         term.draw(|f| {
