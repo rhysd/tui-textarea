@@ -481,6 +481,7 @@ impl<'a> TextArea<'a> {
     }
 
     /// Handle a key input without default key mappings. This method handles only
+    ///
     /// - Single character input without modifier keys
     /// - Tab
     /// - Enter
@@ -1492,10 +1493,10 @@ impl<'a> TextArea<'a> {
         self.search.style = style;
     }
 
-    /// Scroll the textarea by `delta_row` rows (vertically) and `delta_col` columns (horizontally). Positive scroll
-    /// amount means scrolling down or right. And negative scroll amount means scrolling up or left. The cursor will not
-    /// move until it goes out the viewport. When the cursor position is outside the viewport after scroll, the cursor
-    /// position will be adjusted to stay in the viewport using the same logic as [`CursorMove::InViewport`].
+    /// Scroll the textarea by `rows` lines (vertically) and `cols` columns (horizontally). Positive scroll amount means
+    /// scrolling down or right. And negative scroll amount means scrolling up or left. The cursor will not move until
+    /// it goes out the viewport. When the cursor position is outside the viewport after scroll, the cursor position will
+    /// be adjusted to stay in the viewport using the same logic as [`CursorMove::InViewport`].
     ///
     /// ```
     /// # use tui::buffer::Buffer;
@@ -1531,8 +1532,8 @@ impl<'a> TextArea<'a> {
     /// textarea.scroll(-5, 0);
     /// assert_eq!(textarea.cursor(), (12, 0));
     /// ```
-    pub fn scroll(&mut self, delta_row: i16, delta_col: i16) {
-        self.viewport.scroll(delta_row, delta_col);
+    pub fn scroll(&mut self, rows: i16, cols: i16) {
+        self.viewport.scroll(rows, cols);
         self.move_cursor(CursorMove::InViewport);
     }
 }

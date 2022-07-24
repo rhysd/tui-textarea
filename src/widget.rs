@@ -56,7 +56,7 @@ impl Viewport {
         self.0.store(u, Ordering::Relaxed);
     }
 
-    pub fn scroll(&mut self, delta_row: i16, delta_col: i16) {
+    pub fn scroll(&mut self, rows: i16, cols: i16) {
         fn apply_scroll(pos: u16, delta: i16) -> u16 {
             if delta >= 0 {
                 pos.saturating_add(delta as u16)
@@ -66,8 +66,8 @@ impl Viewport {
         }
 
         let u = self.0.get_mut();
-        let row = apply_scroll((*u >> 16) as u16, delta_row);
-        let col = apply_scroll(*u as u16, delta_col);
+        let row = apply_scroll((*u >> 16) as u16, rows);
+        let col = apply_scroll(*u as u16, cols);
         *u = (*u & 0xffff_ffff_0000_0000) | ((row as u64) << 16) | (col as u64);
     }
 }
