@@ -1,13 +1,13 @@
 use crate::textarea::TextArea;
 use crate::util::num_digits;
 use std::cmp;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
 use tui::text::Text;
 use tui::widgets::{Paragraph, Widget};
 
-// &mut 'a (u16, u16) is not available since TextAreaWidget instance totally takes over the ownership of TextArea
+// &mut 'a (u16, u16, u16, u16) is not available since Renderer instance totally takes over the ownership of TextArea
 // instance. In the case, the TextArea instance cannot be accessed from any other objects since it is mutablly
 // borrowed.
 //
@@ -16,24 +16,59 @@ use tui::widgets::{Paragraph, Widget};
 // manage states of textarea instances separately.
 // https://docs.rs/tui/latest/tui/terminal/struct.Frame.html#method.render_stateful_widget
 #[derive(Default)]
-pub struct ScrollTop(AtomicU32);
+pub struct Viewport(AtomicU64);
 
-impl Clone for ScrollTop {
+impl Clone for Viewport {
     fn clone(&self) -> Self {
         let u = self.0.load(Ordering::Relaxed);
-        ScrollTop(AtomicU32::new(u))
+        Viewport(AtomicU64::new(u))
     }
 }
 
-impl ScrollTop {
-    fn load(&self) -> (u16, u16) {
+impl Viewport {
+    pub fn scroll_top(&self) -> (u16, u16) {
         let u = self.0.load(Ordering::Relaxed);
         ((u >> 16) as u16, u as u16)
     }
 
-    fn store(&self, row: u16, col: u16) {
-        let u = ((row as u32) << 16) | col as u32;
+    pub fn position(&self) -> (u16, u16, u16, u16) {
+        let u = self.0.load(Ordering::Relaxed);
+        let width = (u >> 48) as u16;
+        let height = (u >> 32) as u16;
+        let row_top = (u >> 16) as u16;
+        let col_top = u as u16;
+
+        let row_bottom = row_top.saturating_add(height).saturating_sub(1);
+        let col_bottom = col_top.saturating_add(width).saturating_sub(1);
+
+        (
+            row_top,
+            col_top,
+            cmp::max(row_top, row_bottom),
+            cmp::max(col_top, col_bottom),
+        )
+    }
+
+    fn store(&self, row: u16, col: u16, width: u16, height: u16) {
+        // Pack four u16 values into one u64 value
+        let u =
+            ((width as u64) << 48) | ((height as u64) << 32) | ((row as u64) << 16) | col as u64;
         self.0.store(u, Ordering::Relaxed);
+    }
+
+    pub fn scroll(&mut self, delta_row: i16, delta_col: i16) {
+        fn apply_scroll(pos: u16, delta: i16) -> u16 {
+            if delta >= 0 {
+                pos.saturating_add(delta as u16)
+            } else {
+                pos.saturating_sub(-delta as u16)
+            }
+        }
+
+        let u = self.0.get_mut();
+        let row = apply_scroll((*u >> 16) as u16, delta_row);
+        let col = apply_scroll(*u as u16, delta_col);
+        *u = (*u & 0xffff_ffff_0000_0000) | ((row as u64) << 16) | (col as u64);
     }
 }
 
@@ -59,7 +94,7 @@ impl<'a> Renderer<'a> {
 
 impl<'a> Widget for Renderer<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let inner_area = if let Some(b) = self.0.block() {
+        let Rect { width, height, .. } = if let Some(b) = self.0.block() {
             b.inner(area)
         } else {
             area
@@ -76,11 +111,11 @@ impl<'a> Widget for Renderer<'a> {
         }
 
         let cursor = self.0.cursor();
-        let (top_row, top_col) = self.0.scroll_top.load();
-        let top_row = next_scroll_top(top_row, cursor.0 as u16, inner_area.height);
-        let top_col = next_scroll_top(top_col, cursor.1 as u16, inner_area.width);
+        let (top_row, top_col) = self.0.viewport.scroll_top();
+        let top_row = next_scroll_top(top_row, cursor.0 as u16, height);
+        let top_col = next_scroll_top(top_col, cursor.1 as u16, width);
 
-        let text = self.text(top_row as usize, inner_area.height as usize);
+        let text = self.text(top_row as usize, height as usize);
         let mut inner = Paragraph::new(text).style(self.0.style());
         if let Some(b) = self.0.block() {
             inner = inner.block(b.clone());
@@ -90,7 +125,7 @@ impl<'a> Widget for Renderer<'a> {
         }
 
         // Store scroll top position for rendering on the next tick
-        self.0.scroll_top.store(top_row, top_col);
+        self.0.viewport.store(top_row, top_col, width, height);
 
         inner.render(area, buf);
     }

@@ -15,6 +15,7 @@ text editor can be easily put as part of your TUI application.
 - Line number
 - Cursor line highlight
 - Search with regular expressions
+- Mouse scrolling
 - Yank support. Paste text deleted with `C-k`, `C-j`, ...
 - Backend agnostic. [crossterm][], [termion][], and your own backend are all supported
 - Multiple textarea widgets in the same screen
@@ -410,9 +411,11 @@ notify how to move the cursor.
 | `textarea.move_cursor(CursorMove::Top)`              | Move cursor to top of lines                  |
 | `textarea.move_cursor(CursorMove::Bottom)`           | Move cursor to bottom of lines               |
 | `textarea.move_cursor(CursorMove::Jump(row, col))`   | Move cursor to (row, col) position           |
+| `textarea.move_cursor(CursorMove::InViewport)`       | Move cursor to stay in the viewport          |
 | `textarea.set_search_pattern(pattern)`               | Set a pattern for text search                |
 | `textarea.search_forward(match_cursor)`              | Move cursor to next match of text search     |
 | `textarea.search_back(match_cursor)`                 | Move cursor to previous match of text search |
+| `textarea.scroll(rows, cols)`                        | Scroll the viewport                          |
 
 To define your own key mappings, simply call the above methods in your code instead of `TextArea::input()` method. The
 following example defines modal key mappings like Vim.
@@ -465,6 +468,8 @@ loop {
             Input { key: Key::Esc, .. } => textarea.set_search_pattern("").unwrap(),
             Input { key: Key::Char('n'), .. } => textarea.search_forward(),
             Input { key: Key::Char('N'), .. } => textarea.search_back(),
+            Input { key: Key::Char('e'), ctrl: true .. } => textarea.scroll(1, 0),
+            Input { key: Key::Char('y'), ctrl: true .. } => textarea.scroll(-1, 0),
             _ => {},
         },
         Mode::Insert => match read()?.into() {

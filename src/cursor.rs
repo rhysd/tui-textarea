@@ -1,3 +1,4 @@
+use crate::widget::Viewport;
 use crate::word::{find_word_start_backward, find_word_start_forward};
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
@@ -187,6 +188,38 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (2, 4));
     /// ```
     Jump(u16, u16),
+    /// Move cursor to keep it within the viewport. For example, when a viewport displays line 8 to line 16:
+    ///
+    /// - cursor at line 4 is moved to line 8
+    /// - cursor at line 20 is moved to line 16
+    /// - cursor at line 12 is not moved
+    ///
+    /// This is useful when you moved a cursor but you don't want to move the viewport.
+    /// ```
+    /// # use tui::buffer::Buffer;
+    /// # use tui::layout::Rect;
+    /// # use tui::widgets::Widget;
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// // Let's say terminal height is 8.
+    ///
+    /// // Create textarea with 20 lines "0", "1", "2", "3", ...
+    /// // The viewport is displaying from line 1 to line 8.
+    /// let mut textarea: TextArea = (0..20).into_iter().map(|i| i.to_string()).collect();
+    /// # // Call `render` at least once to populate terminal size
+    /// # let r = Rect { x: 0, y: 0, width: 24, height: 8 };
+    /// # let mut b = Buffer::empty(r.clone());
+    /// # textarea.widget().render(r, &mut b);
+    ///
+    /// // Move cursor to the end of lines (line 20). It is outside the viewport (line 1 to line 8)
+    /// textarea.move_cursor(CursorMove::Bottom);
+    /// assert_eq!(textarea.cursor(), (19, 0));
+    ///
+    /// // Cursor is moved to line 8 to enter the viewport
+    /// textarea.move_cursor(CursorMove::InViewport);
+    /// assert_eq!(textarea.cursor(), (7, 0));
+    /// ```
+    InViewport,
 }
 
 impl CursorMove {
@@ -194,6 +227,7 @@ impl CursorMove {
         &self,
         (row, col): (usize, usize),
         lines: &[String],
+        viewport: &Viewport,
     ) -> Option<(usize, usize)> {
         use CursorMove::*;
 
@@ -269,6 +303,16 @@ impl CursorMove {
             Jump(row, col) => {
                 let row = cmp::min(*row as usize, lines.len() - 1);
                 let col = fit_col(*col as usize, &lines[row]);
+                Some((row, col))
+            }
+            InViewport => {
+                let (row_top, col_top, row_bottom, col_bottom) = viewport.position();
+
+                let row = row.clamp(row_top as usize, row_bottom as usize);
+                let row = cmp::min(row, lines.len() - 1);
+                let col = col.clamp(col_top as usize, col_bottom as usize);
+                let col = fit_col(col, &lines[row]);
+
                 Some((row, col))
             }
         }
