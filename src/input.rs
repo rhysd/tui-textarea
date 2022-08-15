@@ -48,9 +48,9 @@ pub enum Key {
 /// let event = read().unwrap();
 ///
 /// // `Input::from` can convert backend-native event into `Input`
-/// let input = Input::from(event);
+/// let input = Input::from(event.clone());
 /// // or `Into::into`
-/// let input: Input = event.into();
+/// let input: Input = event.clone().into();
 /// // Conversion from `KeyEvent` value is also available
 /// if let Event::Key(key) = event {
 ///     let input = Input::from(key);
