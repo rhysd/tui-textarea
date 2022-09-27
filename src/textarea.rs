@@ -7,6 +7,7 @@ use crate::search::Search;
 use crate::util::spaces;
 use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
+use tui::layout::Alignment;
 use tui::style::{Modifier, Style};
 use tui::text::Spans;
 use tui::widgets::{Block, Widget};
@@ -47,6 +48,7 @@ pub struct TextArea<'a> {
     yank: String,
     #[cfg(feature = "search")]
     search: Search,
+    alignment: Alignment,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -143,6 +145,7 @@ impl<'a> TextArea<'a> {
             yank: String::new(),
             #[cfg(feature = "search")]
             search: Search::default(),
+            alignment: Alignment::Left,
         }
     }
 
@@ -1267,6 +1270,16 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn cursor(&self) -> (usize, usize) {
         self.cursor
+    }
+
+    /// Get alignment text
+    pub fn set_alignment(&mut self, alignment: Alignment) {
+        self.alignment = alignment;
+    }
+
+    /// Get current alignment text
+    pub fn alignment(&self) -> Alignment {
+        self.alignment
     }
 
     /// Check if the textarea has a empty content.
