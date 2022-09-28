@@ -116,7 +116,9 @@ impl<'a> Widget for Renderer<'a> {
         let top_col = next_scroll_top(top_col, cursor.1 as u16, width);
 
         let text = self.text(top_row as usize, height as usize);
-        let mut inner = Paragraph::new(text).style(self.0.style()).alignment(self.0.alignment());
+        let mut inner = Paragraph::new(text)
+            .style(self.0.style())
+            .alignment(self.0.alignment());
         if let Some(b) = self.0.block() {
             inner = inner.block(b.clone());
         }

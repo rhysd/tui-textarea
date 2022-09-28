@@ -249,7 +249,7 @@ impl CursorMove {
                 let row = row.checked_sub(1)?;
                 Some((row, fit_col(col, &lines[row])))
             }
-            Down => (Some((row + 1, fit_col(col, lines.get(row + 1)?)))),
+            Down => Some((row + 1, fit_col(col, lines.get(row + 1)?))),
             Head => Some((row, 0)),
             End => Some((row, lines[row].chars().count())),
             Top => Some((0, fit_col(col, &lines[0]))),
