@@ -1274,6 +1274,9 @@ impl<'a> TextArea<'a> {
 
     /// Get alignment text
     pub fn set_alignment(&mut self, alignment: Alignment) {
+        if let Alignment::Center | Alignment::Right = alignment {
+            self.line_number_style = None;
+        }
         self.alignment = alignment;
     }
 
