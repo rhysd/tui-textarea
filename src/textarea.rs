@@ -1272,7 +1272,17 @@ impl<'a> TextArea<'a> {
         self.cursor
     }
 
-    /// Get alignment text
+    /// Set text alignment. When [`Alignment::Center`] or [`Alignment::Right`] is set, line number is automatically
+    /// disabled because those alignments don't work well with line numbers.
+    /// ```
+    /// use tui_textarea::TextArea;
+    /// use tui::layout::Alignment;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.set_alignment(Alignment::Center);
+    /// assert_eq!(textarea.alignment(), Alignment::Center);
+    /// ```
     pub fn set_alignment(&mut self, alignment: Alignment) {
         if let Alignment::Center | Alignment::Right = alignment {
             self.line_number_style = None;
@@ -1280,7 +1290,15 @@ impl<'a> TextArea<'a> {
         self.alignment = alignment;
     }
 
-    /// Get current alignment text
+    /// Get current text alignment. The default alignment is [`Alignment::Left`].
+    /// ```
+    /// use tui_textarea::TextArea;
+    /// use tui::layout::Alignment;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// assert_eq!(textarea.alignment(), Alignment::Left);
+    /// ```
     pub fn alignment(&self) -> Alignment {
         self.alignment
     }
