@@ -1,3 +1,18 @@
+<a name="v0.1.6"></a>
+# [v0.1.6](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.6) - 28 Sep 2022
+
+- Support mouse scroll. ([#2](https://github.com/rhysd/tui-textarea/issues/2))
+  - Handle mouse events for both `crossterm` and `termion` backends.
+  - `TextArea::scroll` method was added.
+  - `Key::MouseScrollUp` and `Key::MouseScrollDown` virtual keys are added to `Key` enum so that custom backends can support mouse scrolling.
+  - `CursorMove::InViewport` variant was added to `CursorMove` enum, which ensures  the cursor to be within the viewport
+- Add `TextArea::alignment` and `TextArea::set_alignment` to set the text alignment of textarea. Note that right or center alignments don't work well with line number so `TextArea::set_alignment` automatically disables it. ([#3](https://github.com/rhysd/tui-textarea/issues/3), thanks [@Volkalex28](https://github.com/Volkalex28))
+  <img src="https://user-images.githubusercontent.com/823277/192801738-4b9d7a18-e282-4c6c-af73-65a94cd8a721.gif" width=590 height=188>
+- Set [`rust-version`](https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field) to 1.56.1 in `Cargo.toml` to show MSRV explicitly.
+
+[Changes][v0.1.6]
+
+
 <a name="v0.1.5"></a>
 # [v0.1.5](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.5) - 18 Jul 2022
 
@@ -6,7 +21,7 @@
 - Add `arbitrary` feature which is disabled by default. By enabling it, `Input`, `Key` and `CursorMove` can be randomly generated via [arbitrary](https://crates.io/crates/arbitrary) crate. This feature aims to be used by fuzzing tests.
 - Add many benchmark suites to track performance; insert/delete lines/characters, text search, moving a cursor.
 - Improve fuzzing tests to include rendering a textarea to a dummy terminal backend and moving a cursor randomly.
-- Refactor `TextArea` implementation. The implementation of text search was separated to `src/search.rs`. The implementation of highlighting was separated to `src/highlight.rs`. And the implementation of widget rendered by tui-rs was separated to `src/widget.rs`. There is no public API change by these refactorings.
+- Refactor `TextArea` implementation. The implementation of text search was separated to `src/search.rs`. The implementation of highlighting was separated to `src/highlight.rs`. And the implementation of widget rendered by tui-rs was separated to `src/widget.rs`. These refactorings changed no public API.
 
 [Changes][v0.1.5]
 
@@ -77,7 +92,7 @@
   textarea.move_cursor(CursorMove::Jump(1, 2));
   assert_eq!(textarea.cursor(), (1, 2));
   ```
-- Fix hard tabs are not rendered (#1)
+- Fix hard tabs are not rendered ([#1](https://github.com/rhysd/tui-textarea/issues/1))
 
 [Changes][v0.1.1]
 
@@ -94,6 +109,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.1.6]: https://github.com/rhysd/tui-textarea/compare/v0.1.5...v0.1.6
 [v0.1.5]: https://github.com/rhysd/tui-textarea/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/rhysd/tui-textarea/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/rhysd/tui-textarea/compare/v0.1.2...v0.1.3
