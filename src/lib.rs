@@ -17,4 +17,4 @@ mod word;
 
 pub use cursor::CursorMove;
 pub use input::{Input, Key};
-pub use textarea::TextArea;
+pub use textarea::{Scrolling, TextArea};

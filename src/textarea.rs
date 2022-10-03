@@ -12,6 +12,57 @@ use tui::style::{Modifier, Style};
 use tui::text::Spans;
 use tui::widgets::{Block, Widget};
 
+/// Specify how to scroll the textarea.
+///
+/// This type is marked as `#[non_exhaustive]` since more variations may be supported in the future. Note that the cursor will
+/// not move until it goes out the viewport. See also: [`TextArea::scroll`]
+#[non_exhaustive]
+pub enum Scrolling {
+    /// Scroll the textarea by rows (vertically) and columns (horizontally). Passing positive scroll amounts to `rows` and `cols`
+    /// scolls it to down and right. Negative integers means the opposite directions. `(i16, i16)` pair can be converted into
+    /// `Scrolling::Delta` where 1st element means rows and 2nd means columns.
+    ///
+    /// ```
+    /// # use tui::buffer::Buffer;
+    /// # use tui::layout::Rect;
+    /// # use tui::widgets::Widget;
+    /// use tui_textarea::{TextArea, Scrolling};
+    ///
+    /// // Let's say terminal height is 8.
+    ///
+    /// // Create textarea with 20 lines "0", "1", "2", "3", ...
+    /// let mut textarea: TextArea = (0..20).into_iter().map(|i| i.to_string()).collect();
+    /// # // Call `render` at least once to populate terminal size
+    /// # let r = Rect { x: 0, y: 0, width: 24, height: 8 };
+    /// # let mut b = Buffer::empty(r.clone());
+    /// # textarea.widget().render(r, &mut b);
+    ///
+    /// // Scroll down by 2 lines.
+    /// textarea.scroll(Scrolling::Delta{rows: 2, cols: 0});
+    /// assert_eq!(textarea.cursor(), (2, 0));
+    ///
+    /// // (1, 0) is converted into Scrolling::Delta{rows: 1, cols: 0}
+    /// textarea.scroll((1, 0));
+    /// assert_eq!(textarea.cursor(), (3, 0));
+    /// ```
+    Delta { rows: i16, cols: i16 },
+}
+
+impl Scrolling {
+    fn scroll(self, viewport: &mut Viewport) {
+        let (rows, cols) = match self {
+            Self::Delta { rows, cols } => (rows, cols),
+        };
+        viewport.scroll(rows, cols);
+    }
+}
+
+impl From<(i16, i16)> for Scrolling {
+    fn from((rows, cols): (i16, i16)) -> Self {
+        Self::Delta { rows, cols }
+    }
+}
+
 /// A type to manage state of textarea.
 ///
 /// [`TextArea::default`] creates an empty textarea. [`TextArea::new`] creates a textarea with given text lines.
@@ -448,14 +499,14 @@ impl<'a> TextArea<'a> {
                 key: Key::MouseScrollDown,
                 ..
             } => {
-                self.scroll(1, 0);
+                self.scroll((1, 0));
                 false
             }
             Input {
                 key: Key::MouseScrollUp,
                 ..
             } => {
-                self.scroll(-1, 0);
+                self.scroll((-1, 0));
                 false
             }
             _ => false,
@@ -527,14 +578,14 @@ impl<'a> TextArea<'a> {
                 key: Key::MouseScrollDown,
                 ..
             } => {
-                self.scroll(1, 0);
+                self.scroll((1, 0));
                 false
             }
             Input {
                 key: Key::MouseScrollUp,
                 ..
             } => {
-                self.scroll(-1, 0);
+                self.scroll((-1, 0));
                 false
             }
             _ => false,
@@ -1527,10 +1578,9 @@ impl<'a> TextArea<'a> {
         self.search.style = style;
     }
 
-    /// Scroll the textarea by `rows` lines (vertically) and `cols` columns (horizontally). Positive scroll amount means
-    /// scrolling down or right. And negative scroll amount means scrolling up or left. The cursor will not move until
-    /// it goes out the viewport. When the cursor position is outside the viewport after scroll, the cursor position will
-    /// be adjusted to stay in the viewport using the same logic as [`CursorMove::InViewport`].
+    /// Scroll the textarea. See [`Scrolling`] for the argument.
+    /// The cursor will not move until it goes out the viewport. When the cursor position is outside the viewport after scroll,
+    /// the cursor position will be adjusted to stay in the viewport using the same logic as [`CursorMove::InViewport`].
     ///
     /// ```
     /// # use tui::buffer::Buffer;
@@ -1549,13 +1599,13 @@ impl<'a> TextArea<'a> {
     ///
     /// // Scroll down by 15 lines. Since terminal height is 8, cursor will go out
     /// // the viewport.
-    /// textarea.scroll(15, 0);
+    /// textarea.scroll((15, 0));
     /// // So the cursor position was updated to stay in the viewport after the scrolling.
     /// assert_eq!(textarea.cursor(), (15, 0));
     ///
     /// // Scroll up by 5 lines. Since the scroll amount is smaller than the terminal
     /// // height, cursor position will not be updated.
-    /// textarea.scroll(-5, 0);
+    /// textarea.scroll((-5, 0));
     /// assert_eq!(textarea.cursor(), (15, 0));
     ///
     /// // Scroll up by 5 lines again. The terminal height is 8. So a cursor reaches to
@@ -1563,11 +1613,11 @@ impl<'a> TextArea<'a> {
     /// // scrolled up by 5 lines, scrolling up by 5 lines again makes the cursor overrun
     /// // the viewport by 5 - 2 = 3 lines. To keep the cursor stay in the viewport, the
     /// // cursor position will be adjusted from line 15 to line 12.
-    /// textarea.scroll(-5, 0);
+    /// textarea.scroll((-5, 0));
     /// assert_eq!(textarea.cursor(), (12, 0));
     /// ```
-    pub fn scroll(&mut self, rows: i16, cols: i16) {
-        self.viewport.scroll(rows, cols);
+    pub fn scroll(&mut self, scrolling: impl Into<Scrolling>) {
+        scrolling.into().scroll(&mut self.viewport);
         self.move_cursor(CursorMove::InViewport);
     }
 }

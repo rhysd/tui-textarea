@@ -4,8 +4,9 @@ use crate::word::{find_word_start_backward, find_word_start_forward};
 use arbitrary::Arbitrary;
 use std::cmp;
 
-/// Specify how to move the cursor. This type is marked as `#[non_exhaustive]` since more variations may be supported in the
-/// future.
+/// Specify how to move the cursor.
+///
+/// This type is marked as `#[non_exhaustive]` since more variations may be supported in the future.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]

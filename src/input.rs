@@ -8,7 +8,9 @@ use crossterm::event::{
 #[cfg(feature = "termion")]
 use termion::event::{Event as TermionEvent, Key as TermionKey, MouseEvent as TermionMouseEvent};
 
-/// Backend-agnostic key input kind. This type is marked as `#[non_exhaustive]` since more keys may be supported in the future.
+/// Backend-agnostic key input kind.
+///
+/// This type is marked as `#[non_exhaustive]` since more keys may be supported in the future.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
