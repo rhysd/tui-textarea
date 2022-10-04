@@ -110,9 +110,13 @@ impl History {
     }
 
     pub fn push(&mut self, edit: Edit) {
+        if self.max_items == 0 {
+            return;
+        }
+
         if self.edits.len() == self.max_items {
             self.edits.pop_front();
-            self.index -= 1;
+            self.index = self.index.saturating_sub(1);
         }
 
         if self.index < self.edits.len() {
