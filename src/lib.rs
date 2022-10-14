@@ -8,6 +8,7 @@ mod cursor;
 mod highlight;
 mod history;
 mod input;
+mod scroll;
 #[cfg(feature = "search")]
 mod search;
 mod textarea;
@@ -17,4 +18,5 @@ mod word;
 
 pub use cursor::CursorMove;
 pub use input::{Input, Key};
-pub use textarea::{Scrolling, TextArea};
+pub use scroll::Scrolling;
+pub use textarea::TextArea;
