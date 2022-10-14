@@ -45,13 +45,118 @@ pub enum Scrolling {
     /// textarea.scroll((1, 0));
     /// assert_eq!(textarea.cursor(), (3, 0));
     /// ```
-    Delta {
-        rows: i16,
-        cols: i16,
-    },
+    Delta { rows: i16, cols: i16 },
+    /// Scroll down the textarea by one page.
+    ///
+    /// ```
+    /// # use tui::buffer::Buffer;
+    /// # use tui::layout::Rect;
+    /// # use tui::widgets::Widget;
+    /// use tui_textarea::{TextArea, Scrolling};
+    ///
+    /// // Let's say terminal height is 8.
+    ///
+    /// // Create textarea with 20 lines "0", "1", "2", "3", ...
+    /// let mut textarea: TextArea = (0..20).into_iter().map(|i| i.to_string()).collect();
+    /// # // Call `render` at least once to populate terminal size
+    /// # let r = Rect { x: 0, y: 0, width: 24, height: 8 };
+    /// # let mut b = Buffer::empty(r.clone());
+    /// # textarea.widget().render(r, &mut b);
+    ///
+    /// // Scroll down by one page (8 lines)
+    /// textarea.scroll(Scrolling::PageDown);
+    /// assert_eq!(textarea.cursor(), (8, 0));
+    /// textarea.scroll(Scrolling::PageDown);
+    /// assert_eq!(textarea.cursor(), (16, 0));
+    /// textarea.scroll(Scrolling::PageDown);
+    /// assert_eq!(textarea.cursor(), (19, 0)); // Reached bottom of the textarea
+    /// ```
     PageDown,
+    /// Scroll up the textarea by one page.
+    ///
+    /// ```
+    /// # use tui::buffer::Buffer;
+    /// # use tui::layout::Rect;
+    /// # use tui::widgets::Widget;
+    /// use tui_textarea::{TextArea, Scrolling, CursorMove};
+    ///
+    /// // Let's say terminal height is 8.
+    ///
+    /// // Create textarea with 20 lines "0", "1", "2", "3", ...
+    /// let mut textarea: TextArea = (0..20).into_iter().map(|i| i.to_string()).collect();
+    /// # // Call `render` at least once to populate terminal size
+    /// # let r = Rect { x: 0, y: 0, width: 24, height: 8 };
+    /// # let mut b = Buffer::empty(r.clone());
+    /// # textarea.widget().render(r.clone(), &mut b);
+    ///
+    /// // Go to the last line at first
+    /// textarea.move_cursor(CursorMove::Bottom);
+    /// assert_eq!(textarea.cursor(), (19, 0));
+    /// # // Call `render` to populate terminal size
+    /// # textarea.widget().render(r.clone(), &mut b);
+    ///
+    /// // Scroll up by one page (8 lines)
+    /// textarea.scroll(Scrolling::PageUp);
+    /// assert_eq!(textarea.cursor(), (11, 0));
+    /// textarea.scroll(Scrolling::PageUp);
+    /// assert_eq!(textarea.cursor(), (7, 0)); // Reached top of the textarea
+    /// ```
     PageUp,
+    /// Scroll down the textarea by half of the page.
+    ///
+    /// ```
+    /// # use tui::buffer::Buffer;
+    /// # use tui::layout::Rect;
+    /// # use tui::widgets::Widget;
+    /// use tui_textarea::{TextArea, Scrolling};
+    ///
+    /// // Let's say terminal height is 8.
+    ///
+    /// // Create textarea with 10 lines "0", "1", "2", "3", ...
+    /// let mut textarea: TextArea = (0..10).into_iter().map(|i| i.to_string()).collect();
+    /// # // Call `render` at least once to populate terminal size
+    /// # let r = Rect { x: 0, y: 0, width: 24, height: 8 };
+    /// # let mut b = Buffer::empty(r.clone());
+    /// # textarea.widget().render(r, &mut b);
+    ///
+    /// // Scroll down by half-page (4 lines)
+    /// textarea.scroll(Scrolling::HalfPageDown);
+    /// assert_eq!(textarea.cursor(), (4, 0));
+    /// textarea.scroll(Scrolling::HalfPageDown);
+    /// assert_eq!(textarea.cursor(), (8, 0));
+    /// textarea.scroll(Scrolling::HalfPageDown);
+    /// assert_eq!(textarea.cursor(), (9, 0)); // Reached bottom of the textarea
+    /// ```
     HalfPageDown,
+    /// Scroll up the textarea by half of the page.
+    ///
+    /// ```
+    /// # use tui::buffer::Buffer;
+    /// # use tui::layout::Rect;
+    /// # use tui::widgets::Widget;
+    /// use tui_textarea::{TextArea, Scrolling, CursorMove};
+    ///
+    /// // Let's say terminal height is 8.
+    ///
+    /// // Create textarea with 20 lines "0", "1", "2", "3", ...
+    /// let mut textarea: TextArea = (0..20).into_iter().map(|i| i.to_string()).collect();
+    /// # // Call `render` at least once to populate terminal size
+    /// # let r = Rect { x: 0, y: 0, width: 24, height: 8 };
+    /// # let mut b = Buffer::empty(r.clone());
+    /// # textarea.widget().render(r.clone(), &mut b);
+    ///
+    /// // Go to the last line at first
+    /// textarea.move_cursor(CursorMove::Bottom);
+    /// assert_eq!(textarea.cursor(), (19, 0));
+    /// # // Call `render` to populate terminal size
+    /// # textarea.widget().render(r.clone(), &mut b);
+    ///
+    /// // Scroll up by half-page (4 lines)
+    /// textarea.scroll(Scrolling::HalfPageUp);
+    /// assert_eq!(textarea.cursor(), (15, 0));
+    /// textarea.scroll(Scrolling::HalfPageUp);
+    /// assert_eq!(textarea.cursor(), (11, 0));
+    /// ```
     HalfPageUp,
 }
 
