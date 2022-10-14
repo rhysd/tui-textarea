@@ -31,13 +31,17 @@ impl Viewport {
         ((u >> 16) as u16, u as u16)
     }
 
-    pub fn position(&self) -> (u16, u16, u16, u16) {
+    pub fn rect(&self) -> (u16, u16, u16, u16) {
         let u = self.0.load(Ordering::Relaxed);
         let width = (u >> 48) as u16;
         let height = (u >> 32) as u16;
-        let row_top = (u >> 16) as u16;
-        let col_top = u as u16;
+        let row = (u >> 16) as u16;
+        let col = u as u16;
+        (row, col, width, height)
+    }
 
+    pub fn position(&self) -> (u16, u16, u16, u16) {
+        let (row_top, col_top, width, height) = self.rect();
         let row_bottom = row_top.saturating_add(height).saturating_sub(1);
         let col_bottom = col_top.saturating_add(width).saturating_sub(1);
 

@@ -45,13 +45,36 @@ pub enum Scrolling {
     /// textarea.scroll((1, 0));
     /// assert_eq!(textarea.cursor(), (3, 0));
     /// ```
-    Delta { rows: i16, cols: i16 },
+    Delta {
+        rows: i16,
+        cols: i16,
+    },
+    PageDown,
+    PageUp,
+    HalfPageDown,
+    HalfPageUp,
 }
 
 impl Scrolling {
     fn scroll(self, viewport: &mut Viewport) {
         let (rows, cols) = match self {
             Self::Delta { rows, cols } => (rows, cols),
+            Self::PageDown => {
+                let (_, _, _, height) = viewport.rect();
+                (height as i16, 0)
+            }
+            Self::PageUp => {
+                let (_, _, _, height) = viewport.rect();
+                (-(height as i16), 0)
+            }
+            Self::HalfPageDown => {
+                let (_, _, _, height) = viewport.rect();
+                ((height as i16) / 2, 0)
+            }
+            Self::HalfPageUp => {
+                let (_, _, _, height) = viewport.rect();
+                (-(height as i16) / 2, 0)
+            }
         };
         viewport.scroll(rows, cols);
     }
