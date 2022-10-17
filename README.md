@@ -175,12 +175,14 @@ Default key mappings are as follows:
 | `Ctrl+N`, `↓`                                | Move cursor down by one line              |
 | `Alt+F`, `Ctrl+→`                            | Move cursor forward by word               |
 | `Atl+B`, `Ctrl+←`                            | Move cursor backward by word              |
-| `Alt+P`, `Ctrl+↑`                            | Move cursor up by paragraph               |
-| `Alt+N`, `Ctrl+↓`                            | Move cursor down by paragraph             |
+| `Alt+]`, `Alt+P`, `Ctrl+↑`                   | Move cursor up by paragraph               |
+| `Alt+[`, `Alt+N`, `Ctrl+↓`                   | Move cursor down by paragraph             |
 | `Ctrl+E`, `End`, `Ctrl+Alt+F`, `Ctrl+Alt+→`  | Move cursor to the end of line            |
 | `Ctrl+A`, `Home`, `Ctrl+Alt+B`, `Ctrl+Alt+←` | Move cursor to the head of line           |
 | `Alt+<`, `Ctrl+Alt+P`, `Ctrl+Alt+↑`          | Move cursor to top of lines               |
 | `Alt+>`, `Ctrl+Alt+N`, `Ctrl+Alt+↓`          | Move cursor to bottom of lines            |
+| `Ctrl+V`, `PageDown`                         | Scroll down by page                       |
+| `Alt+V`, `PageUp`                            | Scroll up by page                         |
 
 Deleting multiple characters at once saves the deleted text to yank buffer. It can be pasted with `Ctrl+Y` or `Ctrl+V`
 later.
@@ -386,36 +388,40 @@ See [`single_line` example](./examples/single_line.rs) for working example.
 All editor operations are defined as public methods of `TextArea`. To move cursor, use `tui_textarea::CursorMove` to
 notify how to move the cursor.
 
-| Method                                               | Operation                                    |
-|------------------------------------------------------|----------------------------------------------|
-| `textarea.delete_char()`                             | Delete one character before cursor           |
-| `textarea.delete_next_char()`                        | Delete one character next to cursor          |
-| `textarea.insert_newline()`                          | Insert newline                               |
-| `textarea.delete_line_by_end()`                      | Delete from cursor until the end of line     |
-| `textarea.delete_line_by_head()`                     | Delete from cursor until the head of line    |
-| `textarea.delete_word()`                             | Delete one word before cursor                |
-| `textarea.delete_next_word()`                        | Delete one word next to cursor               |
-| `textarea.undo()`                                    | Undo                                         |
-| `textarea.redo()`                                    | Redo                                         |
-| `textarea.paste()`                                   | Paste yanked text                            |
-| `textarea.move_cursor(CursorMove::Forward)`          | Move cursor forward by one character         |
-| `textarea.move_cursor(CursorMove::Back)`             | Move cursor backward by one character        |
-| `textarea.move_cursor(CursorMove::Up)`               | Move cursor up by one line                   |
-| `textarea.move_cursor(CursorMove::Down)`             | Move cursor down by one line                 |
-| `textarea.move_cursor(CursorMove::WordForward)`      | Move cursor forward by word                  |
-| `textarea.move_cursor(CursorMove::WordBack)`         | Move cursor backward by word                 |
-| `textarea.move_cursor(CursorMove::ParagraphForward)` | Move cursor up by paragraph                  |
-| `textarea.move_cursor(CursorMove::ParagraphBack)`    | Move cursor down by paragraph                |
-| `textarea.move_cursor(CursorMove::End)`              | Move cursor to the end of line               |
-| `textarea.move_cursor(CursorMove::Head)`             | Move cursor to the head of line              |
-| `textarea.move_cursor(CursorMove::Top)`              | Move cursor to top of lines                  |
-| `textarea.move_cursor(CursorMove::Bottom)`           | Move cursor to bottom of lines               |
-| `textarea.move_cursor(CursorMove::Jump(row, col))`   | Move cursor to (row, col) position           |
-| `textarea.move_cursor(CursorMove::InViewport)`       | Move cursor to stay in the viewport          |
-| `textarea.set_search_pattern(pattern)`               | Set a pattern for text search                |
-| `textarea.search_forward(match_cursor)`              | Move cursor to next match of text search     |
-| `textarea.search_back(match_cursor)`                 | Move cursor to previous match of text search |
-| `textarea.scroll(scrolling)`                         | Scroll the viewport                          |
+| Method                                               | Operation                                       |
+|------------------------------------------------------|-------------------------------------------------|
+| `textarea.delete_char()`                             | Delete one character before cursor              |
+| `textarea.delete_next_char()`                        | Delete one character next to cursor             |
+| `textarea.insert_newline()`                          | Insert newline                                  |
+| `textarea.delete_line_by_end()`                      | Delete from cursor until the end of line        |
+| `textarea.delete_line_by_head()`                     | Delete from cursor until the head of line       |
+| `textarea.delete_word()`                             | Delete one word before cursor                   |
+| `textarea.delete_next_word()`                        | Delete one word next to cursor                  |
+| `textarea.undo()`                                    | Undo                                            |
+| `textarea.redo()`                                    | Redo                                            |
+| `textarea.paste()`                                   | Paste yanked text                               |
+| `textarea.move_cursor(CursorMove::Forward)`          | Move cursor forward by one character            |
+| `textarea.move_cursor(CursorMove::Back)`             | Move cursor backward by one character           |
+| `textarea.move_cursor(CursorMove::Up)`               | Move cursor up by one line                      |
+| `textarea.move_cursor(CursorMove::Down)`             | Move cursor down by one line                    |
+| `textarea.move_cursor(CursorMove::WordForward)`      | Move cursor forward by word                     |
+| `textarea.move_cursor(CursorMove::WordBack)`         | Move cursor backward by word                    |
+| `textarea.move_cursor(CursorMove::ParagraphForward)` | Move cursor up by paragraph                     |
+| `textarea.move_cursor(CursorMove::ParagraphBack)`    | Move cursor down by paragraph                   |
+| `textarea.move_cursor(CursorMove::End)`              | Move cursor to the end of line                  |
+| `textarea.move_cursor(CursorMove::Head)`             | Move cursor to the head of line                 |
+| `textarea.move_cursor(CursorMove::Top)`              | Move cursor to top of lines                     |
+| `textarea.move_cursor(CursorMove::Bottom)`           | Move cursor to bottom of lines                  |
+| `textarea.move_cursor(CursorMove::Jump(row, col))`   | Move cursor to (row, col) position              |
+| `textarea.move_cursor(CursorMove::InViewport)`       | Move cursor to stay in the viewport             |
+| `textarea.set_search_pattern(pattern)`               | Set a pattern for text search                   |
+| `textarea.search_forward(match_cursor)`              | Move cursor to next match of text search        |
+| `textarea.search_back(match_cursor)`                 | Move cursor to previous match of text search    |
+| `textarea.scroll(Scrolling::PageDown)`               | Scroll down the viewport by page                |
+| `textarea.scroll(Scrolling::PageUp)`                 | Scroll up the viewport by page                  |
+| `textarea.scroll(Scrolling::HalfPageDown)`           | Scroll down the viewport by half-page           |
+| `textarea.scroll(Scrolling::HalfPageUp)`             | Scroll up the viewport by half-page             |
+| `textarea.scroll((row, col))`                        | Scroll down the viewport to (row, col) position |
 
 To define your own key mappings, simply call the above methods in your code instead of `TextArea::input()` method. The
 following example defines modal key mappings like Vim.

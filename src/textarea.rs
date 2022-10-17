@@ -399,6 +399,11 @@ impl<'a> TextArea<'a> {
                 false
             }
             Input {
+                key: Key::Char(']'),
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
                 key: Key::Char('n'),
                 ctrl: false,
                 alt: true,
@@ -407,14 +412,16 @@ impl<'a> TextArea<'a> {
                 key: Key::Down,
                 ctrl: true,
                 alt: false,
-            }
-            | Input {
-                key: Key::PageDown, ..
             } => {
                 self.move_cursor(CursorMove::ParagraphForward);
                 false
             }
             Input {
+                key: Key::Char('['),
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
                 key: Key::Char('p'),
                 ctrl: false,
                 alt: true,
@@ -423,9 +430,6 @@ impl<'a> TextArea<'a> {
                 key: Key::Up,
                 ctrl: true,
                 alt: false,
-            }
-            | Input {
-                key: Key::PageUp, ..
             } => {
                 self.move_cursor(CursorMove::ParagraphBack);
                 false
@@ -445,6 +449,28 @@ impl<'a> TextArea<'a> {
                 ctrl: true,
                 alt: false,
             } => self.paste(),
+            Input {
+                key: Key::Char('v'),
+                ctrl: true,
+                alt: false,
+            }
+            | Input {
+                key: Key::PageDown, ..
+            } => {
+                self.scroll(Scrolling::PageDown);
+                false
+            }
+            Input {
+                key: Key::Char('v'),
+                ctrl: false,
+                alt: true,
+            }
+            | Input {
+                key: Key::PageUp, ..
+            } => {
+                self.scroll(Scrolling::PageUp);
+                false
+            }
             Input {
                 key: Key::MouseScrollDown,
                 ..
