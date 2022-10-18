@@ -1,3 +1,30 @@
+<a name="v0.2.0"></a>
+# [v0.2.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.0) - 18 Oct 2022
+
+- Add [`Scrolling` enum](https://docs.rs/tui-textarea/latest/tui_textarea/enum.Scrolling.html) to provide more flexible scrolling via [`TextArea::scroll`](https://docs.rs/tui-textarea/latest/tui_textarea/struct.TextArea.html#method.scroll) method. It has the following enum variants.
+  - **BREAKING** `Scrolling::Delta` scrolls the textarea by given rows and cols. This variant can be converted from `(i16, i16)` so migrating from v0.1.6 is very easy.
+    ```rust
+    let rows: i16 = ...;
+    let cols: i16 = ...;
+
+    // Until v0.1.6
+    textarea.scroll(rows, cols);
+
+    // Since v0.2.0
+    textarea.scroll((rows, cols));
+    ```
+  - `Scrolling::PageDown` and `Scrolling::PageUp` scroll the textarea by page.
+  - `Scrolling::HalfPageDown` and `Scrolling::HalfPageUp` scroll the textarea by half-page.
+- Update default key mappings handled by [`TextArea::input`](https://docs.rs/tui-textarea/latest/tui_textarea/struct.TextArea.html#method.input) method.
+  - **BREAKING** Change `PageDown` and `PageUp` keys to scroll down/up the textarea by page since v0.2.0. Until v0.1.6, it moved the cursor down/up by one paragraph.
+  - Add `Ctrl+V` and `Alt+V` keys to scroll down/up the textarea by page as Emacs-like key mappings.
+  - Add `Alt+]` and `Alt+[` keys to move the cursor down/up by one paragraph as Emacs-like key mappings.
+- **BREAKING** Add `#[non_exhaustive]` attribute to [`CursorMove` enum](https://docs.rs/tui-textarea/latest/tui_textarea/enum.CursorMove.html). This is because more cursor move variations may be added in the future.
+- Fix panic when the max history size is zero (which means the edit history is disabled). ([#4](https://github.com/rhysd/tui-textarea/issues/4))
+
+[Changes][v0.2.0]
+
+
 <a name="v0.1.6"></a>
 # [v0.1.6](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.6) - 28 Sep 2022
 
@@ -5,8 +32,8 @@
   - Handle mouse events for both `crossterm` and `termion` backends.
   - `TextArea::scroll` method was added.
   - `Key::MouseScrollUp` and `Key::MouseScrollDown` virtual keys are added to `Key` enum so that custom backends can support mouse scrolling.
-  - `CursorMove::InViewport` variant was added to `CursorMove` enum, which ensures  the cursor to be within the viewport
-- Add `TextArea::alignment` and `TextArea::set_alignment` to set the text alignment of textarea. Note that right or center alignments don't work well with line number so `TextArea::set_alignment` automatically disables it. ([#3](https://github.com/rhysd/tui-textarea/issues/3), thanks [@Volkalex28](https://github.com/Volkalex28))
+  - `CursorMove::InViewport` variant was added to `CursorMove` enum, which ensures  the cursor to be within the viewport.
+- Add `TextArea::alignment` and `TextArea::set_alignment` to set the text alignment of textarea. Note that right and center alignments don't work well with line number so calling `TextArea::set_alignment` with them automatically disables it. ([#3](https://github.com/rhysd/tui-textarea/issues/3), thanks [@Volkalex28](https://github.com/Volkalex28))
   <img src="https://user-images.githubusercontent.com/823277/192801738-4b9d7a18-e282-4c6c-af73-65a94cd8a721.gif" width=590 height=188>
 - Set [`rust-version`](https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field) to 1.56.1 in `Cargo.toml` to show MSRV explicitly.
 
@@ -109,6 +136,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.2.0]: https://github.com/rhysd/tui-textarea/compare/v0.1.6...v0.2.0
 [v0.1.6]: https://github.com/rhysd/tui-textarea/compare/v0.1.5...v0.1.6
 [v0.1.5]: https://github.com/rhysd/tui-textarea/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/rhysd/tui-textarea/compare/v0.1.3...v0.1.4
