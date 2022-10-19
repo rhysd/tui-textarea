@@ -58,6 +58,10 @@ required-features = ["crossterm"]
 name = "variable"
 required-features = ["crossterm"]
 
+[[example]]
+name = "modal"
+required-features = ["crossterm"]
+
 [workspace]
 members = [
     "bench",

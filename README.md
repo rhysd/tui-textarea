@@ -82,6 +82,14 @@ cargo run --example variable
 
 Simple textarea with variable height following the number of lines.
 
+### [`modal`](./examples/modal.rs)
+
+```sh
+cargo run --example modal
+```
+
+Simple modal text editor like `vi`.
+
 ## Installation
 
 Add `tui-textarea` crate to dependencies in your `Cargo.toml`. This enables crossterm backend support by default.
@@ -448,50 +456,12 @@ loop {
             Input { key: Key::Char('j'), .. } => textarea.move_cursor(CursorMove::Down),
             Input { key: Key::Char('k'), .. } => textarea.move_cursor(CursorMove::Up),
             Input { key: Key::Char('l'), .. } => textarea.move_cursor(CursorMove::Forward),
-            Input { key: Key::Char('w'), .. } => textarea.move_cursor(CursorMove::WordForward),
-            Input { key: Key::Char('b'), ctrl: false, .. } => textarea.move_cursor(CursorMove::WordBack),
-            Input { key: Key::Char('^'), .. } => textarea.move_cursor(CursorMove::Head),
-            Input { key: Key::Char('$'), .. } => textarea.move_cursor(CursorMove::End),
-            Input { key: Key::Char('D'), .. } => { textarea.delete_line_by_end(); }
-            Input { key: Key::Char('C'), .. } => {
-                textarea.delete_line_by_end();
-                mode = Mode::Insert;
-            }
-            Input { key: Key::Char('p'), .. } => { textarea.paste(); }
-            Input { key: Key::Char('u'), ctrl: false, .. } => { textarea.undo(); },
-            Input { key: Key::Char('r'), ctrl: true, .. } => { textarea.redo(); },
-            Input { key: Key::Char('x'), .. } => { textarea.delete_next_char(); },
-            Input { key: Key::Char('i'), .. } => mode = Mode::Insert,
-            Input { key: Key::Char('a'), .. } => {
-                textarea.move_cursor(CursorMove::Forward);
-                mode = Mode::Insert;
-            }
-            Input { key: Key::Char('A'), .. } => {
-                textarea.move_cursor(CursorMove::End);
-                mode = Mode::Insert;
-            }
-            Input { key: Key::Char('I'), .. } => {
-                textarea.move_cursor(CursorMove::Head);
-                mode = Mode::Insert;
-            }
-            Input { key: Key::Char('/'), .. } => {
-                let pat = ...;
-                textarea.set_search_pattern(pat)?;
-            }
-            Input { key: Key::Esc, .. } => textarea.set_search_pattern("").unwrap(),
-            Input { key: Key::Char('n'), .. } => textarea.search_forward(),
-            Input { key: Key::Char('N'), .. } => textarea.search_back(),
-            Input { key: Key::Char('e'), ctrl: true, .. } => textarea.scroll((1, 0)),
-            Input { key: Key::Char('y'), ctrl: true, .. } => textarea.scroll((-1, 0)),
-            Input { key: Key::Char('d'), ctrl: true, .. } => textarea.scroll(Scrolling::HalfPageDown),
-            Input { key: Key::Char('u'), ctrl: true, .. } => textarea.scroll(Scrolling::HalfPageUp),
-            Input { key: Key::Char('f'), ctrl: true, .. } => textarea.scroll(Scrolling::PageDown),
-            Input { key: Key::Char('b'), ctrl: true, .. } => textarea.scroll(Scrolling::PageUp),
+            Input { key: Key::Char('i'), .. } => mode = Mode::Insert, // Enter insert mode
+            // ...Add more mappings
             _ => {},
         },
         Mode::Insert => match read()?.into() {
-            Input { key: Key::Esc, .. }
-            | Input { key: Key::Char('c'), ctrl: true, .. } => {
+            Input { key: Key::Esc, .. } => {
                 mode = Mode::Normal; // Back to normal mode with Esc or Ctrl+C
             }
             input => {
@@ -501,6 +471,8 @@ loop {
     }
 }
 ```
+
+See [`modal` example](./examples/modal.rs) for working example. It implements more Vim-like key mappings.
 
 If you don't want to use default key mappings, `TextArea::input_without_shortcuts()` method can be used instead of
 `TextArea::input()`. The method only handles very basic operations such as inserting/deleting single characters, tabs,
