@@ -184,8 +184,7 @@ Default key mappings are as follows:
 | `Ctrl+V`, `PageDown`                         | Scroll down by page                       |
 | `Alt+V`, `PageUp`                            | Scroll up by page                         |
 
-Deleting multiple characters at once saves the deleted text to yank buffer. It can be pasted with `Ctrl+Y` or `Ctrl+V`
-later.
+Deleting multiple characters at once saves the deleted text to yank buffer. It can be pasted with `Ctrl+Y` later.
 
 If you don't want to use default key mappings, see the 'Advanced Usage' section.
 
@@ -428,7 +427,7 @@ following example defines modal key mappings like Vim.
 
 ```rust
 use crossterm::event::{Event, read};
-use tui_textarea::{Input, Key, CursorMove};
+use tui_textarea::{Input, Key, CursorMove, Scrolling};
 
 let mut textarea = ...;
 
@@ -451,20 +450,21 @@ loop {
             Input { key: Key::Char('k'), .. } => textarea.move_cursor(CursorMove::Up),
             Input { key: Key::Char('l'), .. } => textarea.move_cursor(CursorMove::Forward),
             Input { key: Key::Char('w'), .. } => textarea.move_cursor(CursorMove::WordForward),
-            Input { key: Key::Char('b'), .. } => textarea.move_cursor(CursorMove::WordBack),
-            Input { key: Key::Char('^'), .. } => textarea.move_cursor(CursorMove::Home),
+            Input { key: Key::Char('b'), ctrl: false, .. } => textarea.move_cursor(CursorMove::WordBack),
+            Input { key: Key::Char('^'), .. } => textarea.move_cursor(CursorMove::Head),
             Input { key: Key::Char('$'), .. } => textarea.move_cursor(CursorMove::End),
             Input { key: Key::Char('D'), .. } => { textarea.delete_line_by_end(); }
             Input { key: Key::Char('p'), .. } => { textarea.paste(); }
-            Input { key: Key::Char('u'), .. } => { textarea.undo(); },
+            Input { key: Key::Char('u'), ctrl: false, .. } => { textarea.undo(); },
             Input { key: Key::Char('R'), .. } => { textarea.redo(); },
+            Input { key: Key::Char('x'), .. } => { textarea.delete_next_char(); },
             Input { key: Key::Char('i'), .. } => mode = Mode::Insert,
             Input { key: Key::Char('A'), .. } => {
                 textarea.move_cursor(CursorMove::End);
                 mode = Mode::Insert;
             }
             Input { key: Key::Char('I'), .. } => {
-                textarea.move_cursor(CursorMove::Home);
+                textarea.move_cursor(CursorMove::Head);
                 mode = Mode::Insert;
             }
             Input { key: Key::Char('/'), .. } => {
@@ -474,8 +474,12 @@ loop {
             Input { key: Key::Esc, .. } => textarea.set_search_pattern("").unwrap(),
             Input { key: Key::Char('n'), .. } => textarea.search_forward(),
             Input { key: Key::Char('N'), .. } => textarea.search_back(),
-            Input { key: Key::Char('e'), ctrl: true .. } => textarea.scroll((1, 0)),
-            Input { key: Key::Char('y'), ctrl: true .. } => textarea.scroll((-1, 0)),
+            Input { key: Key::Char('e'), ctrl: true, .. } => textarea.scroll((1, 0)),
+            Input { key: Key::Char('y'), ctrl: true, .. } => textarea.scroll((-1, 0)),
+            Input { key: Key::Char('d'), ctrl: true, .. } => textarea.scroll(Scrolling::HalfPageDown),
+            Input { key: Key::Char('u'), ctrl: true, .. } => textarea.scroll(Scrolling::HalfPageUp),
+            Input { key: Key::Char('f'), ctrl: true, .. } => textarea.scroll(Scrolling::PageDown),
+            Input { key: Key::Char('b'), ctrl: true, .. } => textarea.scroll(Scrolling::PageUp),
             _ => {},
         },
         Mode::Insert => match read()?.into() {
