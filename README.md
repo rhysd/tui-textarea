@@ -431,7 +431,6 @@ use tui_textarea::{Input, Key, CursorMove, Scrolling};
 
 let mut textarea = ...;
 
-#[derive(PartialEq, Eq)]
 enum Mode {
     Normal,
     Insert,
@@ -454,11 +453,19 @@ loop {
             Input { key: Key::Char('^'), .. } => textarea.move_cursor(CursorMove::Head),
             Input { key: Key::Char('$'), .. } => textarea.move_cursor(CursorMove::End),
             Input { key: Key::Char('D'), .. } => { textarea.delete_line_by_end(); }
+            Input { key: Key::Char('C'), .. } => {
+                textarea.delete_line_by_end();
+                mode = Mode::Insert;
+            }
             Input { key: Key::Char('p'), .. } => { textarea.paste(); }
             Input { key: Key::Char('u'), ctrl: false, .. } => { textarea.undo(); },
-            Input { key: Key::Char('R'), .. } => { textarea.redo(); },
+            Input { key: Key::Char('r'), ctrl: true, .. } => { textarea.redo(); },
             Input { key: Key::Char('x'), .. } => { textarea.delete_next_char(); },
             Input { key: Key::Char('i'), .. } => mode = Mode::Insert,
+            Input { key: Key::Char('a'), .. } => {
+                textarea.move_cursor(CursorMove::Forward);
+                mode = Mode::Insert;
+            }
             Input { key: Key::Char('A'), .. } => {
                 textarea.move_cursor(CursorMove::End);
                 mode = Mode::Insert;
@@ -483,8 +490,9 @@ loop {
             _ => {},
         },
         Mode::Insert => match read()?.into() {
-            Input { key: Key::Esc, .. } => {
-                mode = Mode::Normal;
+            Input { key: Key::Esc, .. }
+            | Input { key: Key::Char('c'), ctrl: true, .. } => {
+                mode = Mode::Normal; // Back to normal mode with Esc or Ctrl+C
             }
             input => {
                 textarea.input(input); // Use default key mappings in insert mode
