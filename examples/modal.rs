@@ -8,16 +8,30 @@ use std::fs;
 use std::io;
 use std::io::BufRead;
 use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Modifier, Style};
-use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, Paragraph};
+use tui::style::{Color, Modifier, Style};
+use tui::widgets::{Block, Borders};
 use tui::Terminal;
 use tui_textarea::{CursorMove, Input, Key, Scrolling, TextArea};
 
 enum Mode {
     Normal,
     Insert,
+}
+
+impl Mode {
+    fn help_message(&self) -> &'static str {
+        match self {
+            Self::Normal => "type q to quit, type i to enter insert mode",
+            Self::Insert => "type Esc to back to normal mode",
+        }
+    }
+
+    fn cursor_color(&self) -> Color {
+        match self {
+            Self::Normal => Color::Reset,
+            Self::Insert => Color::LightBlue,
+        }
+    }
 }
 
 impl fmt::Display for Mode {
@@ -47,37 +61,19 @@ fn main() -> io::Result<()> {
         TextArea::default()
     };
 
-    textarea.set_block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title("Modal Example"),
-    );
-
-    let layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(1), Constraint::Length(1)].as_ref());
     let mut mode = Mode::Normal;
     loop {
-        term.draw(|f| {
-            let chunks = layout.split(f.size());
+        // Show help message and current mode in title of the block
+        let title = format!("{} MODE ({})", mode, mode.help_message());
+        let block = Block::default().borders(Borders::ALL).title(title);
+        textarea.set_block(block);
 
-            f.render_widget(textarea.widget(), chunks[0]);
+        // Change the cursor color looking at current mode
+        let color = mode.cursor_color();
+        let style = Style::default().fg(color).add_modifier(Modifier::REVERSED);
+        textarea.set_cursor_style(style);
 
-            let (row, col) = textarea.cursor();
-            let help = if let Mode::Normal = mode {
-                " type q for quit, type i to enter insert mode"
-            } else {
-                " type Esc to leave insert mode"
-            };
-            let status = Paragraph::new(Spans::from(vec![
-                Span::styled(
-                    format!(" {} {},{} ", mode, row, col),
-                    Style::default().add_modifier(Modifier::REVERSED),
-                ),
-                Span::raw(help),
-            ]));
-            f.render_widget(status, chunks[1]);
-        })?;
+        term.draw(|f| f.render_widget(textarea.widget(), f.size()))?;
 
         let input = crossterm::event::read()?.into();
         match mode {
