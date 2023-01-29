@@ -1,5 +1,7 @@
 name: CI
 on: [push, pull_request]
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   unit-test:
@@ -8,15 +10,9 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
       fail-fast: true
     runs-on: ${{ matrix.os }}
-    env:
-      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --all-features -- --skip src/lib.rs
         if: ${{ matrix.os != 'windows-latest' }}
@@ -24,16 +20,11 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
   lint:
     runs-on: ubuntu-latest
-    env:
-      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          components: rustfmt, clippy
-          override: true
+          components: clippy,rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt -- --check
       - run: cargo clippy --examples --all-features -- -D warnings
