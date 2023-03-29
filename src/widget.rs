@@ -123,6 +123,9 @@ impl<'a> Widget for Renderer<'a> {
         let mut inner = Paragraph::new(text)
             .style(self.0.style())
             .alignment(self.0.alignment());
+        if let Some(wrap) = self.0.get_wrap() {
+            inner = inner.wrap(wrap);
+        }
         if let Some(b) = self.0.block() {
             inner = inner.block(b.clone());
         }
