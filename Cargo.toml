@@ -26,13 +26,17 @@ default = ["crossterm"]
 crossterm = ["dep:crossterm", "tui/crossterm"]
 termion = ["dep:termion", "tui/termion"]
 search = ["dep:regex"]
+ratatui-crossterm = ["dep:crossterm-026", "ratatui/crossterm"]
+ratatui-termion = ["dep:termion", "ratatui/termion"]
 
 [dependencies]
-crossterm = { version = "0.25", optional = true }
+crossterm = { package = "crossterm", version = "0.25", optional = true }
 regex = { version = "1", optional = true }
 termion = { version = "1.5", optional = true }
-tui = { version = "0.19", default-features = false }
+tui = { version = "0.19", default-features = false, optional = true }
 arbitrary = { version = "1", features = ["derive"], optional = true }
+crossterm-026 = { package = "crossterm", version = "0.26", optional = true }
+ratatui = { version = "0.20.1", default-features = false, optional = true }
 
 [[example]]
 name = "minimal"
