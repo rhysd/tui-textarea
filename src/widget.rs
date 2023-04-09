@@ -148,7 +148,8 @@ impl<'a> Widget for Renderer<'a> {
                 let cursor_row_wraps = wrapped_rows[cursor_row as usize] - 1;
                 let cursor_line_on_screen =
                     rows_from_top_to_cursor + cursor_row_wraps <= viewport_height;
-                let rows_to_move = rows_from_top_to_cursor + cursor_row_wraps - viewport_height;
+                let rows_to_move =
+                    (rows_from_top_to_cursor + cursor_row_wraps).saturating_sub(viewport_height);
 
                 if !cursor_line_on_screen {
                     // Count how many lines add up to enough rows to get entire cursor line on screen again
