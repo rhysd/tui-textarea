@@ -111,6 +111,7 @@ impl<'a> Widget for Renderer<'a> {
                 .map(|line| {
                     let line_length = line.chars().count() as u16;
                     // Empty rows occupy at least 1 row
+                    // FIXME: This method doesn't work
                     ((line_length + wrap_width - 1) / wrap_width).max(1)
                 })
                 .collect()
@@ -138,6 +139,7 @@ impl<'a> Widget for Renderer<'a> {
                 return cursor_row;
             } else {
                 // Calculate the number of wrap rows between the top row and the cursor row
+                // TODO: Clarify why +1 is needed
                 let rows_from_top_to_cursor = wrapped_rows
                     [prev_top_row as usize..cursor_row as usize]
                     .iter()
@@ -178,6 +180,7 @@ impl<'a> Widget for Renderer<'a> {
             let wrapped_rows = wrapped_rows(&self.0.lines(), width);
             top_row = next_scroll_row_wrapped(top_row, cursor.0 as u16, height, &wrapped_rows);
             // Column for scoll should never change with wrapping (no horiz scroll)
+            // FIXME: Edge case where line can't fit in screen and overflows?
         } else {
             top_row = next_scroll_top(top_row, cursor.0 as u16, height);
             top_col = next_scroll_top(top_col, cursor.1 as u16, width);
@@ -197,6 +200,7 @@ impl<'a> Widget for Renderer<'a> {
         if top_col != 0 {
             inner = inner.scroll((0, top_col));
         }
+        // TODO: Vertical scroll to position top edge in middle of wrapped line
 
         // Store scroll top position for rendering on the next tick
         self.0.viewport.store(top_row, top_col, width, height);
