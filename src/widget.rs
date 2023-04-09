@@ -26,13 +26,11 @@ impl Clone for Viewport {
 }
 
 impl Viewport {
-    // Return coordinates at top of viewport
     pub fn scroll_top(&self) -> (u16, u16) {
         let u = self.0.load(Ordering::Relaxed);
         ((u >> 16) as u16, u as u16)
     }
 
-    // Return scroll top position, and width / height
     pub fn rect(&self) -> (u16, u16, u16, u16) {
         let u = self.0.load(Ordering::Relaxed);
         let width = (u >> 48) as u16;
@@ -42,7 +40,6 @@ impl Viewport {
         (row, col, width, height)
     }
 
-    // What is the difference
     pub fn position(&self) -> (u16, u16, u16, u16) {
         let (row_top, col_top, width, height) = self.rect();
         let row_bottom = row_top.saturating_add(height).saturating_sub(1);
