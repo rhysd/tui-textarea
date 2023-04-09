@@ -144,7 +144,8 @@ impl<'a> Widget for Renderer<'a> {
                 let rows_from_top_to_cursor = wrapped_rows
                     [prev_top_row as usize..cursor_row as usize]
                     .iter()
-                    .sum::<u16>();
+                    .sum::<u16>()
+                    + 1;
                 let cursor_row_wraps = wrapped_rows[cursor_row as usize] - 1;
                 let cursor_line_on_screen =
                     rows_from_top_to_cursor + cursor_row_wraps <= viewport_height;
@@ -163,6 +164,7 @@ impl<'a> Widget for Renderer<'a> {
                         // Return index of line where acc exceeds rows_to_move
                         .position(|sum| sum >= rows_to_move)
                         .unwrap_or(0) as u16;
+                    let lines_to_move = lines_to_move + 1; // Convert from index
 
                     // Never move below cursor row in case terminal can't fit it
                     return (prev_top_row + lines_to_move).min(cursor_row);
