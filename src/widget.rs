@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
 use tui::text::Text;
-use tui::widgets::{Paragraph, Widget};
+use tui::widgets::{Paragraph, Widget, Wrap};
 
 // &mut 'a (u16, u16, u16, u16) is not available since Renderer instance totally takes over the ownership of TextArea
 // instance. In the case, the TextArea instance cannot be accessed from any other objects since it is mutablly
@@ -104,6 +104,21 @@ impl<'a> Widget for Renderer<'a> {
             area
         };
 
+        // Transform lines into array of row count for each line
+        fn wrapped_rows(lines: &[String], wrap_width: u16) -> Vec<u16> {
+            lines
+                .iter()
+                .map(|line| {
+                    let line_length = line.chars().count() as u16;
+                    // Empty rows occupy at least 1 row
+                    // FIXME: This method doesn't work
+                    ((line_length + wrap_width - 1) / wrap_width).max(1)
+                })
+                .collect()
+        }
+
+        // Move scroll top if cursor moves outside of viewport
+        // Cursor position is relative to text lines, not viewport.
         fn next_scroll_top(prev_top: u16, cursor: u16, length: u16) -> u16 {
             if cursor < prev_top {
                 cursor
@@ -114,21 +129,78 @@ impl<'a> Widget for Renderer<'a> {
             }
         }
 
+        fn next_scroll_row_wrapped(
+            prev_top_row: u16,
+            cursor_row: u16,
+            viewport_height: u16,
+            wrapped_rows: &Vec<u16>,
+        ) -> u16 {
+            if cursor_row < prev_top_row {
+                return cursor_row;
+            } else {
+                // Calculate the number of wrap rows between the top row and the cursor row
+                // TODO: Clarify why +1 is needed
+                let rows_from_top_to_cursor = wrapped_rows
+                    [prev_top_row as usize..cursor_row as usize]
+                    .iter()
+                    .sum::<u16>()
+                    + 1;
+                let cursor_row_wraps = wrapped_rows[cursor_row as usize] - 1;
+                let cursor_line_on_screen =
+                    rows_from_top_to_cursor + cursor_row_wraps <= viewport_height;
+                let rows_to_move =
+                    (rows_from_top_to_cursor + cursor_row_wraps).saturating_sub(viewport_height);
+
+                if !cursor_line_on_screen {
+                    // Count how many lines add up to enough rows to get entire cursor line on screen again
+                    let lines_to_move = wrapped_rows[prev_top_row as usize..cursor_row as usize]
+                        .iter()
+                        .scan(0, |acc, &row| {
+                            // Sum wrap rows to this line
+                            *acc += row;
+                            Some(*acc)
+                        })
+                        // Return index of line where acc exceeds rows_to_move
+                        .position(|sum| sum >= rows_to_move)
+                        .unwrap_or(0) as u16;
+                    let lines_to_move = lines_to_move + 1; // Convert from index
+
+                    // Never move below cursor row in case terminal can't fit it
+                    return (prev_top_row + lines_to_move).min(cursor_row);
+                } else {
+                    return prev_top_row;
+                }
+            };
+        }
+
         let cursor = self.0.cursor();
-        let (top_row, top_col) = self.0.viewport.scroll_top();
-        let top_row = next_scroll_top(top_row, cursor.0 as u16, height);
-        let top_col = next_scroll_top(top_col, cursor.1 as u16, width);
+        let (mut top_row, mut top_col) = self.0.viewport.scroll_top();
+        let wrap = self.0.get_wrap();
+        if wrap {
+            let wrapped_rows = wrapped_rows(&self.0.lines(), width);
+            top_row = next_scroll_row_wrapped(top_row, cursor.0 as u16, height, &wrapped_rows);
+            // Column for scoll should never change with wrapping (no horiz scroll)
+            // FIXME: Edge case where line can't fit in screen and overflows?
+        } else {
+            top_row = next_scroll_top(top_row, cursor.0 as u16, height);
+            top_col = next_scroll_top(top_col, cursor.1 as u16, width);
+        }
+        let (top_row, top_col) = (top_row, top_col);
 
         let text = self.text(top_row as usize, height as usize);
         let mut inner = Paragraph::new(text)
             .style(self.0.style())
             .alignment(self.0.alignment());
+        if wrap {
+            inner = inner.wrap(Wrap { trim: false });
+        }
         if let Some(b) = self.0.block() {
             inner = inner.block(b.clone());
         }
         if top_col != 0 {
             inner = inner.scroll((0, top_col));
         }
+        // TODO: Vertical scroll to position top edge in middle of wrapped line
 
         // Store scroll top position for rendering on the next tick
         self.0.viewport.store(top_row, top_col, width, height);
