@@ -11,7 +11,7 @@ use crate::word::{find_word_end_forward, find_word_start_backward};
 use tui::layout::Alignment;
 use tui::style::{Modifier, Style};
 use tui::text::Spans;
-use tui::widgets::{Block, Widget, Wrap};
+use tui::widgets::{Block, Widget};
 
 /// A type to manage state of textarea.
 ///
@@ -37,7 +37,7 @@ use tui::widgets::{Block, Widget, Wrap};
 pub struct TextArea<'a> {
     lines: Vec<String>,
     block: Option<Block<'a>>,
-    wrap: Option<Wrap>,
+    wrap: bool,
     style: Style,
     cursor: (usize, usize), // 0-base
     tab_len: u8,
@@ -135,7 +135,7 @@ impl<'a> TextArea<'a> {
         Self {
             lines,
             block: None,
-            wrap: None,
+            wrap: false,
             style: Style::default(),
             cursor: (0, 0),
             tab_len: 4,
@@ -1045,13 +1045,12 @@ impl<'a> TextArea<'a> {
     }
 
     /// Get current wrap setting of textarea.
-    pub fn get_wrap(&self) -> Option<Wrap> {
+    pub fn get_wrap(&self) -> bool {
         self.wrap
     }
 
-    /// Set text wrapping. By default, wrap is None.
-    /// Wrap type is from tui-rs crate, used for the Paragraph widget.
-    pub fn set_wrap(&mut self, wrap: Option<Wrap>) {
+    /// Set text wrapping. By default, wrap is false.
+    pub fn set_wrap(&mut self, wrap: bool) {
         self.wrap = wrap
     }
 
