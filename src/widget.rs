@@ -131,54 +131,6 @@ impl<'a> Widget for Renderer<'a> {
             }
         }
 
-        // Map row to wrap space, considering wrapped lines
-        fn to_wrap_space(row: u16, wrapped_rows: &Vec<u16>) -> u16 {
-            wrapped_rows
-                .iter()
-                .take(row as usize)
-                .map(|&row| row)
-                .sum::<u16>()
-        }
-
-        // Map wrapped row index back to index that ignores wraps
-        fn to_line_space(wrap_row: u16, wrapped_rows: &Vec<u16>) -> u16 {
-            wrapped_rows
-                .iter()
-                .enumerate()
-                .scan(0, |acc, (i, &row)| {
-                    // Add each line row count to acc
-                    *acc += row;
-                    // keep returning until wrap count exceeds row
-                    if *acc <= wrap_row {
-                        // return line index
-                        Some(i as u16)
-                    } else {
-                        None
-                    }
-                })
-                // get last return before iteration passed the appropriate line
-                .last()
-                .unwrap_or(0)
-        }
-
-        fn cursor_line_is_below_vp(
-            prev_top_row: u16,
-            cursor_row: u16,
-            viewport_height: u16,
-            wrapped_rows: &Vec<u16>,
-        ) -> bool {
-            if cursor_row < prev_top_row {
-                return false;
-            }
-            // Calculate the number of wrap rows between the top row and the cursor row
-            let rows_to_cursor = wrapped_rows[prev_top_row as usize..cursor_row as usize]
-                .iter()
-                .sum::<u16>();
-
-            // Check if the number of wrap rows between top and cursor exceeds the viewport height
-            rows_to_cursor > viewport_height
-        }
-
         fn next_scroll_row_wrapped(
             prev_top_row: u16,
             cursor_row: u16,
