@@ -43,11 +43,10 @@ name = "minimal"
 
 [[example]]
 name = "termion"
-required-features = ["termion"]
 
 [[example]]
 name = "editor"
-required-features = ["crossterm", "search"]
+required-features = ["search"]
 
 [[example]]
 name = "split"

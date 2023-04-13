@@ -1,3 +1,6 @@
+#[cfg(all(not(feature = "termion"), not(feature = "ratatui-termion")))]
+compile_error!("termion example requires \"termion\" feature or \"ratatui-termion\" feature. see https://github.com/rhysd/tui-textarea");
+
 use std::error::Error;
 use std::io;
 use std::sync::mpsc;
@@ -7,10 +10,20 @@ use termion::event::Event as TermEvent;
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
-use tui::backend::TermionBackend;
-use tui::widgets::{Block, Borders};
-use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
+
+#[cfg(feature = "ratatui-termion")]
+use ratatui::{
+    backend::TermionBackend,
+    widgets::{Block, Borders},
+    Terminal,
+};
+#[cfg(feature = "termion")]
+use tui::{
+    backend::TermionBackend,
+    widgets::{Block, Borders},
+    Terminal,
+};
 
 enum Event {
     Term(TermEvent),

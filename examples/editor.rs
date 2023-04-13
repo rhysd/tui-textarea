@@ -1,3 +1,6 @@
+#[cfg(feature = "ratatui-crossterm")]
+use crossterm_026 as crossterm;
+
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, is_raw_mode_enabled, EnterAlternateScreen,
@@ -10,13 +13,26 @@ use std::fs;
 use std::io;
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
-use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Color, Modifier, Style};
-use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, Paragraph};
-use tui::Terminal;
 use tui_textarea::{CursorMove, Input, Key, TextArea};
+
+#[cfg(feature = "ratatui-crossterm")]
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Span, Spans},
+    widgets::{Block, Borders, Paragraph},
+    Terminal,
+};
+#[cfg(not(feature = "ratatui-crossterm"))]
+use tui::{
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Span, Spans},
+    widgets::{Block, Borders, Paragraph},
+    Terminal,
+};
 
 macro_rules! error {
     ($fmt: expr $(, $args:tt)*) => {{
