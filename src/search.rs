@@ -1,5 +1,5 @@
+use crate::tui::style::{Color, Style};
 use regex::Regex;
-use tui::style::{Color, Style};
 
 #[derive(Clone)]
 pub struct Search {

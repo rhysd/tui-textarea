@@ -1,11 +1,11 @@
 use crate::textarea::TextArea;
+use crate::tui::buffer::Buffer;
+use crate::tui::layout::Rect;
+use crate::tui::text::Text;
+use crate::tui::widgets::{Paragraph, Widget};
 use crate::util::num_digits;
 use std::cmp;
 use std::sync::atomic::{AtomicU64, Ordering};
-use tui::buffer::Buffer;
-use tui::layout::Rect;
-use tui::text::Text;
-use tui::widgets::{Paragraph, Widget};
 
 // &mut 'a (u16, u16, u16, u16) is not available since Renderer instance totally takes over the ownership of TextArea
 // instance. In the case, the TextArea instance cannot be accessed from any other objects since it is mutablly

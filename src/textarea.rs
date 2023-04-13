@@ -5,13 +5,13 @@ use crate::input::{Input, Key};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
+use crate::tui::layout::Alignment;
+use crate::tui::style::{Modifier, Style};
+use crate::tui::text::Spans;
+use crate::tui::widgets::{Block, Widget};
 use crate::util::spaces;
 use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
-use tui::layout::Alignment;
-use tui::style::{Modifier, Style};
-use tui::text::Spans;
-use tui::widgets::{Block, Widget};
 
 /// A type to manage state of textarea.
 ///

@@ -1,11 +1,11 @@
-#[cfg(feature = "arbitrary")]
-use arbitrary::Arbitrary;
-#[cfg(feature = "crossterm")]
-use crossterm::event::{
+#[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
+use crate::crossterm::event::{
     Event as CrosstermEvent, KeyCode, KeyEvent, KeyModifiers, MouseEvent as CrosstermMouseEvent,
     MouseEventKind as CrosstermMouseEventKind,
 };
-#[cfg(feature = "termion")]
+#[cfg(feature = "arbitrary")]
+use arbitrary::Arbitrary;
+#[cfg(any(feature = "termion", feature = "ratatui-termion"))]
 use termion::event::{Event as TermionEvent, Key as TermionKey, MouseEvent as TermionMouseEvent};
 
 /// Backend-agnostic key input kind.
@@ -95,7 +95,7 @@ impl Default for Input {
     }
 }
 
-#[cfg(feature = "crossterm")]
+#[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
 impl From<CrosstermEvent> for Input {
     /// Convert [`crossterm::event::Event`] to [`Input`].
     fn from(event: CrosstermEvent) -> Self {
@@ -107,7 +107,7 @@ impl From<CrosstermEvent> for Input {
     }
 }
 
-#[cfg(feature = "crossterm")]
+#[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
 impl From<KeyEvent> for Input {
     /// Convert [`crossterm::event::KeyEvent`] to [`Input`].
     fn from(key: KeyEvent) -> Self {
@@ -135,7 +135,7 @@ impl From<KeyEvent> for Input {
     }
 }
 
-#[cfg(feature = "crossterm")]
+#[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
 impl From<CrosstermMouseEvent> for Input {
     /// Convert [`crossterm::event::MouseEvent`] to [`Input`].
     fn from(mouse: CrosstermMouseEvent) -> Self {
@@ -150,7 +150,7 @@ impl From<CrosstermMouseEvent> for Input {
     }
 }
 
-#[cfg(feature = "termion")]
+#[cfg(any(feature = "termion", feature = "ratatui-termion"))]
 impl From<TermionEvent> for Input {
     /// Convert [`termion::event::Event`] to [`Input`].
     fn from(event: TermionEvent) -> Self {
@@ -162,7 +162,7 @@ impl From<TermionEvent> for Input {
     }
 }
 
-#[cfg(feature = "termion")]
+#[cfg(any(feature = "termion", feature = "ratatui-termion"))]
 impl From<TermionKey> for Input {
     /// Convert [`termion::event::Key`] to [`Input`].
     fn from(key: TermionKey) -> Self {
@@ -201,7 +201,7 @@ impl From<TermionKey> for Input {
     }
 }
 
-#[cfg(feature = "termion")]
+#[cfg(any(feature = "termion", feature = "ratatui-termion"))]
 impl From<TermionMouseEvent> for Input {
     /// Convert [`termion::event::MouseEvent`] to [`Input`].
     fn from(mouse: TermionMouseEvent) -> Self {
