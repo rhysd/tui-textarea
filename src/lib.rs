@@ -28,7 +28,7 @@ use ratatui as tui;
 #[allow(clippy::single_component_path_imports)]
 use tui;
 
-#[cfg(not(feature = "ratatui-crossterm"))]
+#[cfg(feature = "crossterm")]
 #[allow(clippy::single_component_path_imports)]
 use crossterm;
 #[cfg(feature = "ratatui-crossterm")]
