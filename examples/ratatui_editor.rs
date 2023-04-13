@@ -1,8 +1,16 @@
+use crossterm_026 as crossterm;
+
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, is_raw_mode_enabled, EnterAlternateScreen,
     LeaveAlternateScreen,
 };
+use ratatui::backend::CrosstermBackend;
+use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Span, Spans};
+use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::Terminal;
 use std::borrow::Cow;
 use std::env;
 use std::fmt::Display;
@@ -10,12 +18,6 @@ use std::fs;
 use std::io;
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
-use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Color, Modifier, Style};
-use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, Paragraph};
-use tui::Terminal;
 use tui_textarea::{CursorMove, Input, Key, TextArea};
 
 macro_rules! error {

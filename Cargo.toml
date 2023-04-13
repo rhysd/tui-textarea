@@ -40,13 +40,15 @@ ratatui = { version = "0.20.1", default-features = false, optional = true }
 
 [[example]]
 name = "minimal"
+required-features = ["crossterm"]
 
 [[example]]
 name = "termion"
+required-features = ["termion"]
 
 [[example]]
 name = "editor"
-required-features = ["search"]
+required-features = ["crossterm", "search"]
 
 [[example]]
 name = "split"
@@ -63,6 +65,18 @@ required-features = ["crossterm"]
 [[example]]
 name = "modal"
 required-features = ["crossterm"]
+
+[[example]]
+name = "ratatui_minimal"
+required-features = ["ratatui-crossterm"]
+
+[[example]]
+name = "ratatui_editor"
+required-features = ["ratatui-crossterm", "search"]
+
+[[example]]
+name = "ratatui_termion"
+required-features = ["ratatui-termion"]
 
 [workspace]
 members = [
