@@ -18,7 +18,7 @@ jobs:
         if: ${{ matrix.os != 'windows-latest' }}
       - run: cargo test --features=search -- --skip src\lib.rs
         if: ${{ matrix.os == 'windows-latest' }}
-      - run: cargo test --no-default-features --features=ratatui-crossterm,search -- --skip src
+      - run: cargo test --no-default-features --features=ratatui-crossterm,search -- --skip .rs
   lint:
     runs-on: ubuntu-latest
     steps:
