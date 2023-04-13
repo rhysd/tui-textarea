@@ -4,8 +4,8 @@ tui-textarea
 [![docs][doc-badge]][doc]
 [![CI][ci-badge]][ci]
 
-[tui-textarea][crate] is a simple yet powerful text editor widget like `<textarea>` in HTML for [tui-rs][]. Multi-line
-text editor can be easily put as part of your TUI application.
+[tui-textarea][crate] is a simple yet powerful text editor widget like `<textarea>` in HTML for [tui-rs][] and [ratatui][].
+Multi-line text editor can be easily put as part of your TUI application.
 
 **Features:**
 
@@ -19,6 +19,7 @@ text editor can be easily put as part of your TUI application.
 - Yank support. Paste text deleted with `C-k`, `C-j`, ...
 - Backend agnostic. [crossterm][], [termion][], and your own backend are all supported
 - Multiple textarea widgets in the same screen
+- Support both [tui-rs][] (the original) and [ratatui][] (the fork by community)
 
 [Documentation][doc]
 
@@ -90,6 +91,22 @@ cargo run --example modal
 
 Simple modal text editor like `vi`.
 
+### Examples for [ratatui][] support
+
+All above examples uses [tui-rs][], but some examples provide [ratatui][] version. Try `ratatui_` prefix. In these cases,
+you need to specify features to use `ratatui` and `--no-default-features` flag explicltly.
+
+```sh
+# ratatui version of `minimal` example
+cargo run --example ratatui_minimal --no-default-features --features=ratatui-crossterm
+
+# ratatui version of `editor` example
+cargo run --example ratatui_editor --no-default-features --features=ratatui-crossterm,search file.txt
+
+# ratatui version of `termion` example
+cargo run --example ratatui_termion --no-default-features --features=ratatui-termion
+```
+
 ## Installation
 
 Add `tui-textarea` crate to dependencies in your `Cargo.toml`. This enables crossterm backend support by default.
@@ -116,6 +133,28 @@ If you're using tui-rs with [termion][], enable `termion` feature instead of `cr
 tui = { version = "*", default-features = false, features = ["termion"] }
 tui-textarea = { version = "*", default-features = false, features = ["termion"] }
 ```
+
+If you're using [ratatui][] instead of [tui-rs][], you need to enable features for using ratatui crate. The following table
+shows feature names corresponding to the dependencies.
+
+|         | crossterm                        | termion           |
+|---------|----------------------------------|-------------------|
+| tui-rs  | `crossterm` (enabled by default) | `termion`         |
+| ratatui | `ratatui-crossterm`              | `ratatui-termion` |
+
+For example, when you want to use [ratatui][] and [crossterm][],
+
+```toml
+[dependencies]
+ratatui = "*"
+tui-textarea = { version = "*", features = ["ratatui-crossterm"] default-features=false }
+```
+
+**Note:** [tui-rs][] support and [ratatui][] support are exclusive. When you use [ratatui][] support, you must disable
+[tui-rs][] support by `default-features=false`.
+
+**Note:** Versions of [crossterm][] crate are different between [tui-rs][] and [ratatui][]. Please choose correct version
+of the crate as dependency of your project.
 
 ## Minimal Usage
 
@@ -629,6 +668,7 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 [ci-badge]: https://github.com/rhysd/tui-textarea/actions/workflows/ci.yml/badge.svg?event=push
 [ci]: https://github.com/rhysd/tui-textarea/actions/workflows/ci.yml
 [tui-rs]: https://github.com/fdehau/tui-rs
+[ratatui]: https://github.com/tui-rs-revival/ratatui
 [termion]: https://docs.rs/termion/latest/termion/
 [crossterm]: https://docs.rs/crossterm/latest/crossterm/
 [tui-backend]: https://docs.rs/tui/latest/tui/backend/trait.Backend.html
