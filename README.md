@@ -94,7 +94,7 @@ Simple modal text editor like `vi`.
 ### Examples for [ratatui][] support
 
 All above examples uses [tui-rs][], but some examples provide [ratatui][] version. Try `ratatui_` prefix. In these cases,
-you need to specify features to use `ratatui` and `--no-default-features` flag explicltly.
+you need to specify features to use ratatui and `--no-default-features` flag explicitly.
 
 ```sh
 # ratatui version of `minimal` example
@@ -142,19 +142,19 @@ shows feature names corresponding to the dependencies.
 | tui-rs  | `crossterm` (enabled by default) | `termion`         |
 | ratatui | `ratatui-crossterm`              | `ratatui-termion` |
 
-For example, when you want to use [ratatui][] and [crossterm][],
+For example, when you want to use the combination of [ratatui][] and [crossterm][],
 
 ```toml
 [dependencies]
 ratatui = "*"
-tui-textarea = { version = "*", features = ["ratatui-crossterm"] default-features=false }
+tui-textarea = { version = "*", features = ["ratatui-crossterm"], default-features=false }
 ```
 
 **Note:** [tui-rs][] support and [ratatui][] support are exclusive. When you use [ratatui][] support, you must disable
 [tui-rs][] support by `default-features=false`.
 
-**Note:** Versions of [crossterm][] crate are different between [tui-rs][] and [ratatui][]. Please choose correct version
-of the crate as dependency of your project.
+**Note:** Versions of [crossterm][] crate are different between [tui-rs][] and [ratatui][]. Please choose the correct
+version as dependency of your project.
 
 ## Minimal Usage
 
