@@ -150,11 +150,12 @@ ratatui = "*"
 tui-textarea = { version = "*", features = ["ratatui-crossterm"], default-features=false }
 ```
 
-**Note:** [tui-rs][] support and [ratatui][] support are exclusive. When you use [ratatui][] support, you must disable
+Note that [tui-rs][] support and [ratatui][] support are exclusive. When you use [ratatui][] support, you must disable
 [tui-rs][] support by `default-features=false`.
 
-**Note:** Versions of [crossterm][] crate are different between [tui-rs][] and [ratatui][]. Please choose the correct
-version as dependency of your project.
+In addition to above dependencies, you also need to install [crossterm][] or [termion][] to initialize your application
+and to receive key inputs. Note that version of [crossterm][] crate is different between [tui-rs][] and [ratatui][].
+Please select the correct version.
 
 ## Minimal Usage
 
