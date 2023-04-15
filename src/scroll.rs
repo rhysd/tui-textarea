@@ -178,3 +178,33 @@ impl From<(i16, i16)> for Scrolling {
         Self::Delta { rows, cols }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Seaparate tests for ratatui support
+    #[test]
+    fn delta() {
+        use crate::tui::buffer::Buffer;
+        use crate::tui::layout::Rect;
+        use crate::tui::widgets::Widget;
+        use crate::TextArea;
+
+        let mut textarea: TextArea = (0..20).into_iter().map(|i| i.to_string()).collect();
+        let r = Rect {
+            x: 0,
+            y: 0,
+            width: 24,
+            height: 8,
+        };
+        let mut b = Buffer::empty(r.clone());
+        textarea.widget().render(r, &mut b);
+
+        textarea.scroll(Scrolling::Delta { rows: 2, cols: 0 });
+        assert_eq!(textarea.cursor(), (2, 0));
+
+        textarea.scroll((1, 0));
+        assert_eq!(textarea.cursor(), (3, 0));
+    }
+}

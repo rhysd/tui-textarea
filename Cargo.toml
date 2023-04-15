@@ -5,7 +5,7 @@ edition = "2021"
 rust-version = "1.56.1"
 authors = ["rhysd <lin90162@yahoo.co.jp>"]
 description = """
-tui-textarea is a simple yet powerful text editor widget for tui-rs. Multi-line
+tui-textarea is a simple yet powerful text editor widget for tui-rs and ratatui. Multi-line
 text editor can be easily put as part of your TUI application.
 """
 license = "MIT"
@@ -13,7 +13,7 @@ homepage = "https://github.com/rhysd/tui-textarea#readme"
 repository = "https://github.com/rhysd/tui-textarea"
 readme = "README.md"
 categories = ["text-editors", "text-processing"]
-keywords = ["tui", "textarea", "editor", "input", "edit"]
+keywords = ["tui", "textarea", "editor", "input", "edit", "ratatui"]
 include = [
     "/src",
     "/examples",
@@ -26,13 +26,17 @@ default = ["crossterm"]
 crossterm = ["dep:crossterm", "tui/crossterm"]
 termion = ["dep:termion", "tui/termion"]
 search = ["dep:regex"]
+ratatui-crossterm = ["dep:crossterm-026", "ratatui/crossterm"]
+ratatui-termion = ["dep:termion", "ratatui/termion"]
 
 [dependencies]
-crossterm = { version = "0.25", optional = true }
+crossterm = { package = "crossterm", version = "0.25", optional = true }
 regex = { version = "1", optional = true }
 termion = { version = "1.5", optional = true }
-tui = { version = "0.19", default-features = false }
+tui = { version = "0.19", default-features = false, optional = true }
 arbitrary = { version = "1", features = ["derive"], optional = true }
+crossterm-026 = { package = "crossterm", version = "0.26", optional = true }
+ratatui = { version = "0.20.1", default-features = false, optional = true }
 
 [[example]]
 name = "minimal"
@@ -61,6 +65,18 @@ required-features = ["crossterm"]
 [[example]]
 name = "modal"
 required-features = ["crossterm"]
+
+[[example]]
+name = "ratatui_minimal"
+required-features = ["ratatui-crossterm"]
+
+[[example]]
+name = "ratatui_editor"
+required-features = ["ratatui-crossterm", "search"]
+
+[[example]]
+name = "ratatui_termion"
+required-features = ["ratatui-termion"]
 
 [workspace]
 members = [

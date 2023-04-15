@@ -9,7 +9,7 @@ license = "MIT"
 bench = false
 
 [dependencies]
-tui-textarea = { path = "..", default-features = false, features = ["search"] }
+tui-textarea = { path = "..", features = ["search"] }
 tui = { version = "0.19", default-features = false }
 
 [dev-dependencies]

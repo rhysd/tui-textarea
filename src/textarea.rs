@@ -5,13 +5,13 @@ use crate::input::{Input, Key};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
+use crate::tui::layout::Alignment;
+use crate::tui::style::{Modifier, Style};
+use crate::tui::text::Spans;
+use crate::tui::widgets::{Block, Widget};
 use crate::util::spaces;
 use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
-use tui::layout::Alignment;
-use tui::style::{Modifier, Style};
-use tui::text::Spans;
-use tui::widgets::{Block, Widget};
 
 /// A type to manage state of textarea.
 ///
@@ -1595,5 +1595,35 @@ impl<'a> TextArea<'a> {
     pub fn scroll(&mut self, scrolling: impl Into<Scrolling>) {
         scrolling.into().scroll(&mut self.viewport);
         self.move_cursor(CursorMove::InViewport);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Seaparate tests for ratatui support
+    #[test]
+    fn scroll() {
+        use crate::tui::buffer::Buffer;
+        use crate::tui::layout::Rect;
+        use crate::tui::widgets::Widget;
+
+        let mut textarea: TextArea = (0..20).into_iter().map(|i| i.to_string()).collect();
+        let r = Rect {
+            x: 0,
+            y: 0,
+            width: 24,
+            height: 8,
+        };
+        let mut b = Buffer::empty(r.clone());
+        textarea.widget().render(r, &mut b);
+
+        textarea.scroll((15, 0));
+        assert_eq!(textarea.cursor(), (15, 0));
+        textarea.scroll((-5, 0));
+        assert_eq!(textarea.cursor(), (15, 0));
+        textarea.scroll((-5, 0));
+        assert_eq!(textarea.cursor(), (12, 0));
     }
 }
