@@ -23,11 +23,16 @@ include = [
 
 [features]
 default = ["crossterm"]
+# Features to use tui-rs
 crossterm = ["dep:crossterm", "tui/crossterm"]
 termion = ["dep:termion", "tui/termion"]
-search = ["dep:regex"]
+your-backend = ["tui"]
+# Features to use ratatui
 ratatui-crossterm = ["dep:crossterm-026", "ratatui/crossterm"]
 ratatui-termion = ["dep:termion", "ratatui/termion"]
+ratatui-your-backend = ["ratatui"]
+# Other optional features
+search = ["dep:regex"]
 
 [dependencies]
 crossterm = { package = "crossterm", version = "0.25", optional = true }

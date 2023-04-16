@@ -10,14 +10,6 @@
 ))]
 compile_error!("tui-rs support and ratatui support are exclussive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea");
 
-#[cfg(not(any(
-    feature = "crossterm",
-    feature = "termion",
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-)))]
-compile_error!("neither crossterm nor termion is enabled in features. see https://github.com/rhysd/tui-textarea");
-
 mod cursor;
 mod highlight;
 mod history;
@@ -30,9 +22,17 @@ mod util;
 mod widget;
 mod word;
 
-#[cfg(any(feature = "ratatui-crossterm", feature = "ratatui-termion"))]
+#[cfg(any(
+    feature = "ratatui-crossterm",
+    feature = "ratatui-termion",
+    feature = "ratatui-your-backend",
+))]
 use ratatui as tui;
-#[cfg(not(any(feature = "ratatui-crossterm", feature = "ratatui-termion")))]
+#[cfg(not(any(
+    feature = "ratatui-crossterm",
+    feature = "ratatui-termion",
+    feature = "ratatui-your-backend",
+)))]
 #[allow(clippy::single_component_path_imports)]
 use tui;
 
