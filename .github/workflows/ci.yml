@@ -19,6 +19,8 @@ jobs:
       - run: cargo test --features=search -- --skip src\lib.rs
         if: ${{ matrix.os == 'windows-latest' }}
       - run: cargo test --no-default-features --features=ratatui-crossterm,search -- --skip .rs
+      - run: cargo test --no-default-features --features=your-backend,search -- --skip .rs
+      - run: cargo test --no-default-features --features=ratatui-your-backend,search -- --skip .rs
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -36,3 +38,7 @@ jobs:
       - run: cargo clippy --examples --no-default-features --features ratatui-termion,search -- -D warnings
       - run: cargo clippy --examples --no-default-features --features termion -- -D warnings
       - run: cargo clippy --examples --no-default-features --features termion,search -- -D warnings
+      - run: cargo clippy --examples --no-default-features --features your-backend -- -D warnings
+      - run: cargo clippy --examples --no-default-features --features your-backend,search -- -D warnings
+      - run: cargo clippy --examples --no-default-features --features ratatui-your-backend -- -D warnings
+      - run: cargo clippy --examples --no-default-features --features ratatui-your-backend,search -- -D warnings
