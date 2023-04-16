@@ -137,10 +137,10 @@ tui-textarea = { version = "*", default-features = false, features = ["termion"]
 If you're using [ratatui][] instead of [tui-rs][], you need to enable features for using ratatui crate. The following table
 shows feature names corresponding to the dependencies.
 
-|         | crossterm                        | termion           |
-|---------|----------------------------------|-------------------|
-| tui-rs  | `crossterm` (enabled by default) | `termion`         |
-| ratatui | `ratatui-crossterm`              | `ratatui-termion` |
+|         | crossterm                        | termion           | Your own backend       |
+|---------|----------------------------------|-------------------|------------------------|
+| tui-rs  | `crossterm` (enabled by default) | `termion`         | `your-backend`         |
+| ratatui | `ratatui-crossterm`              | `ratatui-termion` | `ratatui-your-backend` |
 
 For example, when you want to use the combination of [ratatui][] and [crossterm][],
 
@@ -529,12 +529,13 @@ match read()?.into() {
 ### Use your own backend
 
 tui-rs allows to make your own backend by implementing [`tui::backend::Backend`][tui-backend] trait. tui-textarea also
-supports it. In the case, support for neither crossterm nor termion is necessary.
+supports it. In this case, please use `your-backend` feature for [tui-rs][] or `ratatui-your-backend` feature for
+[ratatui][]. They avoid adding backend crates (crossterm and termion) since you're using your own backend.
 
 ```toml
 [dependencies]
 tui = { version = "*", default-features = false }
-tui-textarea = { version = "*", default-features = false }
+tui-textarea = { version = "*", default-features = false, features = ["your-backend"] }
 ```
 
 `tui_textarea::Input` is a type for backend-agnostic key input. What you need to do is converting key event in your own
