@@ -20,13 +20,16 @@ pub fn line_rows(line: &String, wrap_width: u16, has_lnum: bool, num_lines: usiz
     let mut current_line_len = lnum_span_len;
     let mut wraps = 0;
 
+    // TODO: Consider length of tab characters
     for word in words {
         let word_len = word.chars().count() as u8;
 
-        if (current_line_len + word_len + 1) as u16 > wrap_width {
+        if (current_line_len + 1 + word_len) as u16 > wrap_width {
             wraps += 1;
             current_line_len = 0;
         }
+
+        // TODO count overflows
 
         current_line_len += word_len + 1;
     }
