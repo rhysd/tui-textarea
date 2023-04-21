@@ -1,5 +1,5 @@
 use crate::textarea::TextArea;
-use crate::util::num_digits;
+use crate::util::{line_rows, num_digits};
 use std::cmp;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tui::buffer::Buffer;
@@ -105,15 +105,11 @@ impl<'a> Widget for Renderer<'a> {
         };
 
         // Transform lines into array of row count for each line
-        fn wrapped_rows(lines: &[String], wrap_width: u16) -> Vec<u16> {
+        fn wrapped_rows(lines: &[String], wrap_width: u16, has_lnum: bool) -> Vec<u16> {
+            let num_lines = lines.len();
             lines
                 .iter()
-                .map(|line| {
-                    let line_length = line.chars().count() as u16;
-                    // Empty rows occupy at least 1 row
-                    // FIXME: This method doesn't work
-                    ((line_length + wrap_width - 1) / wrap_width).max(1)
-                })
+                .map(|line| line_rows(&line, wrap_width, has_lnum, num_lines))
                 .collect()
         }
 
@@ -177,7 +173,8 @@ impl<'a> Widget for Renderer<'a> {
         let (mut top_row, mut top_col) = self.0.viewport.scroll_top();
         let wrap = self.0.get_wrap();
         if wrap {
-            let wrapped_rows = wrapped_rows(&self.0.lines(), width);
+            let wrapped_rows =
+                wrapped_rows(&self.0.lines(), width, self.0.line_number_style().is_some());
             top_row = next_scroll_row_wrapped(top_row, cursor.0 as u16, height, &wrapped_rows);
             // Column for scoll should never change with wrapping (no horiz scroll)
             // FIXME: Edge case where line can't fit in screen and overflows?
