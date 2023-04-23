@@ -30,6 +30,8 @@ pub fn line_rows(line: &String, wrap_width: u16, has_lnum: bool, num_lines: usiz
         }
 
         // TODO count overflows
+        // FIXME: Multiple whitespaces won't be counted between words
+        // FIXME: Tab characters will not be counted
 
         current_line_len += word_len + 1;
     }
