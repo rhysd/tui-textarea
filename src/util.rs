@@ -16,32 +16,65 @@ pub fn line_rows(line: &String, wrap_width: u16, has_lnum: bool, num_lines: usiz
         0
     };
 
-    let words = line.split_whitespace();
-    let mut current_line_len = lnum_span_len;
+    let mut curr_line_len = lnum_span_len;
     let mut wraps = 0;
+    let mut in_whitespace = false;
+    let mut word_len = 0;
 
-    // TODO: Consider length of tab characters
-    for word in words {
-        let word_len = word.chars().count() as u8;
+    // Return new cur_line_len and wraps resulting from word
+    fn add_word_to_line(word_len: u8, mut curr_line_len: u8, width: u8) -> (u8, u8) {
+        let mut wraps = 0;
 
-        if (current_line_len + 1 + word_len) as u16 > wrap_width {
-            wraps += 1;
-            current_line_len = 0;
+        // Overflow case: Word cannot fit on a single line
+        // It is guaranteed to start on next line, and will wrap a known number of times
+        if word_len > width {
+            // Add one to round up, and one for initial wrap
+            wraps += (word_len / width) + 1 + 1;
+            curr_line_len = word_len % width;
+            return (curr_line_len, wraps);
         }
 
-        // TODO count overflows
-        // FIXME: Multiple whitespaces won't be counted between words
-        // FIXME: Tab characters will not be counted
+        if curr_line_len + word_len > width {
+            wraps += 1;
+            curr_line_len = word_len;
+        } else {
+            curr_line_len += word_len;
+        }
 
-        current_line_len += word_len + 1;
+        (curr_line_len, wraps)
+    }
+
+    for c in line.chars() {
+        if c.is_whitespace() {
+            // Add last complete word
+            if !in_whitespace && word_len > 0 {
+                let added_wraps;
+                (curr_line_len, added_wraps) =
+                    add_word_to_line(word_len, curr_line_len, wrap_width as u8);
+                wraps += added_wraps;
+                word_len = 0;
+                in_whitespace = true;
+            }
+            if c == '\t' {
+                // FIXME: Count tabs properly
+            }
+            curr_line_len += 1;
+        } else {
+            if in_whitespace {
+                word_len = 0;
+                in_whitespace = false;
+            }
+            // FIXME: Unicode grapheme clusters are counted individually instead of visible char
+            word_len += 1;
+        }
     }
 
     // Add 1 to account for the last line
-    (wraps + 1).max(1)
+    (wraps + 1).max(1) as u16
 }
 
 #[cfg(test)]
-mod tests {
+mod line_wrap_tests {
     use super::*;
 
     fn run_line_rows_test(
@@ -160,5 +193,16 @@ mod tests {
         // _10_
         // Longer
         run_line_rows_test("Longer", 10, true, 10, 2);
+    }
+
+    #[test]
+    fn test_regression() {
+        run_line_rows_test(
+            "<img src=\"https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/editor.gif\" width=560 height=236 alt=\"editor example\">",
+            58,
+            true,
+            100,
+            4,
+        )
     }
 }
