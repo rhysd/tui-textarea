@@ -50,6 +50,8 @@ pub struct TextArea<'a> {
     #[cfg(feature = "search")]
     search: Search,
     alignment: Alignment,
+    pub(crate) placeholder: Option<String>,
+    pub(crate) placeholder_style: Option<Style>,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -147,6 +149,8 @@ impl<'a> TextArea<'a> {
             #[cfg(feature = "search")]
             search: Search::default(),
             alignment: Alignment::Left,
+            placeholder: None,
+            placeholder_style: None,
         }
     }
 
@@ -1223,6 +1227,14 @@ impl<'a> TextArea<'a> {
         self.line_number_style
     }
 
+    /// sets the placeholder text
+    pub fn set_placeholder(&mut self, placeholder: String) {
+        self.placeholder = Some(placeholder);
+    }
+
+    pub fn set_placeholder_style(&mut self, style: Style) {
+        self.placeholder_style = Some(style);
+    }
     /// Set the style of cursor. By default, a cursor is rendered in the reversed color. Setting the same style as
     /// cursor line hides a cursor.
     /// ```
