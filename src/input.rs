@@ -1,10 +1,12 @@
 #[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
 use crate::crossterm::event::{
-    Event as CrosstermEvent, KeyCode, KeyEvent, KeyModifiers, MouseEvent as CrosstermMouseEvent,
-    MouseEventKind as CrosstermMouseEventKind,
+    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers,
+    MouseEvent as CrosstermMouseEvent, MouseEventKind as CrosstermMouseEventKind,
 };
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
+#[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
+use log::trace;
 #[cfg(any(feature = "termion", feature = "ratatui-termion"))]
 use termion::event::{Event as TermionEvent, Key as TermionKey, MouseEvent as TermionMouseEvent};
 
@@ -99,8 +101,9 @@ impl Default for Input {
 impl From<CrosstermEvent> for Input {
     /// Convert [`crossterm::event::Event`] to [`Input`].
     fn from(event: CrosstermEvent) -> Self {
+        trace!("Cross Event:{:?}", event);
         match event {
-            CrosstermEvent::Key(key) => Self::from(key),
+            CrosstermEvent::Key(key) if key.kind == KeyEventKind::Press => Self::from(key),
             CrosstermEvent::Mouse(mouse) => Self::from(mouse),
             _ => Self::default(),
         }
