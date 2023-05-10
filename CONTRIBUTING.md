@@ -50,7 +50,7 @@ dbg!(&some_value);
 Then redirect stderr to some file:
 
 ```sh
-cargo run -- --example minimal 2>debug.txt
+cargo run --example minimal 2>debug.txt
 ```
 
 Then the debug prints are output to the `debug.txt` file. If timing is important or you want to see the output in real-time,
@@ -58,7 +58,7 @@ printing the file content with `tail` command would be useful.
 
 ```sh
 # In a terminal, reproduce the issue
-cargo run -- --example minimal 2>debug.txt
+cargo run --example minimal 2>debug.txt
 
 # In another terminal, run `tail` command to monitor the content
 tail -F debug.txt
