@@ -100,7 +100,7 @@ impl From<CrosstermEvent> for Input {
     /// Convert [`crossterm::event::Event`] to [`Input`].
     fn from(event: CrosstermEvent) -> Self {
         match event {
-            CrosstermEvent::Key(key) if key.kind == KeyEventKind::Press => Self::from(key),
+            CrosstermEvent::Key(key) if key.kind != KeyEventKind::Release => Self::from(key),
             CrosstermEvent::Mouse(mouse) => Self::from(mouse),
             _ => Self::default(),
         }
