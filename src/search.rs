@@ -1,7 +1,7 @@
 use crate::tui::style::{Color, Style};
 use regex::Regex;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Search {
     pub pat: Option<Regex>,
     pub style: Style,

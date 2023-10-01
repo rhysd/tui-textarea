@@ -44,7 +44,7 @@ use crate::word::{find_word_end_forward, find_word_start_backward};
 /// // Get lines as String.
 /// println!("Lines: {:?}", textarea.lines());
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TextArea<'a> {
     lines: Vec<String>,
     block: Option<Block<'a>>,

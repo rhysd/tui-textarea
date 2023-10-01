@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum EditKind {
     InsertChar(char, usize),
     DeleteChar(char, usize),
@@ -54,7 +54,7 @@ impl EditKind {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Edit {
     kind: EditKind,
     cursor_before: (usize, usize),
@@ -93,7 +93,7 @@ impl Edit {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct History {
     index: usize,
     max_items: usize,

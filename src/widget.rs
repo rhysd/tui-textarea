@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 // point we stick with using `tui::terminal::Frame::render_widget` because it is simpler API. Users don't need to
 // manage states of textarea instances separately.
 // https://docs.rs/tui/latest/tui/terminal/struct.Frame.html#method.render_stateful_widget
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Viewport(AtomicU64);
 
 impl Clone for Viewport {
