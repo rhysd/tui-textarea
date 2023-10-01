@@ -7,6 +7,17 @@ use crate::scroll::Scrolling;
 use crate::search::Search;
 use crate::tui::layout::Alignment;
 use crate::tui::style::{Modifier, Style};
+#[cfg(any(
+    feature = "ratatui-crossterm",
+    feature = "ratatui-termion",
+    feature = "ratatui-your-backend",
+))]
+use crate::tui::text::Line as Spans;
+#[cfg(not(any(
+    feature = "ratatui-crossterm",
+    feature = "ratatui-termion",
+    feature = "ratatui-your-backend",
+)))]
 use crate::tui::text::Spans;
 use crate::tui::widgets::{Block, Widget};
 use crate::util::spaces;

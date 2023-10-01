@@ -1,5 +1,17 @@
 use crate::tui::style::Style;
-use crate::tui::text::{Span, Spans};
+#[cfg(any(
+    feature = "ratatui-crossterm",
+    feature = "ratatui-termion",
+    feature = "ratatui-your-backend",
+))]
+use crate::tui::text::Line as Spans;
+use crate::tui::text::Span;
+#[cfg(not(any(
+    feature = "ratatui-crossterm",
+    feature = "ratatui-termion",
+    feature = "ratatui-your-backend",
+)))]
+use crate::tui::text::Spans;
 use crate::util::{num_digits, spaces};
 use std::borrow::Cow;
 use std::cmp::Ordering;
