@@ -1,7 +1,6 @@
 use crate::textarea::TextArea;
 use crate::tui::buffer::Buffer;
 use crate::tui::layout::Rect;
-use crate::tui::style::{Color, Style};
 use crate::tui::text::Text;
 use crate::tui::widgets::{Paragraph, Widget};
 use crate::util::num_digits;
@@ -120,29 +119,15 @@ impl<'a> Widget for Renderer<'a> {
         let top_row = next_scroll_top(top_row, cursor.0 as u16, height);
         let top_col = next_scroll_top(top_col, cursor.1 as u16, width);
 
-        let text = self.text(top_row as usize, height as usize);
-
-        // check for placeholder text and style
-        let mut style = self.0.style();
-        let text = match &self.0.placeholder {
-            Some(ph) => {
-                if self.0.is_empty() {
-                    // placeholder is defined and the box is empty
-                    style = self
-                        .0
-                        .placeholder_style
-                        // default to dark grey if the caller didnt specify
-                        .unwrap_or(Style::default().fg(Color::DarkGray));
-                    Text::from(ph.as_str())
-                } else {
-                    text
-                }
+        let (text, style) = match &self.0.placeholder {
+            Some(text) if self.0.is_empty() => {
+                (Text::from(text.as_str()), self.0.placeholder_style) // When a placeholder is set and no text is in textarea
             }
-            None => text,
+            _ => (self.text(top_row as usize, height as usize), self.0.style()),
         };
 
-        // to get fine control over the text color and the surrrounding block they have to be rendered separately
-        // see https://github.com/tui-rs-revival/ratatui/issues/144
+        // To get fine control over the text color and the surrrounding block they have to be rendered separately
+        // see https://github.com/ratatui-org/ratatui/issues/144
         let mut text_area = area;
         let mut inner = Paragraph::new(text)
             .style(style)

@@ -6,7 +6,7 @@ use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
 use crate::tui::layout::Alignment;
-use crate::tui::style::{Modifier, Style};
+use crate::tui::style::{Color, Modifier, Style};
 #[cfg(any(
     feature = "ratatui-crossterm",
     feature = "ratatui-termion",
@@ -62,7 +62,7 @@ pub struct TextArea<'a> {
     search: Search,
     alignment: Alignment,
     pub(crate) placeholder: Option<String>,
-    pub(crate) placeholder_style: Option<Style>,
+    pub(crate) placeholder_style: Style,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -161,7 +161,7 @@ impl<'a> TextArea<'a> {
             search: Search::default(),
             alignment: Alignment::Left,
             placeholder: None,
-            placeholder_style: None,
+            placeholder_style: Style::default().fg(Color::DarkGray),
         }
     }
 
@@ -1244,7 +1244,7 @@ impl<'a> TextArea<'a> {
     }
 
     pub fn set_placeholder_style(&mut self, style: Style) {
-        self.placeholder_style = Some(style);
+        self.placeholder_style = style;
     }
     /// Set the style of cursor. By default, a cursor is rendered in the reversed color. Setting the same style as
     /// cursor line hides a cursor.
