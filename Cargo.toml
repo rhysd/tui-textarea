@@ -100,5 +100,5 @@ members = [
 lto = "thin"
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["search"]
 rustdoc-args = ["--cfg", "docsrs"]

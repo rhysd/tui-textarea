@@ -4,6 +4,8 @@ use crate::widget::Viewport;
 ///
 /// This type is marked as `#[non_exhaustive]` since more variations may be supported in the future. Note that the cursor will
 /// not move until it goes out the viewport. See also: [`TextArea::scroll`]
+///
+/// [`TextArea::scroll`]: https://docs.rs/tui-textarea/latest/tui_textarea/struct.TextArea.html#method.scroll
 #[non_exhaustive]
 pub enum Scrolling {
     /// Scroll the textarea by rows (vertically) and columns (horizontally). Passing positive scroll amounts to `rows` and `cols`
