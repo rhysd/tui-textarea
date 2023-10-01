@@ -119,11 +119,11 @@ impl<'a> Widget for Renderer<'a> {
         let top_row = next_scroll_top(top_row, cursor.0 as u16, height);
         let top_col = next_scroll_top(top_col, cursor.1 as u16, width);
 
-        let (text, style) = match &self.0.placeholder {
-            Some(text) if self.0.is_empty() => {
-                (Text::from(text.as_str()), self.0.placeholder_style) // When a placeholder is set and no text is in textarea
-            }
-            _ => (self.text(top_row as usize, height as usize), self.0.style()),
+        let (text, style) = if !self.0.placeholder.is_empty() && self.0.is_empty() {
+            let text = Text::from(self.0.placeholder.as_str());
+            (text, self.0.placeholder_style)
+        } else {
+            (self.text(top_row as usize, height as usize), self.0.style())
         };
 
         // To get fine control over the text color and the surrrounding block they have to be rendered separately

@@ -61,7 +61,7 @@ pub struct TextArea<'a> {
     #[cfg(feature = "search")]
     search: Search,
     alignment: Alignment,
-    pub(crate) placeholder: Option<String>,
+    pub(crate) placeholder: String,
     pub(crate) placeholder_style: Style,
 }
 
@@ -160,7 +160,7 @@ impl<'a> TextArea<'a> {
             #[cfg(feature = "search")]
             search: Search::default(),
             alignment: Alignment::Left,
-            placeholder: None,
+            placeholder: String::new(),
             placeholder_style: Style::default().fg(Color::DarkGray),
         }
     }
@@ -1240,7 +1240,7 @@ impl<'a> TextArea<'a> {
 
     /// sets the placeholder text
     pub fn set_placeholder(&mut self, placeholder: String) {
-        self.placeholder = Some(placeholder);
+        self.placeholder = placeholder;
     }
 
     pub fn set_placeholder_style(&mut self, style: Style) {
