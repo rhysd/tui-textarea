@@ -91,6 +91,12 @@ cargo run --example modal
 
 Simple modal text editor like `vi`.
 
+### [`placepop`](./examples/variable.rs)
+
+Popup textarea with a placeholder text.
+
+<img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/placepop.gif" width=539 height=220 alt="popup textarea with placeholder example">
+
 ### Examples for [ratatui][] support
 
 All above examples use [tui-rs][], but some examples provide [ratatui][] version. Try `ratatui_` prefix. In these cases,
@@ -105,6 +111,9 @@ cargo run --example ratatui_editor --no-default-features --features=ratatui-cros
 
 # ratatui version of `termion` example
 cargo run --example ratatui_termion --no-default-features --features=ratatui-termion
+
+# ratatui version of `placepop` example
+cargo run --example ratatui_placepop --no-default-features --features=ratatui-crossterm
 ```
 
 ## Installation
