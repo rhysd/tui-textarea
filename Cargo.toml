@@ -76,6 +76,14 @@ name = "ratatui_minimal"
 required-features = ["ratatui-crossterm"]
 
 [[example]]
+name = "ratatui_placepop"
+required-features = ["ratatui-crossterm"]
+
+[[example]]
+name = "placepop"
+required-features = ["crossterm"]
+
+[[example]]
 name = "ratatui_editor"
 required-features = ["ratatui-crossterm", "search"]
 
