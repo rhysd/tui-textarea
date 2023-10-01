@@ -72,16 +72,16 @@ name = "modal"
 required-features = ["crossterm"]
 
 [[example]]
+name = "popup_placeholder"
+required-features = ["crossterm"]
+
+[[example]]
 name = "ratatui_minimal"
 required-features = ["ratatui-crossterm"]
 
 [[example]]
-name = "ratatui_placepop"
+name = "ratatui_popup_placeholder"
 required-features = ["ratatui-crossterm"]
-
-[[example]]
-name = "placepop"
-required-features = ["crossterm"]
 
 [[example]]
 name = "ratatui_editor"
