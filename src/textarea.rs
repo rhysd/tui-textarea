@@ -1238,14 +1238,72 @@ impl<'a> TextArea<'a> {
         self.line_number_style
     }
 
-    /// sets the placeholder text
-    pub fn set_placeholder(&mut self, placeholder: impl Into<String>) {
+    /// Set the placeholder text. The text is set in the textarea when no text is input. Setting a non-empty string `""`
+    /// enables the placeholder. The default value is an empty string so the placeholder is disabled by default.
+    /// To customize the text style, see [`TextArea::set_placeholder_style`].
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// assert_eq!(textarea.placeholder_text(), "");
+    /// assert!(textarea.placeholder_style().is_none());
+    ///
+    /// textarea.set_placeholder_text("Hello");
+    /// assert_eq!(textarea.placeholder_text(), "Hello");
+    /// assert!(textarea.placeholder_style().is_some());
+    /// ```
+    pub fn set_placeholder_text(&mut self, placeholder: impl Into<String>) {
         self.placeholder = placeholder.into();
     }
 
+    /// Set the style of the placeholder text. The default style is a dark gray text.
+    /// ```
+    /// use tui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// assert_eq!(textarea.placeholder_style(), None); // When the placeholder is disabled
+    ///
+    /// textarea.set_placeholder_text("Enter your message"); // Enable placeholder by setting non-empty text
+    ///
+    /// let style = Style::default().bg(Color::Blue);
+    /// textarea.set_placeholder_style(style);
+    /// assert_eq!(textarea.placeholder_style(), Some(style));
+    /// ```
     pub fn set_placeholder_style(&mut self, style: Style) {
         self.placeholder_style = style;
     }
+
+    /// Get the placeholder text. An empty string means the placeholder is disabled. The default value is an empty string.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let textarea = TextArea::default();
+    /// assert_eq!(textarea.placeholder_text(), "");
+    /// ```
+    pub fn placeholder_text(&self) -> &'_ str {
+        self.placeholder.as_str()
+    }
+
+    /// Get the placeholder style. When the placeholder text is empty, it returns `None` since the placeholder is disabled.
+    /// The default style is a dark gray text.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// assert_eq!(textarea.placeholder_style(), None);
+    ///
+    /// textarea.set_placeholder_text("hello");
+    /// assert!(textarea.placeholder_style().is_some());
+    /// ```
+    pub fn placeholder_style(&self) -> Option<Style> {
+        if self.placeholder.is_empty() {
+            None
+        } else {
+            Some(self.placeholder_style)
+        }
+    }
+
     /// Set the style of cursor. By default, a cursor is rendered in the reversed color. Setting the same style as
     /// cursor line hides a cursor.
     /// ```
