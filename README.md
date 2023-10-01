@@ -93,7 +93,7 @@ Simple modal text editor like `vi`.
 
 ### Examples for [ratatui][] support
 
-All above examples uses [tui-rs][], but some examples provide [ratatui][] version. Try `ratatui_` prefix. In these cases,
+All above examples use [tui-rs][], but some examples provide [ratatui][] version. Try `ratatui_` prefix. In these cases,
 you need to specify features to use ratatui and `--no-default-features` flag explicitly.
 
 ```sh
@@ -147,11 +147,11 @@ For example, when you want to use the combination of [ratatui][] and [crossterm]
 ```toml
 [dependencies]
 ratatui = "*"
-tui-textarea = { version = "*", features = ["ratatui-crossterm"], default-features=false }
+tui-textarea = { version = "*", features = ["ratatui-crossterm"], default-features = false }
 ```
 
 Note that [tui-rs][] support and [ratatui][] support are exclusive. When you use [ratatui][] support, you must disable
-[tui-rs][] support by `default-features=false`.
+[tui-rs][] support by `default-features = false`.
 
 In addition to above dependencies, you also need to install [crossterm][] or [termion][] to initialize your application
 and to receive key inputs. Note that version of [crossterm][] crate is different between [tui-rs][] and [ratatui][].
@@ -535,7 +535,10 @@ supports it. In this case, please use `your-backend` feature for [tui-rs][] or `
 ```toml
 [dependencies]
 tui = { version = "*", default-features = false }
+# For tui-rs
 tui-textarea = { version = "*", default-features = false, features = ["your-backend"] }
+# For ratatui
+tui-textarea = { version = "*", default-features = false, features = ["ratatui-your-backend"] }
 ```
 
 `tui_textarea::Input` is a type for backend-agnostic key input. What you need to do is converting key event in your own
