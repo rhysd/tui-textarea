@@ -38,7 +38,7 @@ fn main() -> io::Result<()> {
     // set placeholder
 
     textarea.set_placeholder_style(Style::default());
-    textarea.set_placeholder("prompt message".to_string());
+    textarea.set_placeholder("prompt message");
     loop {
         term.draw(|f| {
             f.render_widget(textarea.widget(), area);

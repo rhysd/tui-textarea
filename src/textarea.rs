@@ -1239,8 +1239,8 @@ impl<'a> TextArea<'a> {
     }
 
     /// sets the placeholder text
-    pub fn set_placeholder(&mut self, placeholder: String) {
-        self.placeholder = placeholder;
+    pub fn set_placeholder(&mut self, placeholder: impl Into<String>) {
+        self.placeholder = placeholder.into();
     }
 
     pub fn set_placeholder_style(&mut self, style: Style) {
