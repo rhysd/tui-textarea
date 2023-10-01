@@ -1,6 +1,6 @@
 [package]
 name = "tui-textarea"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 rust-version = "1.56.1"
 authors = ["rhysd <lin90162@yahoo.co.jp>"]
@@ -13,7 +13,7 @@ homepage = "https://github.com/rhysd/tui-textarea#readme"
 repository = "https://github.com/rhysd/tui-textarea"
 readme = "README.md"
 categories = ["text-editors", "text-processing"]
-keywords = ["tui", "textarea", "editor", "input", "edit", "ratatui"]
+keywords = ["tui", "textarea", "editor", "input", "ratatui"]
 include = [
     "/src",
     "/examples",
