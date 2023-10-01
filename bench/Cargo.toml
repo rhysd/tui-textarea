@@ -13,7 +13,7 @@ tui-textarea = { path = "..", features = ["search"] }
 tui = { version = "0.19", default-features = false }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.5"
 rand = { version = "0.8.5", features = ["small_rng"] }
 
 [[bench]]

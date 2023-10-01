@@ -40,7 +40,7 @@ use tui;
 #[allow(clippy::single_component_path_imports)]
 use crossterm;
 #[cfg(feature = "ratatui-crossterm")]
-use crossterm_026 as crossterm;
+use crossterm_027 as crossterm;
 
 pub use cursor::CursorMove;
 pub use input::{Input, Key};

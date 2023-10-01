@@ -1,4 +1,4 @@
-use crossterm_026 as crossterm;
+use crossterm_027 as crossterm;
 
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
