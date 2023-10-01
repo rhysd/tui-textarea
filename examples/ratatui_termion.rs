@@ -9,7 +9,7 @@ use std::time::Duration;
 use termion::event::Event as TermEvent;
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::IntoRawMode;
-use termion::screen::AlternateScreen;
+use termion::screen::IntoAlternateScreen;
 use tui_textarea::{Input, Key, TextArea};
 
 enum Event {
@@ -18,9 +18,8 @@ enum Event {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let stdout = io::stdout().into_raw_mode()?;
+    let stdout = io::stdout().into_raw_mode()?.into_alternate_screen()?;
     let stdout = MouseTerminal::from(stdout);
-    let stdout = AlternateScreen::from(stdout);
     let backend = TermionBackend::new(stdout);
     let mut term = Terminal::new(backend)?;
 

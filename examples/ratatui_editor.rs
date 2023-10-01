@@ -8,7 +8,7 @@ use crossterm::terminal::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Span, Spans};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Terminal;
 use std::borrow::Cow;
@@ -225,9 +225,9 @@ impl<'a> Editor<'a> {
 
                 // Render message at bottom
                 let message = if let Some(message) = self.message.take() {
-                    Spans::from(Span::raw(message))
+                    Line::from(Span::raw(message))
                 } else if search_height > 0 {
-                    Spans::from(vec![
+                    Line::from(vec![
                         Span::raw("Press "),
                         Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
                         Span::raw(" to jump to first match and close, "),
@@ -245,7 +245,7 @@ impl<'a> Editor<'a> {
                         Span::raw(" to search previous"),
                     ])
                 } else {
-                    Spans::from(vec![
+                    Line::from(vec![
                         Span::raw("Press "),
                         Span::styled("^Q", Style::default().add_modifier(Modifier::BOLD)),
                         Span::raw(" to quit, "),
