@@ -5,10 +5,14 @@
 #![doc = include_str!("../README.md")]
 
 #[cfg(all(
-    any(feature = "crossterm", feature = "termion"),
-    any(feature = "ratatui-crossterm", feature = "ratatui-termion"),
+    any(feature = "crossterm", feature = "termion", feature = "your-backend"),
+    any(
+        feature = "ratatui-crossterm",
+        feature = "ratatui-termion",
+        feature = "ratatui-your-backend"
+    ),
 ))]
-compile_error!("tui-rs support and ratatui support are exclussive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea");
+compile_error!("tui-rs support and ratatui support are exclussive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
 
 mod cursor;
 mod highlight;
