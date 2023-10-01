@@ -655,7 +655,7 @@ See [`split` example](./examples/split.rs) and [`editor` example](./examples/edi
 
 ## Minimum Supported Rust Version
 
-MSRV of this crate is depending on `tui` crate. Currently MSRV is 1.56.1.
+MSRV of this crate is depending on `tui` crate. Currently MSRV is 1.56.1. Note that `ratatui` crate requires more recent Rust version.
 
 ## Versioning
 
