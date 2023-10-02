@@ -29,13 +29,15 @@ cargo test --features=search -- --skip src/lib.rs
 To run linters:
 
 ```sh
-cargo clippy --all-features --examples
+cargo clippy --features=search --tests --examples
+cargo clippy --features=ratatui-crossterm,search --no-default-features --tests --examples
 cargo fmt -- --check
 ```
 
-If you use [cargo-watch][], `cargo watch-check` alias is useful to run checks automatically on writing to a file.
+If you use [cargo-watch][], `cargo watch-check` and `cargo watch-test` aliases are useful to run checks/tests automatically
+on writing to a file.
 
-## Print debug
+## Print debugging
 
 Since this crate uses stdout, `println!` is not available for debugging. Instead, stderr through [`eprintln!`][eprintln]
 or [`dbg!`][dbg] are useful.

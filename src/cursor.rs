@@ -332,14 +332,14 @@ mod tests {
         use crate::tui::widgets::Widget;
         use crate::{CursorMove, TextArea};
 
-        let mut textarea: TextArea = (0..20).into_iter().map(|i| i.to_string()).collect();
+        let mut textarea: TextArea = (0..20).map(|i| i.to_string()).collect();
         let r = Rect {
             x: 0,
             y: 0,
             width: 24,
             height: 8,
         };
-        let mut b = Buffer::empty(r.clone());
+        let mut b = Buffer::empty(r);
         textarea.widget().render(r, &mut b);
 
         textarea.move_cursor(CursorMove::Bottom);

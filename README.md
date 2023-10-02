@@ -673,7 +673,7 @@ This project is developed [on GitHub][repo].
 For feature requests or bug reports, please [create an issue][new-issue]. For submitting patches, please [create a pull
 request][pulls].
 
-Please see [CONTRIBUTING.md](./CONTRIBUTING.md) before making a PR.
+Please see [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting an issue or making a PR.
 
 ## License
 
