@@ -42,3 +42,4 @@ jobs:
       - run: cargo clippy --examples --no-default-features --features your-backend,search -- -D warnings
       - run: cargo clippy --examples --no-default-features --features ratatui-your-backend -- -D warnings
       - run: cargo clippy --examples --no-default-features --features ratatui-your-backend,search -- -D warnings
+      - run: cargo rustdoc --features=search -p tui-textarea -- -D warnings
