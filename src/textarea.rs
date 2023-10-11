@@ -63,6 +63,7 @@ pub struct TextArea<'a> {
     alignment: Alignment,
     pub(crate) placeholder: String,
     pub(crate) placeholder_style: Style,
+    pub(crate) password_mode: bool,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -162,6 +163,7 @@ impl<'a> TextArea<'a> {
             alignment: Alignment::Left,
             placeholder: String::new(),
             placeholder_style: Style::default().fg(Color::DarkGray),
+            password_mode: false,
         }
     }
 
@@ -1303,7 +1305,9 @@ impl<'a> TextArea<'a> {
             Some(self.placeholder_style)
         }
     }
-
+    pub fn set_password_mode(&mut self) {
+        self.password_mode = true;
+    }
     /// Set the style of cursor. By default, a cursor is rendered in the reversed color. Setting the same style as
     /// cursor line hides a cursor.
     /// ```

@@ -89,8 +89,21 @@ impl<'a> Renderer<'a> {
         let lnum_len = num_digits(lines_len);
         let bottom_row = cmp::min(top_row + height, lines_len);
         let mut lines = Vec::with_capacity(bottom_row - top_row);
+        // big enough for the largest line I can imagine
+        const STARS: &str = "******************************\
+                             ******************************\
+                             ******************************\
+                             ******************************\
+                             ******************************\
+                             ******************************";
+        const STARSLEN: usize = STARS.len();
         for (i, line) in self.0.lines()[top_row..bottom_row].iter().enumerate() {
-            lines.push(self.0.line_spans(line.as_str(), top_row + i, lnum_len));
+            let mut thisline = line.as_str();
+            if self.0.password_mode {
+                let count = thisline.chars().count();
+                thisline = &STARS[0..cmp::min(count, STARSLEN)];
+            }
+            lines.push(self.0.line_spans(thisline, top_row + i, lnum_len));
         }
         Text::from(lines)
     }
