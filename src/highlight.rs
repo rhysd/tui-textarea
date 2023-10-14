@@ -5,6 +5,7 @@ use crate::tui::style::Style;
     feature = "ratatui-your-backend",
 ))]
 use crate::tui::text::Line as Spans;
+
 use crate::tui::text::Span;
 #[cfg(not(any(
     feature = "ratatui-crossterm",
@@ -12,6 +13,7 @@ use crate::tui::text::Span;
     feature = "ratatui-your-backend",
 )))]
 use crate::tui::text::Spans;
+
 use crate::util::{num_digits, spaces};
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -46,7 +48,7 @@ impl Boundary {
     }
 }
 
-fn replace_tabs(s: &str, tab_len: u8) -> Cow<'_, str> {
+fn replace_tabs(s: &str, tab_len: u8, mask: bool) -> Cow<'_, str> {
     let tab = spaces(tab_len);
     let mut buf = String::new();
     for (i, c) in s.char_indices() {
@@ -62,10 +64,11 @@ fn replace_tabs(s: &str, tab_len: u8) -> Cow<'_, str> {
             buf.push(c);
         }
     }
-    if buf.is_empty() {
-        Cow::Borrowed(s)
-    } else {
-        Cow::Owned(buf)
+    match (buf.is_empty(), mask) {
+        (true, true) => Cow::Owned(s.chars().map(|_| '*').collect()),
+        (true, false) => Cow::Borrowed(s),
+        (false, true) => Cow::Owned(buf.chars().map(|_| '*').collect()),
+        (false, false) => Cow::Owned(buf),
     }
 }
 
@@ -119,7 +122,7 @@ impl<'a> LineHighlighter<'a> {
         }
     }
 
-    pub fn into_spans(self) -> Spans<'a> {
+    pub fn into_spans(self, mask: bool) -> Spans<'a> {
         let Self {
             line,
             mut spans,
@@ -131,7 +134,7 @@ impl<'a> LineHighlighter<'a> {
         } = self;
 
         if boundaries.is_empty() {
-            spans.push(Span::styled(replace_tabs(line, tab_len), style_begin));
+            spans.push(Span::styled(replace_tabs(line, tab_len, mask), style_begin));
             if cursor_at_end {
                 spans.push(Span::styled(" ", cursor_style));
             }
@@ -152,7 +155,7 @@ impl<'a> LineHighlighter<'a> {
             if let Some((next_boundary, end)) = boundaries.next() {
                 if start < end {
                     spans.push(Span::styled(
-                        replace_tabs(&line[start..end], tab_len),
+                        replace_tabs(&line[start..end], tab_len, mask),
                         style,
                     ));
                 }
@@ -166,7 +169,10 @@ impl<'a> LineHighlighter<'a> {
                 start = end;
             } else {
                 if start != line.len() {
-                    spans.push(Span::styled(replace_tabs(&line[start..], tab_len), style));
+                    spans.push(Span::styled(
+                        replace_tabs(&line[start..], tab_len, mask),
+                        style,
+                    ));
                 }
                 if cursor_at_end {
                     spans.push(Span::styled(" ", cursor_style));
