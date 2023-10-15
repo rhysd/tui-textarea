@@ -48,28 +48,39 @@ impl Boundary {
     }
 }
 
-fn replace_tabs(s: &str, tab_len: u8, mask: bool) -> Cow<'_, str> {
-    let tab = spaces(tab_len);
-    let mut buf = String::new();
-    for (i, c) in s.char_indices() {
-        if buf.is_empty() {
-            if c == '\t' {
-                buf.reserve(s.len());
-                buf.push_str(&s[..i]);
-                buf.push_str(tab);
-            }
-        } else if c == '\t' {
-            buf.push_str(tab);
-        } else {
-            buf.push(c);
+fn prepare_line(s: &str, tab_len: u8, mask: Option<char>) -> Cow<'_, str> {
+    // two tasks performed here
+    // - mask out chars if mask is Some
+    // - replace hard tabs by the correct number of spaces
+    //   (soft tabs were done earlier in 'insert_tab')
+    match mask {
+        Some(ch) => {
+            // no tab processing in the mask case
+            return Cow::Owned(s.chars().map(|_| ch).collect());
         }
-    }
-    match (buf.is_empty(), mask) {
-        (true, true) => Cow::Owned(s.chars().map(|_| '*').collect()),
-        (true, false) => Cow::Borrowed(s),
-        (false, true) => Cow::Owned(buf.chars().map(|_| '*').collect()),
-        (false, false) => Cow::Owned(buf),
-    }
+        None => {
+            let tab = spaces(tab_len);
+            let mut buf = String::new();
+            for (i, c) in s.char_indices() {
+                if buf.is_empty() {
+                    if c == '\t' {
+                        buf.reserve(s.len());
+                        buf.push_str(&s[..i]);
+                        buf.push_str(tab);
+                    }
+                } else if c == '\t' {
+                    buf.push_str(tab);
+                } else {
+                    buf.push(c);
+                }
+            }
+            if !buf.is_empty() {
+                return Cow::Owned(buf);
+            }
+        }
+    };
+    // drop through in the case of no mask and no tabs
+    return Cow::Borrowed(s);
 }
 
 pub struct LineHighlighter<'a> {
@@ -122,7 +133,7 @@ impl<'a> LineHighlighter<'a> {
         }
     }
 
-    pub fn into_spans(self, mask: bool) -> Spans<'a> {
+    pub fn into_spans(self, mask: Option<char>) -> Spans<'a> {
         let Self {
             line,
             mut spans,
@@ -134,7 +145,7 @@ impl<'a> LineHighlighter<'a> {
         } = self;
 
         if boundaries.is_empty() {
-            spans.push(Span::styled(replace_tabs(line, tab_len, mask), style_begin));
+            spans.push(Span::styled(prepare_line(line, tab_len, mask), style_begin));
             if cursor_at_end {
                 spans.push(Span::styled(" ", cursor_style));
             }
@@ -155,7 +166,7 @@ impl<'a> LineHighlighter<'a> {
             if let Some((next_boundary, end)) = boundaries.next() {
                 if start < end {
                     spans.push(Span::styled(
-                        replace_tabs(&line[start..end], tab_len, mask),
+                        prepare_line(&line[start..end], tab_len, mask),
                         style,
                     ));
                 }
@@ -170,7 +181,7 @@ impl<'a> LineHighlighter<'a> {
             } else {
                 if start != line.len() {
                     spans.push(Span::styled(
-                        replace_tabs(&line[start..], tab_len, mask),
+                        prepare_line(&line[start..], tab_len, mask),
                         style,
                     ));
                 }

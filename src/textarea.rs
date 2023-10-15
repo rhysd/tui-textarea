@@ -63,7 +63,7 @@ pub struct TextArea<'a> {
     alignment: Alignment,
     pub(crate) placeholder: String,
     pub(crate) placeholder_style: Style,
-    password_mode: bool,
+    mask: Option<char>,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -163,7 +163,7 @@ impl<'a> TextArea<'a> {
             alignment: Alignment::Left,
             placeholder: String::new(),
             placeholder_style: Style::default().fg(Color::DarkGray),
-            password_mode: false,
+            mask: None,
         }
     }
 
@@ -1007,7 +1007,7 @@ impl<'a> TextArea<'a> {
             hl.search(matches, self.search.style);
         }
 
-        hl.into_spans(self.password_mode)
+        hl.into_spans(self.mask)
     }
 
     /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this
@@ -1306,11 +1306,18 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    /// Sets a flag indicating if the text should be masked with * characters
+    /// Specifies that the text should be masked with the specified character
     ///
-    pub fn set_password_mode(&mut self, value: bool) {
-        self.password_mode = value;
+    pub fn set_mask_char(&mut self, mask: char) {
+        self.mask = Some(mask);
     }
+
+    /// Clear the previously set masking character
+    ///
+    pub fn clear_mask_char(&mut self) {
+        self.mask = None;
+    }
+
     /// Set the style of cursor. By default, a cursor is rendered in the reversed color. Setting the same style as
     /// cursor line hides a cursor.
     /// ```
