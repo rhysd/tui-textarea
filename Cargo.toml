@@ -64,6 +64,10 @@ name = "single_line"
 required-features = ["crossterm"]
 
 [[example]]
+name = "password"
+required-features = ["crossterm"]
+
+[[example]]
 name = "variable"
 required-features = ["crossterm"]
 
