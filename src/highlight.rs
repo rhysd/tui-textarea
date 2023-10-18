@@ -67,14 +67,14 @@ fn prepare_line(s: &str, tab_len: u8, mask: Option<char>) -> Cow<'_, str> {
                     if c == '\t' {
                         buf.reserve(s.len());
                         buf.push_str(&s[..i]);
-                        let len = tab_len as usize - (col % tab_len as usize) as usize;
+                        let len = tab_len as usize - (col % tab_len as usize);
                         buf.push_str(&tab[..len]);
                         col += len;
                     } else {
                         col += 1;
                     }
                 } else if c == '\t' {
-                    let len = tab_len as usize - (col % tab_len as usize) as usize;
+                    let len = tab_len as usize - (col % tab_len as usize);
                     buf.push_str(&tab[..len]);
                     col += len;
                 } else {
