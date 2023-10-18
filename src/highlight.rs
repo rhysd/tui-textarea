@@ -61,17 +61,25 @@ fn prepare_line(s: &str, tab_len: u8, mask: Option<char>) -> Cow<'_, str> {
         None => {
             let tab = spaces(tab_len);
             let mut buf = String::new();
+            let mut col: usize = 0;
             for (i, c) in s.char_indices() {
                 if buf.is_empty() {
                     if c == '\t' {
                         buf.reserve(s.len());
                         buf.push_str(&s[..i]);
-                        buf.push_str(tab);
+                        let len = tab_len as usize - (col % tab_len as usize) as usize;
+                        buf.push_str(&tab[..len]);
+                        col += len;
+                    } else {
+                        col += 1;
                     }
                 } else if c == '\t' {
-                    buf.push_str(tab);
+                    let len = tab_len as usize - (col % tab_len as usize) as usize;
+                    buf.push_str(&tab[..len]);
+                    col += len;
                 } else {
                     buf.push(c);
+                    col += 1;
                 }
             }
             if !buf.is_empty() {
