@@ -21,10 +21,8 @@ Please ensure that all tests and linter checks passed on your branch before crea
 To run tests:
 
 ```sh
-cargo test --features=search -- --skip src/lib.rs
+cargo test --features=search
 ```
-
-`--skip` is necessary since `cargo test` tries to run code blocks in [README file](./README.md).
 
 To run linters:
 

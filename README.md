@@ -172,7 +172,7 @@ Please select the correct version.
 
 ## Minimal Usage
 
-```rust
+```rust,ignore
 use tui_textarea::TextArea;
 use crossterm::event::{Event, read};
 
@@ -255,13 +255,13 @@ If you don't want to use default key mappings, see the 'Advanced Usage' section.
 
 `TextArea` implements `Default` trait to create an editor instance with an empty text.
 
-```rust
+```rust,ignore
 let mut textarea = TextArea::default();
 ```
 
 `TextArea::new()` creates an editor instance with text lines passed as `Vec<String>`.
 
-```rust
+```rust,ignore
 let mut lines: Vec<String> = ...;
 let mut textarea = TextArea::new(lines);
 ```
@@ -269,7 +269,7 @@ let mut textarea = TextArea::new(lines);
 `TextArea` implements `From<impl Iterator<Item=impl Into<String>>>`. `TextArea::from()` can create an editor instance
 from any iterators whose elements can be converted to `String`.
 
-```rust
+```rust,ignore
 // Create `TextArea` from from `[&str]`
 let mut textarea = TextArea::from([
     "this is first line",
@@ -285,7 +285,7 @@ let mut textarea = TextARea::from(text.lines());
 `TextArea` also implements `FromIterator<impl Into<String>>`. `Iterator::collect()` can collect strings as an editor
 instance. This allows to create `TextArea` reading lines from file efficiently using `io::BufReader`.
 
-```rust
+```rust,ignore
 let file = fs::File::open(path)?;
 let mut textarea: TextArea = io::BufReader::new(file).lines().collect::<io::Result<_>>()?;
 ```
@@ -294,21 +294,21 @@ let mut textarea: TextArea = io::BufReader::new(file).lines().collect::<io::Resu
 
 `TextArea::lines()` returns text lines as `&[String]`. It borrows text contents temporarily.
 
-```rust
+```rust,ignore
 let text: String = textarea.lines().join("\n");
 ```
 
 `TextArea::into_lines()` moves `TextArea` instance into text lines as `Vec<String>`. This can retrieve the text contents
 without any copy.
 
-```rust
+```rust,ignore
 let lines: Vec<String> = textarea.into_lines();
 ```
 
 Note that `TextArea` always contains at least one line. For example, an empty text means one empty line. This is because
 any text file must end with newline.
 
-```rust
+```rust,ignore
 let textarea = TextArea::default();
 assert_eq!(textarea.into_lines(), [""]);
 ```
@@ -319,7 +319,7 @@ By default, `TextArea` does now show line numbers. To enable, set a style for re
 `TextArea::set_line_number_style()`. For example, the following renders line numbers in dark gray background
 color.
 
-```rust
+```rust,ignore
 use tui::style::{Style, Color};
 
 let style = Style::default().bg(Color::DarkGray);
@@ -332,7 +332,7 @@ By default, `TextArea` renders the line at cursor with underline so that users c
 is. To change the style of cursor line, use `TextArea::set_cursor_line_style()`. For example, the following styles the
 cursor line with bold text.
 
-```rust
+```rust,ignore
 use tui::style::{Style, Modifier};
 
 let style = Style::default().add_modifier(Modifier::BOLD);
@@ -341,7 +341,7 @@ textarea.set_line_number_style(style);
 
 To disable cursor line style, set the default style as follows:
 
-```rust
+```rust,ignore
 use tui::style::{Style, Modifier};
 
 textarea.set_line_number_style(Style::default());
@@ -352,7 +352,7 @@ textarea.set_line_number_style(Style::default());
 The default tab width is 4. To change it, use `TextArea::set_tab_length()` method. The following sets 2 to tab width.
 Typing tab key inserts 2 spaces.
 
-```rust
+```rust,ignore
 textarea.set_tab_length(2);
 ```
 
@@ -361,13 +361,13 @@ textarea.set_tab_length(2);
 By default, past 50 modifications are stored as edit history. The history is used for undo/redo. To change how many past
 edits are remembered, use `TextArea::set_max_histories()` method. The following remembers past 1000 changes.
 
-```rust
+```rust,ignore
 textarea.set_max_histories(1000);
 ```
 
 Setting 0 disables undo/redo.
 
-```rust
+```rust,ignore
 textarea.set_max_histories(0);
 ```
 
@@ -383,7 +383,7 @@ the pattern from start of the file.
 Matches are highlighted in textarea. The text style to highlight matches can be changed with
 `TextArea::set_search_style()`. Setting an empty string to `TextArea::set_search_pattern()` stops the text search.
 
-```rust
+```rust,ignore
 // Start text search matching to "hello" or "hi". This highlights matches in textarea but does not move cursor.
 // `regex::Error` is returned on invalid pattern.
 textarea.set_search_pattern("(hello|hi)").unwrap();
@@ -415,7 +415,7 @@ tui-textarea = { version = "*", features = ["search"] }
 
 To use `TextArea` for single-line input widget like `<input>` in HTML, ignore all key mappings which inserts newline.
 
-```rust
+```rust,ignore
 use crossterm::event::{Event, read};
 use tui_textarea::{Input, Key};
 
@@ -486,7 +486,7 @@ notify how to move the cursor.
 To define your own key mappings, simply call the above methods in your code instead of `TextArea::input()` method. The
 following example defines modal key mappings like Vim.
 
-```rust
+```rust,ignore
 use crossterm::event::{Event, read};
 use tui_textarea::{Input, Key, CursorMove, Scrolling};
 
@@ -531,7 +531,7 @@ If you don't want to use default key mappings, `TextArea::input_without_shortcut
 `TextArea::input()`. The method only handles very basic operations such as inserting/deleting single characters, tabs,
 newlines.
 
-```rust
+```rust,ignore
 match read()?.into() {
     // Handle your own key mappings here
     // ...
@@ -560,7 +560,7 @@ backend into the `tui_textarea::Input` instance. Then `TextArea::input()` method
 In the following example, let's say `your_backend::KeyDown` is a key event type for your backend and
 `your_backend::read_next_key()` returns the next key event.
 
-```rust
+```rust,ignore
 // In your backend implementation
 
 pub enum KeyDown {
@@ -579,7 +579,7 @@ pub fn read_next_key() -> (KeyDown, bool, bool) {
 
 Then you can implement the logic to convert `your_backend::KeyDown` value into `tui_textarea::Input` value.
 
-```rust
+```rust,ignore
 use tui_textarea::{Input, Key};
 use your_backend::KeyDown;
 
@@ -600,7 +600,7 @@ key. An editor will do nothing with the key.
 
 Finally, convert your own backend's key input type into `tui_textarea::Input` and pass it to `TextArea::input()`.
 
-```rust
+```rust,ignore
 let mut textarea = ...;
 
 // Event loop
@@ -621,7 +621,7 @@ You don't need to do anything special. Create multiple `TextArea` instances and 
 
 The following is an example to put two textarea widgets in application and manage the focus.
 
-```rust
+```rust,ignore
 use tui_textarea::{TextArea, Input, Key};
 use crossterm::event::{Event, read};
 
