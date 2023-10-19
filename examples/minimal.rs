@@ -18,8 +18,6 @@ fn main() -> io::Result<()> {
     let mut term = Terminal::new(backend)?;
 
     let mut textarea = TextArea::default();
-    textarea.set_hard_tab_indent(true);
-    textarea.set_tab_length(4);
     textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
