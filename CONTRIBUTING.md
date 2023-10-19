@@ -10,7 +10,8 @@ For reporting a bug, please make sure your report includes the following points.
 - Environment
   - Your terminal
   - Rust version
-  - `tui` crate version
+  - `tui` or `ratatui` crate version
+  - Enabled features of `tui-textarea` crate
 
 An example of bug report: https://github.com/rhysd/tui-textarea/issues/1
 
@@ -33,7 +34,7 @@ cargo fmt -- --check
 ```
 
 If you use [cargo-watch][], `cargo watch-check` and `cargo watch-test` aliases are useful to run checks/tests automatically
-on writing to a file.
+on files being changed.
 
 ## Print debugging
 
@@ -54,7 +55,7 @@ cargo run --example minimal 2>debug.txt
 ```
 
 Then the debug prints are output to the `debug.txt` file. If timing is important or you want to see the output in real-time,
-printing the file content with `tail` command would be useful.
+it would be useful to monitor the file content with `tail` command in another terminal window.
 
 ```sh
 # In a terminal, reproduce the issue
