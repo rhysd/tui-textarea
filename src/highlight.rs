@@ -17,6 +17,7 @@ use crate::tui::text::Spans;
 use crate::util::{num_digits, spaces};
 use std::borrow::Cow;
 use std::cmp::Ordering;
+use std::iter;
 
 enum Boundary {
     Cursor(Style),
@@ -48,51 +49,40 @@ impl Boundary {
     }
 }
 
-fn prepare_line(s: &str, tab_len: u8, mask: Option<char>) -> Cow<'_, str> {
-    // two tasks performed here
-    // - mask out chars if mask is Some
-    // - replace hard tabs by the correct number of spaces
-    //   (soft tabs were done earlier in 'insert_tab')
-    match mask {
-        Some(ch) => {
-            // no tab processing in the mask case
-            return Cow::Owned(s.chars().map(|_| ch).collect());
-        }
-        None => {
-            let tab = spaces(tab_len);
-            let mut buf = String::new();
-            let mut col: usize = 0;
-            for (i, c) in s.char_indices() {
-                if buf.is_empty() {
-                    if c == '\t' {
-                        buf.reserve(s.len());
-                        buf.push_str(&s[..i]);
-                        if tab_len > 0 {
-                            let len = tab_len as usize - (col % tab_len as usize);
-                            buf.push_str(&tab[..len]);
-                            col += len;
-                        }
-                    } else {
-                        col += 1;
-                    }
-                } else if c == '\t' {
-                    if tab_len > 0 {
-                        let len = tab_len as usize - (col % tab_len as usize);
-                        buf.push_str(&tab[..len]);
-                        col += len;
-                    }
-                } else {
-                    buf.push(c);
-                    col += 1;
-                }
+fn line_display_text(s: &str, tab_len: u8, mask: Option<char>) -> Cow<'_, str> {
+    if let Some(ch) = mask {
+        // No tab character processing in the mask case
+        let masked = iter::repeat(ch).take(s.chars().count()).collect();
+        return Cow::Owned(masked);
+    }
+
+    let tab = spaces(tab_len);
+    let mut buf = String::new();
+    let mut col = 0;
+    for (i, c) in s.char_indices() {
+        if c == '\t' {
+            if buf.is_empty() {
+                buf.reserve(s.len());
+                buf.push_str(&s[..i]);
             }
+            if tab_len > 0 {
+                let len = tab_len as usize - (col % tab_len as usize);
+                buf.push_str(&tab[..len]);
+                col += len;
+            }
+        } else {
             if !buf.is_empty() {
-                return Cow::Owned(buf);
+                buf.push(c);
             }
+            col += 1;
         }
-    };
-    // drop through in the case of no mask and no tabs
-    return Cow::Borrowed(s);
+    }
+
+    if !buf.is_empty() {
+        Cow::Owned(buf)
+    } else {
+        Cow::Borrowed(s)
+    }
 }
 
 pub struct LineHighlighter<'a> {
@@ -157,7 +147,10 @@ impl<'a> LineHighlighter<'a> {
         } = self;
 
         if boundaries.is_empty() {
-            spans.push(Span::styled(prepare_line(line, tab_len, mask), style_begin));
+            spans.push(Span::styled(
+                line_display_text(line, tab_len, mask),
+                style_begin,
+            ));
             if cursor_at_end {
                 spans.push(Span::styled(" ", cursor_style));
             }
@@ -178,7 +171,7 @@ impl<'a> LineHighlighter<'a> {
             if let Some((next_boundary, end)) = boundaries.next() {
                 if start < end {
                     spans.push(Span::styled(
-                        prepare_line(&line[start..end], tab_len, mask),
+                        line_display_text(&line[start..end], tab_len, mask),
                         style,
                     ));
                 }
@@ -193,7 +186,7 @@ impl<'a> LineHighlighter<'a> {
             } else {
                 if start != line.len() {
                     spans.push(Span::styled(
-                        prepare_line(&line[start..], tab_len, mask),
+                        line_display_text(&line[start..], tab_len, mask),
                         style,
                     ));
                 }
@@ -210,46 +203,47 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_prepare_line() {
-        // fn prepare_line(s: &str, tab_len: u8, mask: Option<char>) -> Cow<'_, str> {
-        assert_eq!(prepare_line("", 0, None), Cow::Borrowed(""));
-        assert_eq!(prepare_line("", 4, None), Cow::Borrowed(""));
-        assert_eq!(prepare_line("", 8, None), Cow::Borrowed(""));
-        assert_eq!(prepare_line("", 0, Some('x')), Cow::Borrowed(""));
-        assert_eq!(prepare_line("", 4, Some('x')), Cow::Borrowed(""));
-        assert_eq!(prepare_line("", 8, Some('x')), Cow::Borrowed(""));
-        assert_eq!(prepare_line("a", 0, None), Cow::Borrowed("a"));
-        assert_eq!(prepare_line("a", 4, None), Cow::Borrowed("a"));
-        assert_eq!(prepare_line("a", 8, None), Cow::Borrowed("a"));
-        assert_eq!(prepare_line("a", 0, Some('x')), Cow::Borrowed("x"));
-        assert_eq!(prepare_line("a", 4, Some('x')), Cow::Borrowed("x"));
-        assert_eq!(prepare_line("a", 8, Some('x')), Cow::Borrowed("x"));
-        assert_eq!(prepare_line("a\t", 0, None), Cow::Borrowed("a"));
-        assert_eq!(prepare_line("a\t", 4, None), Cow::Borrowed("a   "));
-        assert_eq!(prepare_line("a\t", 8, None), Cow::Borrowed("a       "));
-        assert_eq!(prepare_line("a\t", 0, Some('x')), Cow::Borrowed("xx"));
-        assert_eq!(prepare_line("a\t", 4, Some('x')), Cow::Borrowed("xx"));
-        assert_eq!(prepare_line("a\t", 8, Some('x')), Cow::Borrowed("xx"));
-        assert_eq!(prepare_line("\t", 0, None), Cow::Borrowed("\t"));
-        assert_eq!(prepare_line("\t", 4, None), Cow::Borrowed("    "));
-        assert_eq!(prepare_line("\t", 8, None), Cow::Borrowed("        "));
-        assert_eq!(prepare_line("\t", 0, Some('x')), Cow::Borrowed("x"));
-        assert_eq!(prepare_line("\t", 4, Some('x')), Cow::Borrowed("x"));
-        assert_eq!(prepare_line("\t", 8, Some('x')), Cow::Borrowed("x"));
-        assert_eq!(prepare_line("a\tb", 0, None), Cow::Borrowed("ab"));
-        assert_eq!(prepare_line("a\tb", 4, None), Cow::Borrowed("a   b"));
-        assert_eq!(prepare_line("a\tb", 8, None), Cow::Borrowed("a       b"));
-        assert_eq!(prepare_line("a\tb", 0, Some('x')), Cow::Borrowed("xxx"));
-        assert_eq!(prepare_line("a\tb", 4, Some('x')), Cow::Borrowed("xxx"));
-        assert_eq!(prepare_line("a\tb", 8, Some('x')), Cow::Borrowed("xxx"));
-        assert_eq!(prepare_line("a\t\tb", 0, None), Cow::Borrowed("ab"));
-        assert_eq!(prepare_line("a\t\tb", 4, None), Cow::Borrowed("a       b"));
-        assert_eq!(
-            prepare_line("a\t\tb", 8, None),
-            Cow::Borrowed("a               b")
-        );
-        assert_eq!(prepare_line("a\t\tb", 0, Some('x')), Cow::Borrowed("xxxx"));
-        assert_eq!(prepare_line("a\t\tb", 4, Some('x')), Cow::Borrowed("xxxx"));
-        assert_eq!(prepare_line("a\t\tb", 8, Some('x')), Cow::Borrowed("xxxx"));
+    #[rustfmt::skip]
+    fn test_line_display_text() {
+        assert_eq!(&line_display_text(      "", 0,      None),                  "");
+        assert_eq!(&line_display_text(      "", 4,      None),                  "");
+        assert_eq!(&line_display_text(      "", 8,      None),                  "");
+        assert_eq!(&line_display_text(      "", 0, Some('x')),                  "");
+        assert_eq!(&line_display_text(      "", 4, Some('x')),                  "");
+        assert_eq!(&line_display_text(      "", 8, Some('x')),                  "");
+        assert_eq!(&line_display_text(     "a", 0,      None),                 "a");
+        assert_eq!(&line_display_text(     "a", 4,      None),                 "a");
+        assert_eq!(&line_display_text(     "a", 8,      None),                 "a");
+        assert_eq!(&line_display_text(     "a", 0, Some('x')),                 "x");
+        assert_eq!(&line_display_text(     "a", 4, Some('x')),                 "x");
+        assert_eq!(&line_display_text(     "a", 8, Some('x')),                 "x");
+        assert_eq!(&line_display_text(   "a\t", 0,      None),                 "a");
+        assert_eq!(&line_display_text(   "a\t", 4,      None),              "a   ");
+        assert_eq!(&line_display_text(   "a\t", 8,      None),          "a       ");
+        assert_eq!(&line_display_text(   "a\t", 0, Some('x')),                "xx");
+        assert_eq!(&line_display_text(   "a\t", 4, Some('x')),                "xx");
+        assert_eq!(&line_display_text(   "a\t", 8, Some('x')),                "xx");
+        assert_eq!(&line_display_text(    "\t", 0,      None),                "\t");
+        assert_eq!(&line_display_text(    "\t", 4,      None),              "    ");
+        assert_eq!(&line_display_text(    "\t", 8,      None),          "        ");
+        assert_eq!(&line_display_text(    "\t", 0, Some('x')),                 "x");
+        assert_eq!(&line_display_text(    "\t", 4, Some('x')),                 "x");
+        assert_eq!(&line_display_text(    "\t", 8, Some('x')),                 "x");
+        assert_eq!(&line_display_text(  "a\tb", 0,      None),                "ab");
+        assert_eq!(&line_display_text(  "a\tb", 4,      None),             "a   b");
+        assert_eq!(&line_display_text(  "a\tb", 8,      None),         "a       b");
+        assert_eq!(&line_display_text(  "a\tb", 0, Some('x')),               "xxx");
+        assert_eq!(&line_display_text(  "a\tb", 4, Some('x')),               "xxx");
+        assert_eq!(&line_display_text(  "a\tb", 8, Some('x')),               "xxx");
+        assert_eq!(&line_display_text("a\t\tb", 0,      None),                "ab");
+        assert_eq!(&line_display_text("a\t\tb", 4,      None),         "a       b");
+        assert_eq!(&line_display_text("a\t\tb", 8,      None), "a               b");
+        assert_eq!(&line_display_text("a\t\tb", 0, Some('x')),              "xxxx");
+        assert_eq!(&line_display_text("a\t\tb", 4, Some('x')),              "xxxx");
+        assert_eq!(&line_display_text("a\t\tb", 8, Some('x')),              "xxxx");
+        assert_eq!(&line_display_text("ab\t\t", 0,      None),                "ab");
+        assert_eq!(&line_display_text("ab\t\t", 4,      None),          "ab      ");
+        assert_eq!(&line_display_text("ab\t\t", 8,      None),  "ab              ");
+        assert_eq!(&line_display_text("abcd\t", 4,      None),          "abcd    ");
     }
 }
