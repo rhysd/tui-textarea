@@ -9,6 +9,7 @@
     any(
         feature = "ratatui-crossterm",
         feature = "ratatui-termion",
+        feature = "ratatui-termwiz",
         feature = "ratatui-your-backend"
     ),
 ))]
@@ -29,12 +30,14 @@ mod word;
 #[cfg(any(
     feature = "ratatui-crossterm",
     feature = "ratatui-termion",
+    feature = "ratatui-termwiz",
     feature = "ratatui-your-backend",
 ))]
 use ratatui as tui;
 #[cfg(not(any(
     feature = "ratatui-crossterm",
     feature = "ratatui-termion",
+    feature = "ratatui-termwiz",
     feature = "ratatui-your-backend",
 )))]
 #[allow(clippy::single_component_path_imports)]

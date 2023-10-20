@@ -2,6 +2,7 @@ use crate::tui::style::Style;
 #[cfg(any(
     feature = "ratatui-crossterm",
     feature = "ratatui-termion",
+    feature = "ratatui-termwiz",
     feature = "ratatui-your-backend",
 ))]
 use crate::tui::text::Line as Spans;
@@ -9,6 +10,7 @@ use crate::tui::text::Span;
 #[cfg(not(any(
     feature = "ratatui-crossterm",
     feature = "ratatui-termion",
+    feature = "ratatui-termwiz",
     feature = "ratatui-your-backend",
 )))]
 use crate::tui::text::Spans;

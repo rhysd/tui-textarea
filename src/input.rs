@@ -1,12 +1,17 @@
 #[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
 use crate::crossterm::event::{
-    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers,
-    MouseEvent as CrosstermMouseEvent, MouseEventKind as CrosstermMouseEventKind,
+    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent,
+    MouseEventKind as CrosstermMouseEventKind,
 };
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
 #[cfg(any(feature = "termion", feature = "ratatui-termion"))]
 use termion::event::{Event as TermionEvent, Key as TermionKey, MouseEvent as TermionMouseEvent};
+#[cfg(feature = "ratatui-termwiz")]
+use termwiz::input::{
+    InputEvent as TermwizInputEvent, KeyEvent as TermwizKeyEvent, MouseEvent as TermwizMouseEvent,
+    PixelMouseEvent,
+};
 
 /// Backend-agnostic key input kind.
 ///
@@ -136,9 +141,9 @@ impl From<KeyEvent> for Input {
 }
 
 #[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
-impl From<CrosstermMouseEvent> for Input {
+impl From<MouseEvent> for Input {
     /// Convert [`crossterm::event::MouseEvent`] to [`Input`].
-    fn from(mouse: CrosstermMouseEvent) -> Self {
+    fn from(mouse: MouseEvent) -> Self {
         let key = match mouse.kind {
             CrosstermMouseEventKind::ScrollDown => Key::MouseScrollDown,
             CrosstermMouseEventKind::ScrollUp => Key::MouseScrollUp,
@@ -216,5 +221,104 @@ impl From<TermionMouseEvent> for Input {
             ctrl: false,
             alt: false,
         }
+    }
+}
+
+#[cfg(feature = "ratatui-termwiz")]
+impl From<TermwizInputEvent> for Input {
+    /// Convert [`termwiz::input::InputEvent`] to [`Input`].
+    fn from(input: TermwizInputEvent) -> Self {
+        match input {
+            TermwizInputEvent::Key(key) => Self::from(key),
+            TermwizInputEvent::Mouse(mouse) => Self::from(mouse),
+            TermwizInputEvent::PixelMouse(mouse) => Self::from(mouse),
+            _ => Self::default(),
+        }
+    }
+}
+
+#[cfg(feature = "ratatui-termwiz")]
+impl From<TermwizKeyEvent> for Input {
+    /// Convert [`termwiz::input::KeyEvent`] to [`Input`].
+    fn from(key: TermwizKeyEvent) -> Self {
+        use termwiz::input::{KeyCode, Modifiers};
+
+        let TermwizKeyEvent { key, modifiers } = key;
+        let key = match key {
+            KeyCode::Char(c) => Key::Char(c),
+            KeyCode::Backspace => Key::Backspace,
+            KeyCode::Tab => Key::Tab,
+            KeyCode::Enter => Key::Enter,
+            KeyCode::Escape => Key::Esc,
+            KeyCode::PageUp => Key::PageUp,
+            KeyCode::PageDown => Key::PageDown,
+            KeyCode::End => Key::End,
+            KeyCode::Home => Key::Home,
+            KeyCode::LeftArrow => Key::Left,
+            KeyCode::RightArrow => Key::Right,
+            KeyCode::UpArrow => Key::Up,
+            KeyCode::DownArrow => Key::Down,
+            KeyCode::Delete => Key::Delete,
+            KeyCode::Function(x) => Key::F(x),
+            _ => Key::Null,
+        };
+        let ctrl = modifiers.contains(Modifiers::CTRL);
+        let alt = modifiers.contains(Modifiers::ALT);
+
+        Self { key, ctrl, alt }
+    }
+}
+
+#[cfg(feature = "ratatui-termwiz")]
+impl From<TermwizMouseEvent> for Input {
+    /// Convert [`termwiz::input::MouseEvent`] to [`Input`].
+    fn from(mouse: TermwizMouseEvent) -> Self {
+        use termwiz::input::{Modifiers, MouseButtons};
+
+        let TermwizMouseEvent {
+            mouse_buttons,
+            modifiers,
+            ..
+        } = mouse;
+        let key = if mouse_buttons.contains(MouseButtons::VERT_WHEEL) {
+            if mouse_buttons.contains(MouseButtons::WHEEL_POSITIVE) {
+                Key::MouseScrollDown
+            } else {
+                Key::MouseScrollUp
+            }
+        } else {
+            Key::Null
+        };
+        let ctrl = modifiers.contains(Modifiers::CTRL);
+        let alt = modifiers.contains(Modifiers::ALT);
+
+        Self { key, ctrl, alt }
+    }
+}
+
+#[cfg(feature = "ratatui-termwiz")]
+impl From<PixelMouseEvent> for Input {
+    /// Convert [`termwiz::input::PixelMouseEvent`] to [`Input`].
+    fn from(mouse: PixelMouseEvent) -> Self {
+        use termwiz::input::{Modifiers, MouseButtons};
+
+        let PixelMouseEvent {
+            mouse_buttons,
+            modifiers,
+            ..
+        } = mouse;
+        let key = if mouse_buttons.contains(MouseButtons::VERT_WHEEL) {
+            if mouse_buttons.contains(MouseButtons::WHEEL_POSITIVE) {
+                Key::MouseScrollDown
+            } else {
+                Key::MouseScrollUp
+            }
+        } else {
+            Key::Null
+        };
+        let ctrl = modifiers.contains(Modifiers::CTRL);
+        let alt = modifiers.contains(Modifiers::ALT);
+
+        Self { key, ctrl, alt }
     }
 }

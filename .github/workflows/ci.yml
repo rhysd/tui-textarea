@@ -16,6 +16,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --features=search
       - run: cargo test --no-default-features --features=ratatui-crossterm,search -- --skip .rs
+      - run: cargo test --no-default-features --features=ratatui-termion,search -- --skip .rs
+        if: ${{ matrix.os != 'windows-latest' }}
+      - run: cargo test --no-default-features --features=ratatui-termwiz,search -- --skip .rs
       - run: cargo test --no-default-features --features=your-backend,search -- --skip .rs
       - run: cargo test --no-default-features --features=ratatui-your-backend,search -- --skip .rs
   lint:
@@ -33,6 +36,8 @@ jobs:
       - run: cargo clippy --examples --no-default-features --features ratatui-crossterm,search -- -D warnings
       - run: cargo clippy --examples --no-default-features --features ratatui-termion -- -D warnings
       - run: cargo clippy --examples --no-default-features --features ratatui-termion,search -- -D warnings
+      - run: cargo clippy --examples --no-default-features --features ratatui-termwiz -- -D warnings
+      - run: cargo clippy --examples --no-default-features --features ratatui-termwiz,search -- -D warnings
       - run: cargo clippy --examples --no-default-features --features termion -- -D warnings
       - run: cargo clippy --examples --no-default-features --features termion,search -- -D warnings
       - run: cargo clippy --examples --no-default-features --features your-backend -- -D warnings

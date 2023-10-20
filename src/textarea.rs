@@ -10,12 +10,14 @@ use crate::tui::style::{Color, Modifier, Style};
 #[cfg(any(
     feature = "ratatui-crossterm",
     feature = "ratatui-termion",
+    feature = "ratatui-termwiz",
     feature = "ratatui-your-backend",
 ))]
 use crate::tui::text::Line as Spans;
 #[cfg(not(any(
     feature = "ratatui-crossterm",
     feature = "ratatui-termion",
+    feature = "ratatui-termwiz",
     feature = "ratatui-your-backend",
 )))]
 use crate::tui::text::Spans;
