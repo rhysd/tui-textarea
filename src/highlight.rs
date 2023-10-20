@@ -61,17 +61,29 @@ fn prepare_line(s: &str, tab_len: u8, mask: Option<char>) -> Cow<'_, str> {
         None => {
             let tab = spaces(tab_len);
             let mut buf = String::new();
+            let mut col: usize = 0;
             for (i, c) in s.char_indices() {
                 if buf.is_empty() {
                     if c == '\t' {
                         buf.reserve(s.len());
                         buf.push_str(&s[..i]);
-                        buf.push_str(tab);
+                        if tab_len > 0 {
+                            let len = tab_len as usize - (col % tab_len as usize);
+                            buf.push_str(&tab[..len]);
+                            col += len;
+                        }
+                    } else {
+                        col += 1;
                     }
                 } else if c == '\t' {
-                    buf.push_str(tab);
+                    if tab_len > 0 {
+                        let len = tab_len as usize - (col % tab_len as usize);
+                        buf.push_str(&tab[..len]);
+                        col += len;
+                    }
                 } else {
                     buf.push(c);
+                    col += 1;
                 }
             }
             if !buf.is_empty() {
@@ -191,5 +203,53 @@ impl<'a> LineHighlighter<'a> {
                 return Spans::from(spans);
             }
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_prepare_line() {
+        // fn prepare_line(s: &str, tab_len: u8, mask: Option<char>) -> Cow<'_, str> {
+        assert_eq!(prepare_line("", 0, None), Cow::Borrowed(""));
+        assert_eq!(prepare_line("", 4, None), Cow::Borrowed(""));
+        assert_eq!(prepare_line("", 8, None), Cow::Borrowed(""));
+        assert_eq!(prepare_line("", 0, Some('x')), Cow::Borrowed(""));
+        assert_eq!(prepare_line("", 4, Some('x')), Cow::Borrowed(""));
+        assert_eq!(prepare_line("", 8, Some('x')), Cow::Borrowed(""));
+        assert_eq!(prepare_line("a", 0, None), Cow::Borrowed("a"));
+        assert_eq!(prepare_line("a", 4, None), Cow::Borrowed("a"));
+        assert_eq!(prepare_line("a", 8, None), Cow::Borrowed("a"));
+        assert_eq!(prepare_line("a", 0, Some('x')), Cow::Borrowed("x"));
+        assert_eq!(prepare_line("a", 4, Some('x')), Cow::Borrowed("x"));
+        assert_eq!(prepare_line("a", 8, Some('x')), Cow::Borrowed("x"));
+        assert_eq!(prepare_line("a\t", 0, None), Cow::Borrowed("a"));
+        assert_eq!(prepare_line("a\t", 4, None), Cow::Borrowed("a   "));
+        assert_eq!(prepare_line("a\t", 8, None), Cow::Borrowed("a       "));
+        assert_eq!(prepare_line("a\t", 0, Some('x')), Cow::Borrowed("xx"));
+        assert_eq!(prepare_line("a\t", 4, Some('x')), Cow::Borrowed("xx"));
+        assert_eq!(prepare_line("a\t", 8, Some('x')), Cow::Borrowed("xx"));
+        assert_eq!(prepare_line("\t", 0, None), Cow::Borrowed("\t"));
+        assert_eq!(prepare_line("\t", 4, None), Cow::Borrowed("    "));
+        assert_eq!(prepare_line("\t", 8, None), Cow::Borrowed("        "));
+        assert_eq!(prepare_line("\t", 0, Some('x')), Cow::Borrowed("x"));
+        assert_eq!(prepare_line("\t", 4, Some('x')), Cow::Borrowed("x"));
+        assert_eq!(prepare_line("\t", 8, Some('x')), Cow::Borrowed("x"));
+        assert_eq!(prepare_line("a\tb", 0, None), Cow::Borrowed("ab"));
+        assert_eq!(prepare_line("a\tb", 4, None), Cow::Borrowed("a   b"));
+        assert_eq!(prepare_line("a\tb", 8, None), Cow::Borrowed("a       b"));
+        assert_eq!(prepare_line("a\tb", 0, Some('x')), Cow::Borrowed("xxx"));
+        assert_eq!(prepare_line("a\tb", 4, Some('x')), Cow::Borrowed("xxx"));
+        assert_eq!(prepare_line("a\tb", 8, Some('x')), Cow::Borrowed("xxx"));
+        assert_eq!(prepare_line("a\t\tb", 0, None), Cow::Borrowed("ab"));
+        assert_eq!(prepare_line("a\t\tb", 4, None), Cow::Borrowed("a       b"));
+        assert_eq!(
+            prepare_line("a\t\tb", 8, None),
+            Cow::Borrowed("a               b")
+        );
+        assert_eq!(prepare_line("a\t\tb", 0, Some('x')), Cow::Borrowed("xxxx"));
+        assert_eq!(prepare_line("a\t\tb", 4, Some('x')), Cow::Borrowed("xxxx"));
+        assert_eq!(prepare_line("a\t\tb", 8, Some('x')), Cow::Borrowed("xxxx"));
     }
 }
