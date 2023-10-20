@@ -101,6 +101,16 @@ Popup textarea with a placeholder text.
 
 <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/placepop.gif" width=539 height=220 alt="popup textarea with placeholder example">
 
+### [`password`](./examples/password.rs)
+
+```sh
+cargo run --example password
+```
+
+Password input form with masking text with ●.
+
+<img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/password.gif" width=589 height=92 alt="password example">
+
 ### Examples for [ratatui][] support
 
 All above examples use [tui-rs][], but some examples provide [ratatui][] version. Try `ratatui_` prefix. In these cases,
