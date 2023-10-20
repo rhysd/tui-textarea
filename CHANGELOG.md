@@ -1,7 +1,27 @@
+<a name="v0.2.3"></a>
+# [v0.2.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.3) - 20 Oct 2023
+
+- Add APIs to mask text with a character ([#32](https://github.com/rhysd/tui-textarea/issues/32), thanks [@pm100](https://github.com/pm100)).
+  - `TextArea::set_mask_char`, `TextArea::set_mask_char`, `TextArea::mask_char` are added. See [the documentation](https://docs.rs/tui-textarea/latest/tui_textarea/) for more details.
+  - The [`password`](https://github.com/rhysd/tui-textarea/blob/main/examples/password.rs) example was added to show the usage.
+    <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/password.gif" width=589 height=92 alt="password example">
+- Fix the length of displayed hard tab in text ([#33](https://github.com/rhysd/tui-textarea/issues/33), thanks [@pm100](https://github.com/pm100)).
+
+[Changes][v0.2.3]
+
+
+<a name="v0.2.2"></a>
+# [v0.2.2](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.2) - 01 Oct 2023
+
+Very small patch release only for fixing [the build failure on docs.rs](https://docs.rs/crate/tui-textarea/0.2.1/builds/926847). No implementation has been changed.
+
+[Changes][v0.2.2]
+
+
 <a name="v0.2.1"></a>
 # [v0.2.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.1) - 01 Oct 2023
 
-- [ratatui](https://crates.io/crates/ratatui) crate is supported in addition to [tui-rs](https://crates.io/crates/tui). The ratatui crate is a community fork of inactive tui-rs crate. ([#12](https://github.com/rhysd/tui-textarea/issues/12))
+- Add the support for [ratatui](https://crates.io/crates/ratatui) crate in addition to [tui-rs](https://crates.io/crates/tui). The ratatui crate is a community fork of inactive tui-rs crate. ([#12](https://github.com/rhysd/tui-textarea/issues/12))
   - The latest version of ratatui v0.23 is supported.
   - tui-textarea still uses tui-rs by default to keep the compatibility at this moment. ratatui users explicitly need to set features for it. See [the installation document](https://github.com/rhysd/tui-textarea#installation) for the features matrix. For example, when you want to use ratatui and crossterm, write the following in your `Cargo.toml`:
     ```toml
@@ -9,13 +29,13 @@
     ratatui = "*"
     tui-textarea = { version = "*", features = ["ratatui-crossterm"], default-features = false }
     ```
-  - tui-rs is no longer maintained and the repository was archived. At the next minor version bump, tui-textarea will switch the default features from tui-rs to ratatui. If you use tui-rs, I recommend to switch your dependency to ratatui and to prepare for the version bump.
+  - tui-rs is no longer maintained and the repository was archived. At the next minor version bump, tui-textarea will switch the default features from tui-rs to ratatui. If you use tui-rs, I recommend to switch your dependency to ratatui.
   - Examples with ratatui are added to [the `examples` directory](https://github.com/rhysd/tui-textarea/tree/main/examples). For example, the following command runs ratatui version of `editor` example:
     ```sh
     cargo run --example ratatui_editor --no-default-features --features=ratatui-crossterm,search file.txt
     ```
 - Add support for the placeholder text which is rendered when no text is input in the textarea. ([#16](https://github.com/rhysd/tui-textarea/issues/16), thanks [@pm100](https://github.com/pm100))
-  - Use `TextArea::set_placeholder_text` to set the text. To change the text style, use `TextArea::set_placeholder_style`. See [the documentation](https://docs.rs/crate/tui-textarea/latest) for more details.
+  - Use `TextArea::set_placeholder_text` to set the text. To change the text style, use `TextArea::set_placeholder_style`. See [the API documentation](https://docs.rs/tui-textarea/latest/tui_textarea/struct.TextArea.html) for more details.
   - `popup_placeholder` example was added to show the usage.
     ```sh
     cargo run --example popup_placeholder
@@ -164,6 +184,8 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.2.3]: https://github.com/rhysd/tui-textarea/compare/v0.2.2...v0.2.3
+[v0.2.2]: https://github.com/rhysd/tui-textarea/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/rhysd/tui-textarea/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/rhysd/tui-textarea/compare/v0.1.6...v0.2.0
 [v0.1.6]: https://github.com/rhysd/tui-textarea/compare/v0.1.5...v0.1.6
