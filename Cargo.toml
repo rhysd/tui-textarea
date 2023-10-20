@@ -17,6 +17,7 @@ keywords = ["tui", "textarea", "editor", "input", "ratatui"]
 include = [
     "/src",
     "/examples",
+    "/tests",
     "/README.md",
     "/LICENSE.txt",
 ]
