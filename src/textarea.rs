@@ -23,6 +23,7 @@ use crate::tui::widgets::{Block, Widget};
 use crate::util::spaces;
 use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
+use unicode_width::UnicodeWidthChar as _;
 
 /// A type to manage state of textarea.
 ///
@@ -686,26 +687,35 @@ impl<'a> TextArea<'a> {
 
     /// Insert a tab at current cursor position. Note that this method does nothing when the tab length is 0. This
     /// method returns if a tab string was inserted or not in the textarea.
-    /// textarea.
     /// ```
-    /// use tui_textarea::TextArea;
+    /// use tui_textarea::{TextArea, CursorMove};
     ///
     /// let mut textarea = TextArea::from(["hi"]);
     ///
+    /// textarea.move_cursor(CursorMove::End); // Move to the end of line
+    ///
     /// textarea.insert_tab();
-    /// assert_eq!(textarea.lines(), ["    hi"]);
+    /// assert_eq!(textarea.lines(), ["hi  "]);
+    /// textarea.insert_tab();
+    /// assert_eq!(textarea.lines(), ["hi      "]);
     /// ```
     pub fn insert_tab(&mut self) -> bool {
         if self.tab_len == 0 {
             return false;
         }
-        let tab = if self.hard_tab_indent {
-            "\t"
-        } else {
-            let len = self.tab_len - (self.cursor.1 % self.tab_len as usize) as u8;
-            spaces(len)
-        };
-        self.insert_str(tab)
+
+        if self.hard_tab_indent {
+            return self.insert_str("\t");
+        }
+
+        let (row, col) = self.cursor;
+        let width: usize = self.lines[row]
+            .chars()
+            .take(col)
+            .map(|c| c.width().unwrap_or(0))
+            .sum();
+        let len = self.tab_len - (width % self.tab_len as usize) as u8;
+        self.insert_str(spaces(len))
     }
 
     /// Insert a newline at current cursor position.

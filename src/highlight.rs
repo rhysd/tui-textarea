@@ -5,7 +5,6 @@ use crate::tui::style::Style;
     feature = "ratatui-your-backend",
 ))]
 use crate::tui::text::Line as Spans;
-
 use crate::tui::text::Span;
 #[cfg(not(any(
     feature = "ratatui-crossterm",
@@ -13,11 +12,11 @@ use crate::tui::text::Span;
     feature = "ratatui-your-backend",
 )))]
 use crate::tui::text::Spans;
-
 use crate::util::{num_digits, spaces};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::iter;
+use unicode_width::UnicodeWidthChar as _;
 
 enum Boundary {
     Cursor(Style),
@@ -58,7 +57,7 @@ fn line_display_text(s: &str, tab_len: u8, mask: Option<char>) -> Cow<'_, str> {
 
     let tab = spaces(tab_len);
     let mut buf = String::new();
-    let mut col = 0;
+    let mut width = 0;
     for (i, c) in s.char_indices() {
         if c == '\t' {
             if buf.is_empty() {
@@ -66,15 +65,15 @@ fn line_display_text(s: &str, tab_len: u8, mask: Option<char>) -> Cow<'_, str> {
                 buf.push_str(&s[..i]);
             }
             if tab_len > 0 {
-                let len = tab_len as usize - (col % tab_len as usize);
+                let len = tab_len as usize - (width % tab_len as usize);
                 buf.push_str(&tab[..len]);
-                col += len;
+                width += len;
             }
         } else {
             if !buf.is_empty() {
                 buf.push(c);
             }
-            col += 1;
+            width += c.width().unwrap_or(0);
         }
     }
 
@@ -245,5 +244,9 @@ mod tests {
         assert_eq!(&line_display_text("ab\t\t", 4,      None),          "ab      ");
         assert_eq!(&line_display_text("ab\t\t", 8,      None),  "ab              ");
         assert_eq!(&line_display_text("abcd\t", 4,      None),          "abcd    ");
+        assert_eq!(&line_display_text(  "あ\t", 0,      None),                "あ");
+        assert_eq!(&line_display_text(  "あ\t", 4,      None),              "あ  ");
+        assert_eq!(&line_display_text(  "🐶\t", 4,      None),              "🐶  ");
+        assert_eq!(&line_display_text(  "あ\t", 4, Some('x')),                "xx");
     }
 }
