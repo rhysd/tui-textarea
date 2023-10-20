@@ -1306,16 +1306,49 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    /// Specifies that the text should be masked with the specified character
+    /// Specify a character masking the text. All characters in the textarea will be replaced by this character.
+    /// This API is useful for making a kind of credentials form such as a password input.
+    /// ```
+    /// use tui_textarea::TextArea;
     ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.set_mask_char('*');
+    /// assert_eq!(textarea.mask_char(), Some('*'));
+    /// textarea.set_mask_char('●');
+    /// assert_eq!(textarea.mask_char(), Some('●'));
+    /// ```
     pub fn set_mask_char(&mut self, mask: char) {
         self.mask = Some(mask);
     }
 
-    /// Clear the previously set masking character
+    /// Clear the masking character previously set by [`TextArea::set_mask_char`].
+    /// ```
+    /// use tui_textarea::TextArea;
     ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.set_mask_char('*');
+    /// assert_eq!(textarea.mask_char(), Some('*'));
+    /// textarea.clear_mask_char();
+    /// assert_eq!(textarea.mask_char(), None);
+    /// ```
     pub fn clear_mask_char(&mut self) {
         self.mask = None;
+    }
+
+    /// Get the charater to mask text. When no character is set, `None` is returned.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// assert_eq!(textarea.mask_char(), None);
+    /// textarea.set_mask_char('*');
+    /// assert_eq!(textarea.mask_char(), Some('*'));
+    /// ```
+    pub fn mask_char(&self) -> Option<char> {
+        self.mask
     }
 
     /// Set the style of cursor. By default, a cursor is rendered in the reversed color. Setting the same style as
