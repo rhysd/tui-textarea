@@ -17,7 +17,7 @@ Multi-line text editor can be easily put as part of your TUI application.
 - Search with regular expressions
 - Mouse scrolling
 - Yank support. Paste text deleted with `C-k`, `C-j`, ...
-- Backend agnostic. [crossterm][], [termion][], and your own backend are all supported
+- Backend agnostic. [crossterm][], [termion][], [termwiz][], and your own backend are all supported
 - Multiple textarea widgets in the same screen
 - Support both [tui-rs][] (the original) and [ratatui][] (the fork by community)
 
@@ -130,6 +130,14 @@ cargo run --example ratatui_termion --no-default-features --features=ratatui-ter
 cargo run --example ratatui_popup_placeholder --no-default-features --features=ratatui-crossterm
 ```
 
+### [`termwiz`](./examples/termwiz.rs)
+
+```sh
+cargo run --example termwiz --no-default-features --features=ratatui-termwiz
+```
+
+Minimal usage with [termwiz][] support.
+
 ## Installation
 
 Add `tui-textarea` crate to dependencies in your `Cargo.toml`. This enables crossterm backend support by default.
@@ -160,10 +168,10 @@ tui-textarea = { version = "*", default-features = false, features = ["termion"]
 If you're using [ratatui][] instead of [tui-rs][], you need to enable features for using ratatui crate. The following table
 shows feature names corresponding to the dependencies.
 
-|         | crossterm                        | termion           | Your own backend       |
-|---------|----------------------------------|-------------------|------------------------|
-| tui-rs  | `crossterm` (enabled by default) | `termion`         | `your-backend`         |
-| ratatui | `ratatui-crossterm`              | `ratatui-termion` | `ratatui-your-backend` |
+|         | crossterm                        | termion           | termwiz           | Your own backend       |
+|---------|----------------------------------|-------------------|-------------------|------------------------|
+| tui-rs  | `crossterm` (enabled by default) | `termion`         | N/A               | `your-backend`         |
+| ratatui | `ratatui-crossterm`              | `ratatui-termion` | `ratatui-termwiz` | `ratatui-your-backend` |
 
 For example, when you want to use the combination of [ratatui][] and [crossterm][],
 
@@ -176,9 +184,9 @@ tui-textarea = { version = "*", features = ["ratatui-crossterm"], default-featur
 Note that [tui-rs][] support and [ratatui][] support are exclusive. When you use [ratatui][] support, you must disable
 [tui-rs][] support by `default-features = false`.
 
-In addition to above dependencies, you also need to install [crossterm][] or [termion][] to initialize your application
-and to receive key inputs. Note that version of [crossterm][] crate is different between [tui-rs][] and [ratatui][].
-Please select the correct version.
+In addition to above dependencies, you also need to install [crossterm][] or [termion][] or [termwiz][] to initialize
+your application and to receive key inputs. Note that version of [crossterm][] crate is different between [tui-rs][]
+and [ratatui][]. Please select the correct version.
 
 ## Minimal Usage
 
@@ -553,7 +561,7 @@ match read()?.into() {
 
 tui-rs allows to make your own backend by implementing [`tui::backend::Backend`][tui-backend] trait. tui-textarea also
 supports it. In this case, please use `your-backend` feature for [tui-rs][] or `ratatui-your-backend` feature for
-[ratatui][]. They avoid adding backend crates (crossterm and termion) since you're using your own backend.
+[ratatui][]. They avoid adding backend crates (crossterm, termion, and termwiz) since you're using your own backend.
 
 ```toml
 [dependencies]
@@ -696,9 +704,10 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 [ci-badge]: https://github.com/rhysd/tui-textarea/actions/workflows/ci.yml/badge.svg?event=push
 [ci]: https://github.com/rhysd/tui-textarea/actions/workflows/ci.yml
 [tui-rs]: https://github.com/fdehau/tui-rs
-[ratatui]: https://github.com/tui-rs-revival/ratatui
-[termion]: https://docs.rs/termion/latest/termion/
+[ratatui]: https://github.com/ratatui-org/ratatui
 [crossterm]: https://docs.rs/crossterm/latest/crossterm/
+[termion]: https://docs.rs/termion/latest/termion/
+[termwiz]: https://docs.rs/termwiz/latest/termwiz/
 [tui-backend]: https://docs.rs/tui/latest/tui/backend/trait.Backend.html
 [repo]: https://github.com/rhysd/tui-textarea
 [new-issue]: https://github.com/rhysd/tui-textarea/issues/new

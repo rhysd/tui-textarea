@@ -10,12 +10,14 @@ use crate::tui::style::{Color, Modifier, Style};
 #[cfg(any(
     feature = "ratatui-crossterm",
     feature = "ratatui-termion",
+    feature = "ratatui-termwiz",
     feature = "ratatui-your-backend",
 ))]
 use crate::tui::text::Line as Spans;
 #[cfg(not(any(
     feature = "ratatui-crossterm",
     feature = "ratatui-termion",
+    feature = "ratatui-termwiz",
     feature = "ratatui-your-backend",
 )))]
 use crate::tui::text::Spans;
@@ -170,8 +172,8 @@ impl<'a> TextArea<'a> {
 
     /// Handle a key input with default key mappings. For default key mappings, see the table in
     /// [the module document](./index.html).
-    /// `crossterm` and `termion` features enable conversion from their own key event types into [`Input`] so this
-    /// method can take the event values directly.
+    /// `crossterm`, `termion`, and `ratatui-termwiz` features enable conversion from their own key event types into
+    /// [`Input`] so this method can take the event values directly.
     /// This method returns if the input modified text contents or not in the textarea.
     /// ```ignore
     /// use tui_textarea::{TextArea, Key, Input};
@@ -189,6 +191,13 @@ impl<'a> TextArea<'a> {
     /// let event: termion::event::Event = ...;
     /// textarea.input(event);
     /// if let termion::event::Event::Key(key) = event {
+    ///     textarea.input(key);
+    /// }
+    ///
+    /// // Handle termwiz key events
+    /// let event: termwiz::input::InputEvent = ...;
+    /// textarea.input(event);
+    /// if let termwiz::input::InputEvent::Key(key) = event {
     ///     textarea.input(key);
     /// }
     ///
