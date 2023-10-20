@@ -47,7 +47,8 @@ pub enum Key {
 
 /// Backend-agnostic key input type.
 ///
-/// When `crossterm` and/or `termion` features are enabled, converting their key input types into this `Input` type is defined.
+/// When `crossterm`, `termion`, `ratatui-termwiz` features are enabled, converting respective key input types into this
+/// `Input` type is defined.
 /// ```no_run
 /// use tui_textarea::{TextArea, Input, Key};
 /// use crossterm::event::{Event, read};
