@@ -99,6 +99,10 @@ required-features = ["ratatui-crossterm", "search"]
 name = "ratatui_termion"
 required-features = ["ratatui-termion"]
 
+[[example]]
+name = "termwiz"
+required-features = ["ratatui-termwiz"]
+
 [workspace]
 members = [
     "bench",
