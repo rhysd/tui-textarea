@@ -2,12 +2,10 @@ use ratatui::backend::TermwizBackend;
 use ratatui::widgets::{Block, Borders};
 use ratatui::Terminal;
 use std::error::Error;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use termwiz::input::InputEvent;
-use termwiz::terminal::Terminal as TermwizTerminal;
+use termwiz::terminal::Terminal as _;
 use tui_textarea::{Input, Key, TextArea};
-
-const TICK_RATE: Duration = Duration::from_millis(100);
 
 fn main() -> Result<(), Box<dyn Error>> {
     let backend = TermwizBackend::new()?;
@@ -20,7 +18,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             .borders(Borders::ALL)
             .title("Termwiz Minimal Example"),
     );
-    let mut last_tick = Instant::now();
 
     // The event loop
     loop {
@@ -29,15 +26,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             f.render_widget(widget, f.size());
         })?;
 
-        let timeout = TICK_RATE
-            .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| Duration::from_secs(0));
-
         if let Some(input) = term
             .backend_mut()
             .buffered_terminal_mut()
             .terminal()
-            .poll_input(Some(timeout))?
+            .poll_input(Some(Duration::from_millis(100)))?
         {
             if let InputEvent::Resized { cols, rows } = input {
                 term.backend_mut()
@@ -51,10 +44,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                     }
                 }
             }
-        }
-
-        if last_tick.elapsed() >= TICK_RATE {
-            last_tick = Instant::now();
         }
     }
 
