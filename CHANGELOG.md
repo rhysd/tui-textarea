@@ -1,8 +1,27 @@
+<a name="v0.2.4"></a>
+# [v0.2.4](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.4) - 21 Oct 2023
+
+- Support the [termwiz](https://crates.io/crates/termwiz) backend for ratatui. `ratatui-termwiz` feature was newly added for this.
+  - Add the following dependencies in your Cargo.toml to use termwiz support.
+    ```toml
+    termwiz = "0.20"
+    ratatui = { version = "0.23", default-features = false, features = ["termwiz"] }
+    tui-textarea = { version = "0.2.4", default-features = false, features = ["ratatui-termwiz"] }
+    ```
+  - Read and run [the `termwiz` example](https://github.com/rhysd/tui-textarea/blob/main/examples/termwiz.rs) to know the API usage.
+    ```sh
+    cargo run --example termwiz --no-default-features --features=ratatui-termwiz
+    ```
+- Fix calculating the length of tab character when the line contains wide characters. Now the length of wide characters like あ are calculated as 2 correctly.
+
+[Changes][v0.2.4]
+
+
 <a name="v0.2.3"></a>
 # [v0.2.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.3) - 20 Oct 2023
 
 - Add APIs to mask text with a character ([#32](https://github.com/rhysd/tui-textarea/issues/32), thanks [@pm100](https://github.com/pm100)).
-  - `TextArea::set_mask_char`, `TextArea::set_mask_char`, `TextArea::mask_char` are added. See [the documentation](https://docs.rs/tui-textarea/latest/tui_textarea/) for more details.
+  - `TextArea::set_mask_char`, `TextArea::clear_mask_char`, `TextArea::mask_char` are added. See [the documentation](https://docs.rs/tui-textarea/latest/tui_textarea/) for more details.
   - The [`password`](https://github.com/rhysd/tui-textarea/blob/main/examples/password.rs) example was added to show the usage.
     <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/password.gif" width=589 height=92 alt="password example">
 - Fix the length of displayed hard tab in text ([#33](https://github.com/rhysd/tui-textarea/issues/33), thanks [@pm100](https://github.com/pm100)).
@@ -184,6 +203,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.2.4]: https://github.com/rhysd/tui-textarea/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/rhysd/tui-textarea/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/rhysd/tui-textarea/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/rhysd/tui-textarea/compare/v0.2.0...v0.2.1
