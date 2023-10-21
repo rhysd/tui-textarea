@@ -1011,7 +1011,7 @@ impl<'a> TextArea<'a> {
     }
 
     pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Spans<'b> {
-        let mut hl = LineHighlighter::new(line, self.cursor_style, self.tab_len);
+        let mut hl = LineHighlighter::new(line, self.cursor_style, self.tab_len, self.mask);
 
         if let Some(style) = self.line_number_style {
             hl.line_number(row, lnum_len, style);
@@ -1026,7 +1026,7 @@ impl<'a> TextArea<'a> {
             hl.search(matches, self.search.style);
         }
 
-        hl.into_spans(self.mask)
+        hl.into_spans()
     }
 
     /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this

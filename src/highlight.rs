@@ -94,10 +94,11 @@ pub struct LineHighlighter<'a> {
     cursor_at_end: bool,
     cursor_style: Style,
     tab_len: u8,
+    mask: Option<char>,
 }
 
 impl<'a> LineHighlighter<'a> {
-    pub fn new(line: &'a str, cursor_style: Style, tab_len: u8) -> Self {
+    pub fn new(line: &'a str, cursor_style: Style, tab_len: u8, mask: Option<char>) -> Self {
         Self {
             line,
             spans: vec![],
@@ -106,6 +107,7 @@ impl<'a> LineHighlighter<'a> {
             cursor_at_end: false,
             cursor_style,
             tab_len,
+            mask,
         }
     }
 
@@ -136,7 +138,7 @@ impl<'a> LineHighlighter<'a> {
         }
     }
 
-    pub fn into_spans(self, mask: Option<char>) -> Spans<'a> {
+    pub fn into_spans(self) -> Spans<'a> {
         let Self {
             line,
             mut spans,
@@ -145,6 +147,7 @@ impl<'a> LineHighlighter<'a> {
             style_begin,
             cursor_style,
             cursor_at_end,
+            mask,
         } = self;
 
         if boundaries.is_empty() {
