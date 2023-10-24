@@ -133,9 +133,6 @@ cargo run --example tuirs_editor --no-default-features --features=tuirs-crosster
 
 # tui-rs version of `termion` example
 cargo run --example tuirs_termion --no-default-features --features=tuirs-termion
-
-# tui-rs version of `popup_placeholder` example
-cargo run --example tuirs_popup_placeholder --no-default-features --features=tuirs-crossterm
 ```
 
 ## Installation

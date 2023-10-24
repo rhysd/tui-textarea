@@ -96,10 +96,6 @@ name = "tuirs_editor"
 required-features = ["tuirs-crossterm", "search"]
 
 [[example]]
-name = "tuirs_popup_placeholder"
-required-features = ["tuirs-crossterm"]
-
-[[example]]
 name = "tuirs_termion"
 required-features = ["tuirs-termion"]
 
