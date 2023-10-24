@@ -2,10 +2,10 @@
 name = "tui-textarea"
 version = "0.2.4"
 edition = "2021"
-rust-version = "1.56.1"
+rust-version = "1.56.1" # for `tui` crate support
 authors = ["rhysd <lin90162@yahoo.co.jp>"]
 description = """
-tui-textarea is a simple yet powerful text editor widget for tui-rs and ratatui. Multi-line
+tui-textarea is a simple yet powerful text editor widget for ratatui and tui-rs. Multi-line
 text editor can be easily put as part of your TUI application.
 """
 license = "MIT"
@@ -24,36 +24,32 @@ include = [
 
 [features]
 default = ["crossterm"]
-# Features to use tui-rs
-crossterm = ["dep:crossterm", "tui/crossterm"]
-termion = ["dep:termion", "tui/termion"]
-your-backend = ["tui"]
 # Features to use ratatui
-ratatui-crossterm = ["dep:crossterm-027", "ratatui/crossterm"]
-ratatui-termion = ["dep:termion", "ratatui/termion"]
-ratatui-termwiz = ["dep:termwiz", "ratatui/termwiz"]
-ratatui-your-backend = ["ratatui"]
+crossterm = ["dep:crossterm", "ratatui/crossterm"]
+termion = ["dep:termion", "ratatui/termion"]
+termwiz = ["dep:termwiz", "ratatui/termwiz"]
+your-backend = ["ratatui"]
+# Features to use tui-rs
+tuirs-crossterm = ["dep:crossterm-025", "tui/crossterm"]
+tuirs-termion = ["dep:termion", "tui/termion"]
+tuirs-your-backend = ["tui"]
 # Other optional features
 search = ["dep:regex"]
 
 [dependencies]
-crossterm = { package = "crossterm", version = "0.25", optional = true }
+arbitrary = { version = "1", features = ["derive"], optional = true }
+crossterm = { package = "crossterm", version = "0.27", optional = true }
+crossterm-025 = { package = "crossterm", version = "0.25", optional = true }
+ratatui = { version = "0.23.0", default-features = false, optional = true }
 regex = { version = "1", optional = true }
 termion = { version = "2.0", optional = true }
-tui = { version = "0.19", default-features = false, optional = true }
-arbitrary = { version = "1", features = ["derive"], optional = true }
-crossterm-027 = { package = "crossterm", version = "0.27", optional = true }
-ratatui = { version = "0.23.0", default-features = false, optional = true }
-unicode-width = "0.1.11"
 termwiz = { version = "0.20.0", optional = true }
+tui = { version = "0.19", default-features = false, optional = true }
+unicode-width = "0.1.11"
 
 [[example]]
 name = "minimal"
 required-features = ["crossterm"]
-
-[[example]]
-name = "termion"
-required-features = ["termion"]
 
 [[example]]
 name = "editor"
@@ -68,10 +64,6 @@ name = "single_line"
 required-features = ["crossterm"]
 
 [[example]]
-name = "password"
-required-features = ["crossterm"]
-
-[[example]]
 name = "variable"
 required-features = ["crossterm"]
 
@@ -80,28 +72,36 @@ name = "modal"
 required-features = ["crossterm"]
 
 [[example]]
+name = "password"
+required-features = ["crossterm"]
+
+[[example]]
 name = "popup_placeholder"
 required-features = ["crossterm"]
 
 [[example]]
-name = "ratatui_minimal"
-required-features = ["ratatui-crossterm"]
-
-[[example]]
-name = "ratatui_popup_placeholder"
-required-features = ["ratatui-crossterm"]
-
-[[example]]
-name = "ratatui_editor"
-required-features = ["ratatui-crossterm", "search"]
-
-[[example]]
-name = "ratatui_termion"
-required-features = ["ratatui-termion"]
-
-[[example]]
 name = "termwiz"
-required-features = ["ratatui-termwiz"]
+required-features = ["termwiz"]
+
+[[example]]
+name = "termion"
+required-features = ["termion"]
+
+[[example]]
+name = "tuirs_minimal"
+required-features = ["tuirs-crossterm"]
+
+[[example]]
+name = "tuirs_editor"
+required-features = ["tuirs-crossterm", "search"]
+
+[[example]]
+name = "tuirs_popup_placeholder"
+required-features = ["tuirs-crossterm"]
+
+[[example]]
+name = "tuirs_termion"
+required-features = ["tuirs-termion"]
 
 [workspace]
 members = [

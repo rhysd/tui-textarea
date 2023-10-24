@@ -2,26 +2,25 @@ use crate::cursor::CursorMove;
 use crate::highlight::LineHighlighter;
 use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
+use crate::ratatui::layout::Alignment;
+use crate::ratatui::style::{Color, Modifier, Style};
+#[cfg(any(
+    feature = "crossterm",
+    feature = "termion",
+    feature = "termwiz",
+    feature = "your-backend",
+))]
+use crate::ratatui::text::Line;
+#[cfg(any(
+    feature = "tuirs-crossterm",
+    feature = "tuirs-termion",
+    feature = "tuirs-your-backend",
+))]
+use crate::ratatui::text::Spans as Line;
+use crate::ratatui::widgets::{Block, Widget};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
-use crate::tui::layout::Alignment;
-use crate::tui::style::{Color, Modifier, Style};
-#[cfg(any(
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-    feature = "ratatui-termwiz",
-    feature = "ratatui-your-backend",
-))]
-use crate::tui::text::Line as Spans;
-#[cfg(not(any(
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-    feature = "ratatui-termwiz",
-    feature = "ratatui-your-backend",
-)))]
-use crate::tui::text::Spans;
-use crate::tui::widgets::{Block, Widget};
 use crate::util::spaces;
 use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
@@ -172,7 +171,7 @@ impl<'a> TextArea<'a> {
 
     /// Handle a key input with default key mappings. For default key mappings, see the table in
     /// [the module document](./index.html).
-    /// `crossterm`, `termion`, and `ratatui-termwiz` features enable conversion from their own key event types into
+    /// `crossterm`, `termion`, and `termwiz` features enable conversion from their own key event types into
     /// [`Input`] so this method can take the event values directly.
     /// This method returns if the input modified text contents or not in the textarea.
     /// ```ignore
@@ -1010,7 +1009,7 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Spans<'b> {
+    pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Line<'b> {
         let mut hl = LineHighlighter::new(line, self.cursor_style, self.tab_len, self.mask);
 
         if let Some(style) = self.line_number_style {
@@ -1029,12 +1028,12 @@ impl<'a> TextArea<'a> {
         hl.into_spans()
     }
 
-    /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this
-    /// method can be rendered with [`tui::terminal::Frame::render_widget`].
+    /// Build a ratatui (or tui-rs) widget to render the current state of the textarea. The widget instance returned
+    /// from this method can be rendered with [`ratatui::terminal::Frame::render_widget`].
     /// ```no_run
-    /// use tui::backend::CrosstermBackend;
-    /// use tui::layout::{Constraint, Direction, Layout};
-    /// use tui::Terminal;
+    /// use ratatui::backend::CrosstermBackend;
+    /// use ratatui::layout::{Constraint, Direction, Layout};
+    /// use ratatui::Terminal;
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1061,7 +1060,7 @@ impl<'a> TextArea<'a> {
 
     /// Set the style of textarea. By default, textarea is not styled.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1081,7 +1080,7 @@ impl<'a> TextArea<'a> {
     /// Set the block of textarea. By default, no block is set.
     /// ```
     /// use tui_textarea::TextArea;
-    /// use tui::widgets::{Block, Borders};
+    /// use ratatui::widgets::{Block, Borders};
     ///
     /// let mut textarea = TextArea::default();
     /// let block = Block::default().borders(Borders::ALL).title("Block Title");
@@ -1095,7 +1094,7 @@ impl<'a> TextArea<'a> {
     /// Remove the block of textarea which was set by [`TextArea::set_block`].
     /// ```
     /// use tui_textarea::TextArea;
-    /// use tui::widgets::{Block, Borders};
+    /// use ratatui::widgets::{Block, Borders};
     ///
     /// let mut textarea = TextArea::default();
     /// let block = Block::default().borders(Borders::ALL).title("Block Title");
@@ -1112,8 +1111,7 @@ impl<'a> TextArea<'a> {
         self.block.as_ref()
     }
 
-    /// Set the length of tab character. Due to limitation of tui-rs, hard tab is not supported. Setting 0 disables tab
-    /// inputs.
+    /// Set the length of tab character. Setting 0 disables tab inputs.
     /// ```
     /// use tui_textarea::{TextArea, Input, Key};
     ///
@@ -1199,7 +1197,7 @@ impl<'a> TextArea<'a> {
     /// Set the style of line at cursor. By default, the cursor line is styled with underline. To stop styling the
     /// cursor line, set the default style.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1224,7 +1222,7 @@ impl<'a> TextArea<'a> {
     /// that line numbers are disabled by default. If you want to show line numbers but don't want to style them, set
     /// the default style.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1241,7 +1239,7 @@ impl<'a> TextArea<'a> {
     /// Remove the style of line number which was set by [`TextArea::set_line_number_style`]. After calling this
     /// method, Line numbers will no longer be shown.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1279,7 +1277,7 @@ impl<'a> TextArea<'a> {
 
     /// Set the style of the placeholder text. The default style is a dark gray text.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1373,7 +1371,7 @@ impl<'a> TextArea<'a> {
     /// Set the style of cursor. By default, a cursor is rendered in the reversed color. Setting the same style as
     /// cursor line hides a cursor.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1449,8 +1447,8 @@ impl<'a> TextArea<'a> {
     /// Set text alignment. When [`Alignment::Center`] or [`Alignment::Right`] is set, line number is automatically
     /// disabled because those alignments don't work well with line numbers.
     /// ```
+    /// use ratatui::layout::Alignment;
     /// use tui_textarea::TextArea;
-    /// use tui::layout::Alignment;
     ///
     /// let mut textarea = TextArea::default();
     ///
@@ -1466,8 +1464,8 @@ impl<'a> TextArea<'a> {
 
     /// Get current text alignment. The default alignment is [`Alignment::Left`].
     /// ```
+    /// use ratatui::layout::Alignment;
     /// use tui_textarea::TextArea;
-    /// use tui::layout::Alignment;
     ///
     /// let mut textarea = TextArea::default();
     ///
@@ -1669,7 +1667,7 @@ impl<'a> TextArea<'a> {
     /// Get the text style at matches of text search. The default style is colored with blue in background.
     ///
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let textarea = TextArea::default();
@@ -1685,7 +1683,7 @@ impl<'a> TextArea<'a> {
     /// Set the text style at matches of text search. The default style is colored with blue in background.
     ///
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1706,9 +1704,9 @@ impl<'a> TextArea<'a> {
     /// the cursor position will be adjusted to stay in the viewport using the same logic as [`CursorMove::InViewport`].
     ///
     /// ```
-    /// # use tui::buffer::Buffer;
-    /// # use tui::layout::Rect;
-    /// # use tui::widgets::Widget;
+    /// # use ratatui::buffer::Buffer;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::widgets::Widget;
     /// use tui_textarea::TextArea;
     ///
     /// // Let's say terminal height is 8.
@@ -1749,12 +1747,12 @@ impl<'a> TextArea<'a> {
 mod tests {
     use super::*;
 
-    // Seaparate tests for ratatui support
+    // Seaparate tests for tui-rs support
     #[test]
     fn scroll() {
-        use crate::tui::buffer::Buffer;
-        use crate::tui::layout::Rect;
-        use crate::tui::widgets::Widget;
+        use crate::ratatui::buffer::Buffer;
+        use crate::ratatui::layout::Rect;
+        use crate::ratatui::widgets::Widget;
 
         let mut textarea: TextArea = (0..20).map(|i| i.to_string()).collect();
         let r = Rect {

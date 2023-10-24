@@ -9,8 +9,8 @@ license = "MIT"
 bench = false
 
 [dependencies]
-tui-textarea = { path = "..", features = ["search"] }
-tui = { version = "0.19", default-features = false }
+tui-textarea = { path = "..", features = ["your-backend", "search"] }
+ratatui = { version = "0.23.0", default-features = false }
 
 [dev-dependencies]
 criterion = "0.5"

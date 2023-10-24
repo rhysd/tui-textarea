@@ -2,12 +2,12 @@ use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use ratatui::backend::CrosstermBackend;
+use ratatui::layout::{Constraint, Layout};
+use ratatui::style::{Color, Style};
+use ratatui::widgets::{Block, Borders};
+use ratatui::Terminal;
 use std::io;
-use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Layout};
-use tui::style::{Color, Style};
-use tui::widgets::{Block, Borders};
-use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
 
 fn validate(textarea: &mut TextArea) -> bool {

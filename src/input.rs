@@ -1,13 +1,13 @@
-#[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
+#[cfg(any(feature = "crossterm", feature = "tuirs-crossterm"))]
 use crate::crossterm::event::{
     Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent,
     MouseEventKind as CrosstermMouseEventKind,
 };
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
-#[cfg(any(feature = "termion", feature = "ratatui-termion"))]
+#[cfg(any(feature = "termion", feature = "tuirs-termion"))]
 use termion::event::{Event as TermionEvent, Key as TermionKey, MouseEvent as TermionMouseEvent};
-#[cfg(feature = "ratatui-termwiz")]
+#[cfg(feature = "termwiz")]
 use termwiz::input::{
     InputEvent as TermwizInputEvent, KeyEvent as TermwizKeyEvent,
     MouseButtons as TermwizMouseButtons, MouseEvent as TermwizMouseEvent, PixelMouseEvent,
@@ -47,7 +47,7 @@ pub enum Key {
 
 /// Backend-agnostic key input type.
 ///
-/// When `crossterm`, `termion`, `ratatui-termwiz` features are enabled, converting respective key input types into this
+/// When `crossterm`, `termion`, `termwiz` features are enabled, converting respective key input types into this
 /// `Input` type is defined.
 /// ```no_run
 /// use tui_textarea::{TextArea, Input, Key};
@@ -101,7 +101,7 @@ impl Default for Input {
     }
 }
 
-#[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
+#[cfg(any(feature = "crossterm", feature = "tuirs-crossterm"))]
 impl From<CrosstermEvent> for Input {
     /// Convert [`crossterm::event::Event`] to [`Input`].
     fn from(event: CrosstermEvent) -> Self {
@@ -113,7 +113,7 @@ impl From<CrosstermEvent> for Input {
     }
 }
 
-#[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
+#[cfg(any(feature = "crossterm", feature = "tuirs-crossterm"))]
 impl From<KeyEvent> for Input {
     /// Convert [`crossterm::event::KeyEvent`] to [`Input`].
     fn from(key: KeyEvent) -> Self {
@@ -141,7 +141,7 @@ impl From<KeyEvent> for Input {
     }
 }
 
-#[cfg(any(feature = "crossterm", feature = "ratatui-crossterm"))]
+#[cfg(any(feature = "crossterm", feature = "tuirs-crossterm"))]
 impl From<MouseEvent> for Input {
     /// Convert [`crossterm::event::MouseEvent`] to [`Input`].
     fn from(mouse: MouseEvent) -> Self {
@@ -156,7 +156,7 @@ impl From<MouseEvent> for Input {
     }
 }
 
-#[cfg(any(feature = "termion", feature = "ratatui-termion"))]
+#[cfg(any(feature = "termion", feature = "tuirs-termion"))]
 impl From<TermionEvent> for Input {
     /// Convert [`termion::event::Event`] to [`Input`].
     fn from(event: TermionEvent) -> Self {
@@ -168,7 +168,7 @@ impl From<TermionEvent> for Input {
     }
 }
 
-#[cfg(any(feature = "termion", feature = "ratatui-termion"))]
+#[cfg(any(feature = "termion", feature = "tuirs-termion"))]
 impl From<TermionKey> for Input {
     /// Convert [`termion::event::Key`] to [`Input`].
     fn from(key: TermionKey) -> Self {
@@ -207,7 +207,7 @@ impl From<TermionKey> for Input {
     }
 }
 
-#[cfg(any(feature = "termion", feature = "ratatui-termion"))]
+#[cfg(any(feature = "termion", feature = "tuirs-termion"))]
 impl From<TermionMouseEvent> for Input {
     /// Convert [`termion::event::MouseEvent`] to [`Input`].
     fn from(mouse: TermionMouseEvent) -> Self {
@@ -225,7 +225,7 @@ impl From<TermionMouseEvent> for Input {
     }
 }
 
-#[cfg(feature = "ratatui-termwiz")]
+#[cfg(feature = "termwiz")]
 impl From<TermwizInputEvent> for Input {
     /// Convert [`termwiz::input::InputEvent`] to [`Input`].
     fn from(input: TermwizInputEvent) -> Self {
@@ -238,7 +238,7 @@ impl From<TermwizInputEvent> for Input {
     }
 }
 
-#[cfg(feature = "ratatui-termwiz")]
+#[cfg(feature = "termwiz")]
 impl From<TermwizKeyEvent> for Input {
     /// Convert [`termwiz::input::KeyEvent`] to [`Input`].
     fn from(key: TermwizKeyEvent) -> Self {
@@ -270,7 +270,7 @@ impl From<TermwizKeyEvent> for Input {
     }
 }
 
-#[cfg(feature = "ratatui-termwiz")]
+#[cfg(feature = "termwiz")]
 impl From<TermwizMouseButtons> for Key {
     /// Convert [`termwiz::input::MouseButtons`] to [`Key`].
     fn from(buttons: TermwizMouseButtons) -> Self {
@@ -286,7 +286,7 @@ impl From<TermwizMouseButtons> for Key {
     }
 }
 
-#[cfg(feature = "ratatui-termwiz")]
+#[cfg(feature = "termwiz")]
 impl From<TermwizMouseEvent> for Input {
     /// Convert [`termwiz::input::MouseEvent`] to [`Input`].
     fn from(mouse: TermwizMouseEvent) -> Self {
@@ -305,7 +305,7 @@ impl From<TermwizMouseEvent> for Input {
     }
 }
 
-#[cfg(feature = "ratatui-termwiz")]
+#[cfg(feature = "termwiz")]
 impl From<PixelMouseEvent> for Input {
     /// Convert [`termwiz::input::PixelMouseEvent`] to [`Input`].
     fn from(mouse: PixelMouseEvent) -> Self {
