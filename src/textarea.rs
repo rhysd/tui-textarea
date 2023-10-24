@@ -4,19 +4,6 @@ use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
 use crate::ratatui::layout::Alignment;
 use crate::ratatui::style::{Color, Modifier, Style};
-#[cfg(any(
-    feature = "crossterm",
-    feature = "termion",
-    feature = "termwiz",
-    feature = "no-backend",
-))]
-use crate::ratatui::text::Line;
-#[cfg(any(
-    feature = "tuirs-crossterm",
-    feature = "tuirs-termion",
-    feature = "tuirs-no-backend",
-))]
-use crate::ratatui::text::Spans as Line;
 use crate::ratatui::widgets::{Block, Widget};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
@@ -24,6 +11,10 @@ use crate::search::Search;
 use crate::util::spaces;
 use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
+#[cfg(feature = "ratatui")]
+use ratatui::text::Line;
+#[cfg(feature = "tuirs")]
+use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
 
 /// A type to manage state of textarea.

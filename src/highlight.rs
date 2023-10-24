@@ -1,22 +1,13 @@
 use crate::ratatui::style::Style;
-#[cfg(any(
-    feature = "crossterm",
-    feature = "termion",
-    feature = "termwiz",
-    feature = "no-backend",
-))]
-use crate::ratatui::text::Line;
 use crate::ratatui::text::Span;
-#[cfg(any(
-    feature = "tuirs-crossterm",
-    feature = "tuirs-termion",
-    feature = "tuirs-no-backend",
-))]
-use crate::ratatui::text::Spans as Line;
 use crate::util::{num_digits, spaces};
+#[cfg(feature = "ratatui")]
+use ratatui::text::Line;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::iter;
+#[cfg(feature = "tuirs")]
+use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
 
 enum Boundary {

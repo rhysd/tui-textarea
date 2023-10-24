@@ -25,14 +25,16 @@ include = [
 [features]
 default = ["crossterm"]
 # Features to use ratatui
-crossterm = ["dep:crossterm", "ratatui/crossterm"]
-termion = ["dep:termion", "ratatui/termion"]
-termwiz = ["dep:termwiz", "ratatui/termwiz"]
-no-backend = ["dep:ratatui"]
+ratatui = ["dep:ratatui"]
+crossterm = ["ratatui", "dep:crossterm", "ratatui/crossterm"]
+termion = ["ratatui", "dep:termion", "ratatui/termion"]
+termwiz = ["ratatui", "dep:termwiz", "ratatui/termwiz"]
+no-backend = ["ratatui"]
 # Features to use tui-rs
-tuirs-crossterm = ["dep:crossterm-025", "tui/crossterm"]
-tuirs-termion = ["dep:termion", "tui/termion"]
-tuirs-no-backend = ["dep:tui"]
+tuirs = ["dep:tui"]
+tuirs-crossterm = ["tuirs", "dep:crossterm-025", "tui/crossterm"]
+tuirs-termion = ["tuirs", "dep:termion", "tui/termion"]
+tuirs-no-backend = ["tuirs"]
 # Other optional features
 search = ["dep:regex"]
 

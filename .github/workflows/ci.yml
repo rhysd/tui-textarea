@@ -18,8 +18,8 @@ jobs:
       - run: cargo test --no-default-features --features=tuirs-crossterm,search -- --skip .rs
       - run: cargo test --no-default-features --features=tuirs-termion,search -- --skip .rs
         if: ${{ matrix.os != 'windows-latest' }}
-      - run: cargo test --no-default-features --features=your-backend,search -- --skip .rs
-      - run: cargo test --no-default-features --features=tuirs-your-backend,search -- --skip .rs
+      - run: cargo test --no-default-features --features=no-backend,search -- --skip .rs
+      - run: cargo test --no-default-features --features=tuirs-no-backend,search -- --skip .rs
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -33,12 +33,12 @@ jobs:
       - run: cargo clippy --examples --features search -- -D warnings
       - run: cargo clippy --examples --no-default-features --features termion -- -D warnings
       - run: cargo clippy --examples --no-default-features --features termion,search -- -D warnings
-      - run: cargo clippy --examples --no-default-features --features your-backend -- -D warnings
-      - run: cargo clippy --examples --no-default-features --features your-backend,search -- -D warnings
+      - run: cargo clippy --examples --no-default-features --features no-backend -- -D warnings
+      - run: cargo clippy --examples --no-default-features --features no-backend,search -- -D warnings
       - run: cargo clippy --examples --no-default-features --features tuirs-crossterm -- -D warnings
       - run: cargo clippy --examples --no-default-features --features tuirs-crossterm,search -- -D warnings
       - run: cargo clippy --examples --no-default-features --features tuirs-termion -- -D warnings
       - run: cargo clippy --examples --no-default-features --features tuirs-termion,search -- -D warnings
-      - run: cargo clippy --examples --no-default-features --features tuirs-your-backend -- -D warnings
-      - run: cargo clippy --examples --no-default-features --features tuirs-your-backend,search -- -D warnings
+      - run: cargo clippy --examples --no-default-features --features tuirs-no-backend -- -D warnings
+      - run: cargo clippy --examples --no-default-features --features tuirs-no-backend,search -- -D warnings
       - run: cargo rustdoc --features=search -p tui-textarea -- -D warnings
