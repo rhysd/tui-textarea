@@ -199,9 +199,9 @@ pub enum CursorMove {
     ///
     /// This is useful when you moved a cursor but you don't want to move the viewport.
     /// ```
-    /// # use tui::buffer::Buffer;
-    /// # use tui::layout::Rect;
-    /// # use tui::widgets::Widget;
+    /// # use ratatui::buffer::Buffer;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::widgets::Widget;
     /// use tui_textarea::{TextArea, CursorMove};
     ///
     /// // Let's say terminal height is 8.

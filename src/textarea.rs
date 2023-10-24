@@ -1029,11 +1029,11 @@ impl<'a> TextArea<'a> {
     }
 
     /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this
-    /// method can be rendered with [`tui::terminal::Frame::render_widget`].
+    /// method can be rendered with [`ratatui::terminal::Frame::render_widget`].
     /// ```no_run
-    /// use tui::backend::CrosstermBackend;
-    /// use tui::layout::{Constraint, Direction, Layout};
-    /// use tui::Terminal;
+    /// use ratatui::backend::CrosstermBackend;
+    /// use ratatui::layout::{Constraint, Direction, Layout};
+    /// use ratatui::Terminal;
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1060,7 +1060,7 @@ impl<'a> TextArea<'a> {
 
     /// Set the style of textarea. By default, textarea is not styled.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1080,7 +1080,7 @@ impl<'a> TextArea<'a> {
     /// Set the block of textarea. By default, no block is set.
     /// ```
     /// use tui_textarea::TextArea;
-    /// use tui::widgets::{Block, Borders};
+    /// use ratatui::widgets::{Block, Borders};
     ///
     /// let mut textarea = TextArea::default();
     /// let block = Block::default().borders(Borders::ALL).title("Block Title");
@@ -1094,7 +1094,7 @@ impl<'a> TextArea<'a> {
     /// Remove the block of textarea which was set by [`TextArea::set_block`].
     /// ```
     /// use tui_textarea::TextArea;
-    /// use tui::widgets::{Block, Borders};
+    /// use ratatui::widgets::{Block, Borders};
     ///
     /// let mut textarea = TextArea::default();
     /// let block = Block::default().borders(Borders::ALL).title("Block Title");
@@ -1198,7 +1198,7 @@ impl<'a> TextArea<'a> {
     /// Set the style of line at cursor. By default, the cursor line is styled with underline. To stop styling the
     /// cursor line, set the default style.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1223,7 +1223,7 @@ impl<'a> TextArea<'a> {
     /// that line numbers are disabled by default. If you want to show line numbers but don't want to style them, set
     /// the default style.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1240,7 +1240,7 @@ impl<'a> TextArea<'a> {
     /// Remove the style of line number which was set by [`TextArea::set_line_number_style`]. After calling this
     /// method, Line numbers will no longer be shown.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1278,7 +1278,7 @@ impl<'a> TextArea<'a> {
 
     /// Set the style of the placeholder text. The default style is a dark gray text.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1372,7 +1372,7 @@ impl<'a> TextArea<'a> {
     /// Set the style of cursor. By default, a cursor is rendered in the reversed color. Setting the same style as
     /// cursor line hides a cursor.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1448,8 +1448,8 @@ impl<'a> TextArea<'a> {
     /// Set text alignment. When [`Alignment::Center`] or [`Alignment::Right`] is set, line number is automatically
     /// disabled because those alignments don't work well with line numbers.
     /// ```
+    /// use ratatui::layout::Alignment;
     /// use tui_textarea::TextArea;
-    /// use tui::layout::Alignment;
     ///
     /// let mut textarea = TextArea::default();
     ///
@@ -1465,8 +1465,8 @@ impl<'a> TextArea<'a> {
 
     /// Get current text alignment. The default alignment is [`Alignment::Left`].
     /// ```
+    /// use ratatui::layout::Alignment;
     /// use tui_textarea::TextArea;
-    /// use tui::layout::Alignment;
     ///
     /// let mut textarea = TextArea::default();
     ///
@@ -1668,7 +1668,7 @@ impl<'a> TextArea<'a> {
     /// Get the text style at matches of text search. The default style is colored with blue in background.
     ///
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let textarea = TextArea::default();
@@ -1684,7 +1684,7 @@ impl<'a> TextArea<'a> {
     /// Set the text style at matches of text search. The default style is colored with blue in background.
     ///
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1705,9 +1705,9 @@ impl<'a> TextArea<'a> {
     /// the cursor position will be adjusted to stay in the viewport using the same logic as [`CursorMove::InViewport`].
     ///
     /// ```
-    /// # use tui::buffer::Buffer;
-    /// # use tui::layout::Rect;
-    /// # use tui::widgets::Widget;
+    /// # use ratatui::buffer::Buffer;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::widgets::Widget;
     /// use tui_textarea::TextArea;
     ///
     /// // Let's say terminal height is 8.

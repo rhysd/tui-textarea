@@ -13,9 +13,9 @@ pub enum Scrolling {
     /// `Scrolling::Delta` where 1st element means rows and 2nd means columns.
     ///
     /// ```
-    /// # use tui::buffer::Buffer;
-    /// # use tui::layout::Rect;
-    /// # use tui::widgets::Widget;
+    /// # use ratatui::buffer::Buffer;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::widgets::Widget;
     /// use tui_textarea::{TextArea, Scrolling};
     ///
     /// // Let's say terminal height is 8.
@@ -39,9 +39,9 @@ pub enum Scrolling {
     /// Scroll down the textarea by one page.
     ///
     /// ```
-    /// # use tui::buffer::Buffer;
-    /// # use tui::layout::Rect;
-    /// # use tui::widgets::Widget;
+    /// # use ratatui::buffer::Buffer;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::widgets::Widget;
     /// use tui_textarea::{TextArea, Scrolling};
     ///
     /// // Let's say terminal height is 8.
@@ -65,9 +65,9 @@ pub enum Scrolling {
     /// Scroll up the textarea by one page.
     ///
     /// ```
-    /// # use tui::buffer::Buffer;
-    /// # use tui::layout::Rect;
-    /// # use tui::widgets::Widget;
+    /// # use ratatui::buffer::Buffer;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::widgets::Widget;
     /// use tui_textarea::{TextArea, Scrolling, CursorMove};
     ///
     /// // Let's say terminal height is 8.
@@ -95,9 +95,9 @@ pub enum Scrolling {
     /// Scroll down the textarea by half of the page.
     ///
     /// ```
-    /// # use tui::buffer::Buffer;
-    /// # use tui::layout::Rect;
-    /// # use tui::widgets::Widget;
+    /// # use ratatui::buffer::Buffer;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::widgets::Widget;
     /// use tui_textarea::{TextArea, Scrolling};
     ///
     /// // Let's say terminal height is 8.
@@ -121,9 +121,9 @@ pub enum Scrolling {
     /// Scroll up the textarea by half of the page.
     ///
     /// ```
-    /// # use tui::buffer::Buffer;
-    /// # use tui::layout::Rect;
-    /// # use tui::widgets::Widget;
+    /// # use ratatui::buffer::Buffer;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::widgets::Widget;
     /// use tui_textarea::{TextArea, Scrolling, CursorMove};
     ///
     /// // Let's say terminal height is 8.
