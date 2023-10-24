@@ -110,5 +110,6 @@ members = [
 lto = "thin"
 
 [package.metadata.docs.rs]
-features = ["search"]
+targets = ["x86_64-unknown-linux-gnu"]
+features = ["search", "crossterm", "termwiz", "termion"]
 rustdoc-args = ["--cfg", "docsrs"]
