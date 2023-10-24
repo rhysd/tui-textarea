@@ -9,12 +9,12 @@
         feature = "crossterm",
         feature = "termion",
         feature = "termwiz",
-        feature = "your-backend"
+        feature = "no-backend",
     ),
     any(
         feature = "tuirs-crossterm",
         feature = "tuirs-termion",
-        feature = "tuirs-your-backend"
+        feature = "tuirs-no-backend",
     ),
 ))]
 compile_error!("ratatui support and tui-rs support are exclussive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
@@ -35,14 +35,14 @@ mod word;
     feature = "crossterm",
     feature = "termion",
     feature = "termwiz",
-    feature = "your-backend",
+    feature = "no-backend",
 ))]
 #[allow(clippy::single_component_path_imports)]
 use ratatui;
 #[cfg(any(
     feature = "tuirs-crossterm",
     feature = "tuirs-termion",
-    feature = "tuirs-your-backend",
+    feature = "tuirs-no-backend",
 ))]
 use tui as ratatui;
 

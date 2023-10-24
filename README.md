@@ -171,10 +171,10 @@ tui-textarea = { version = "*", default-features = false, features = ["termwiz"]
 If you're using [tui-rs][] instead of [ratatui][], you need to enable features for using tui-rs crate and to disable
 default features. The following table shows feature names corresponding to the dependencies.
 
-|         | crossterm                        | termion         | termwiz   | Your own backend     |
-|---------|----------------------------------|-----------------|-----------|----------------------|
-| ratatui | `crossterm` (enabled by default) | `termion`       | `termwiz` | `your-backend`       |
-| tui-rs  | `tuirs-crossterm`                | `tuirs-termion` | N/A       | `tuirs-your-backend` |
+|         | crossterm                        | termion         | termwiz   | Your own backend   |
+|---------|----------------------------------|-----------------|-----------|--------------------|
+| ratatui | `crossterm` (enabled by default) | `termion`       | `termwiz` | `no-backend`       |
+| tui-rs  | `tuirs-crossterm`                | `tuirs-termion` | N/A       | `tuirs-no-backend` |
 
 For example, when you want to use the combination of [tui-rs][] and [crossterm][],
 
@@ -563,15 +563,15 @@ match read()?.into() {
 ### Use your own backend
 
 ratatui and tui-rs allows to make your own backend by implementing [`ratatui::backend::Backend`][ratatui-backend] trait.
-tui-textarea supports it as well. Please use `your-backend` feature for [ratatui][] or `tuirs-your-backend` feature for
+tui-textarea supports it as well. Please use `no-backend` feature for [ratatui][] or `tuirs-no-backend` feature for
 [tui-rs][]. They avoid adding backend crates (crossterm, termion, or termwiz) since you're using your own backend.
 
 ```toml
 [dependencies]
 # For ratatui
-tui-textarea = { version = "*", default-features = false, features = ["your-backend"] }
+tui-textarea = { version = "*", default-features = false, features = ["no-backend"] }
 # For tui-rs
-tui-textarea = { version = "*", default-features = false, features = ["tuirs-your-backend"] }
+tui-textarea = { version = "*", default-features = false, features = ["tuirs-no-backend"] }
 ```
 
 `tui_textarea::Input` is a type for backend-agnostic key input. What you need to do is converting key event in your own

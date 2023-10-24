@@ -28,11 +28,11 @@ default = ["crossterm"]
 crossterm = ["dep:crossterm", "ratatui/crossterm"]
 termion = ["dep:termion", "ratatui/termion"]
 termwiz = ["dep:termwiz", "ratatui/termwiz"]
-your-backend = ["ratatui"]
+no-backend = ["dep:ratatui"]
 # Features to use tui-rs
 tuirs-crossterm = ["dep:crossterm-025", "tui/crossterm"]
 tuirs-termion = ["dep:termion", "tui/termion"]
-tuirs-your-backend = ["tui"]
+tuirs-no-backend = ["dep:tui"]
 # Other optional features
 search = ["dep:regex"]
 
