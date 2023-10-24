@@ -1,19 +1,18 @@
-use crate::tui::style::Style;
+use crate::ratatui::style::Style;
 #[cfg(any(
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-    feature = "ratatui-termwiz",
-    feature = "ratatui-your-backend",
+    feature = "crossterm",
+    feature = "termion",
+    feature = "termwiz",
+    feature = "your-backend",
 ))]
-use crate::tui::text::Line as Spans;
-use crate::tui::text::Span;
-#[cfg(not(any(
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-    feature = "ratatui-termwiz",
-    feature = "ratatui-your-backend",
-)))]
-use crate::tui::text::Spans;
+use crate::ratatui::text::Line;
+use crate::ratatui::text::Span;
+#[cfg(any(
+    feature = "tuirs-crossterm",
+    feature = "tuirs-termion",
+    feature = "tuirs-your-backend",
+))]
+use crate::ratatui::text::Spans as Line;
 use crate::util::{num_digits, spaces};
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -138,7 +137,7 @@ impl<'a> LineHighlighter<'a> {
         }
     }
 
-    pub fn into_spans(self) -> Spans<'a> {
+    pub fn into_spans(self) -> Line<'a> {
         let Self {
             line,
             mut spans,
@@ -158,7 +157,7 @@ impl<'a> LineHighlighter<'a> {
             if cursor_at_end {
                 spans.push(Span::styled(" ", cursor_style));
             }
-            return Spans::from(spans);
+            return Line::from(spans);
         }
 
         boundaries.sort_unstable_by(|(l, i), (r, j)| match i.cmp(j) {
@@ -197,7 +196,7 @@ impl<'a> LineHighlighter<'a> {
                 if cursor_at_end {
                     spans.push(Span::styled(" ", cursor_style));
                 }
-                return Spans::from(spans);
+                return Line::from(spans);
             }
         }
     }

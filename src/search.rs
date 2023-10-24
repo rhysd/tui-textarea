@@ -1,4 +1,4 @@
-use crate::tui::style::{Color, Style};
+use crate::ratatui::style::{Color, Style};
 use regex::Regex;
 
 #[derive(Clone, Debug)]

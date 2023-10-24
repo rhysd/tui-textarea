@@ -2,26 +2,25 @@ use crate::cursor::CursorMove;
 use crate::highlight::LineHighlighter;
 use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
+use crate::ratatui::layout::Alignment;
+use crate::ratatui::style::{Color, Modifier, Style};
+#[cfg(any(
+    feature = "crossterm",
+    feature = "termion",
+    feature = "termwiz",
+    feature = "your-backend",
+))]
+use crate::ratatui::text::Line;
+#[cfg(any(
+    feature = "tuirs-crossterm",
+    feature = "tuirs-termion",
+    feature = "tuirs-your-backend",
+))]
+use crate::ratatui::text::Spans as Line;
+use crate::ratatui::widgets::{Block, Widget};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
-use crate::tui::layout::Alignment;
-use crate::tui::style::{Color, Modifier, Style};
-#[cfg(any(
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-    feature = "ratatui-termwiz",
-    feature = "ratatui-your-backend",
-))]
-use crate::tui::text::Line as Spans;
-#[cfg(not(any(
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-    feature = "ratatui-termwiz",
-    feature = "ratatui-your-backend",
-)))]
-use crate::tui::text::Spans;
-use crate::tui::widgets::{Block, Widget};
 use crate::util::spaces;
 use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
@@ -172,7 +171,7 @@ impl<'a> TextArea<'a> {
 
     /// Handle a key input with default key mappings. For default key mappings, see the table in
     /// [the module document](./index.html).
-    /// `crossterm`, `termion`, and `ratatui-termwiz` features enable conversion from their own key event types into
+    /// `crossterm`, `termion`, and `termwiz` features enable conversion from their own key event types into
     /// [`Input`] so this method can take the event values directly.
     /// This method returns if the input modified text contents or not in the textarea.
     /// ```ignore
@@ -1010,7 +1009,7 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Spans<'b> {
+    pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Line<'b> {
         let mut hl = LineHighlighter::new(line, self.cursor_style, self.tab_len, self.mask);
 
         if let Some(style) = self.line_number_style {
@@ -1749,12 +1748,12 @@ impl<'a> TextArea<'a> {
 mod tests {
     use super::*;
 
-    // Seaparate tests for ratatui support
+    // Seaparate tests for tui-rs support
     #[test]
     fn scroll() {
-        use crate::tui::buffer::Buffer;
-        use crate::tui::layout::Rect;
-        use crate::tui::widgets::Widget;
+        use crate::ratatui::buffer::Buffer;
+        use crate::ratatui::layout::Rect;
+        use crate::ratatui::widgets::Widget;
 
         let mut textarea: TextArea = (0..20).map(|i| i.to_string()).collect();
         let r = Rect {
