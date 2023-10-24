@@ -14,13 +14,7 @@ repository = "https://github.com/rhysd/tui-textarea"
 readme = "README.md"
 categories = ["text-editors", "text-processing"]
 keywords = ["tui", "textarea", "editor", "input", "ratatui"]
-include = [
-    "/src",
-    "/examples",
-    "/tests",
-    "/README.md",
-    "/LICENSE.txt",
-]
+include = ["/src", "/examples", "/tests", "/README.md", "/LICENSE.txt"]
 
 [features]
 default = ["crossterm"]
@@ -42,7 +36,7 @@ search = ["dep:regex"]
 arbitrary = { version = "1", features = ["derive"], optional = true }
 crossterm = { package = "crossterm", version = "0.27", optional = true }
 crossterm-025 = { package = "crossterm", version = "0.25", optional = true }
-ratatui = { version = ">=0.23.0, <1", default-features = false, optional = true }
+ratatui = { version = "0.24.0", default-features = false, optional = true }
 regex = { version = "1", optional = true }
 termion = { version = "2.0", optional = true }
 termwiz = { version = "0.20.0", optional = true }
@@ -102,9 +96,7 @@ name = "tuirs_termion"
 required-features = ["tuirs-termion"]
 
 [workspace]
-members = [
-    "bench",
-]
+members = ["bench"]
 
 [profile.bench]
 lto = "thin"
