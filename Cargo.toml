@@ -2,10 +2,10 @@
 name = "tui-textarea"
 version = "0.2.4"
 edition = "2021"
-rust-version = "1.56.1"
+rust-version = "1.56.1" # for `tui` crate support
 authors = ["rhysd <lin90162@yahoo.co.jp>"]
 description = """
-tui-textarea is a simple yet powerful text editor widget for tui-rs and ratatui. Multi-line
+tui-textarea is a simple yet powerful text editor widget for ratatui and tui-rs. Multi-line
 text editor can be easily put as part of your TUI application.
 """
 license = "MIT"

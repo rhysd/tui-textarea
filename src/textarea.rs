@@ -1028,8 +1028,8 @@ impl<'a> TextArea<'a> {
         hl.into_spans()
     }
 
-    /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this
-    /// method can be rendered with [`ratatui::terminal::Frame::render_widget`].
+    /// Build a ratatui (or tui-rs) widget to render the current state of the textarea. The widget instance returned
+    /// from this method can be rendered with [`ratatui::terminal::Frame::render_widget`].
     /// ```no_run
     /// use ratatui::backend::CrosstermBackend;
     /// use ratatui::layout::{Constraint, Direction, Layout};
@@ -1111,8 +1111,7 @@ impl<'a> TextArea<'a> {
         self.block.as_ref()
     }
 
-    /// Set the length of tab character. Due to limitation of tui-rs, hard tab is not supported. Setting 0 disables tab
-    /// inputs.
+    /// Set the length of tab character. Setting 0 disables tab inputs.
     /// ```
     /// use tui_textarea::{TextArea, Input, Key};
     ///

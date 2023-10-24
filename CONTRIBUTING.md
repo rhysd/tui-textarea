@@ -10,7 +10,7 @@ For reporting a bug, please make sure your report includes the following points.
 - Environment
   - Your terminal
   - Rust version
-  - `tui` or `ratatui` crate version
+  - `ratatui` or `tui` crate version
   - Enabled features of `tui-textarea` crate
 
 An example of bug report: https://github.com/rhysd/tui-textarea/issues/1
@@ -29,7 +29,7 @@ To run linters:
 
 ```sh
 cargo clippy --features=search --tests --examples
-cargo clippy --features=ratatui-crossterm,search --no-default-features --tests --examples
+cargo clippy --features=tuirs-crossterm,search --no-default-features --tests --examples
 cargo fmt -- --check
 ```
 
@@ -67,7 +67,7 @@ tail -F debug.txt
 
 ## Running a fuzzer
 
-To run fuzzing tests, [cargo-fuzz][] is necessary.
+To run fuzzing tests, [cargo-fuzz][] and Rust nightly toolchain are necessary.
 
 ```sh
 cargo +nightly fuzz run edit

@@ -17,7 +17,7 @@
         feature = "tuirs-your-backend"
     ),
 ))]
-compile_error!("tui-rs support and ratatui support are exclussive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
+compile_error!("ratatui support and tui-rs support are exclussive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
 
 mod cursor;
 mod highlight;
