@@ -52,10 +52,6 @@ name = "minimal"
 required-features = ["crossterm"]
 
 [[example]]
-name = "termion"
-required-features = ["termion"]
-
-[[example]]
 name = "editor"
 required-features = ["crossterm", "search"]
 
@@ -68,10 +64,6 @@ name = "single_line"
 required-features = ["crossterm"]
 
 [[example]]
-name = "password"
-required-features = ["crossterm"]
-
-[[example]]
 name = "variable"
 required-features = ["crossterm"]
 
@@ -80,28 +72,36 @@ name = "modal"
 required-features = ["crossterm"]
 
 [[example]]
+name = "password"
+required-features = ["crossterm"]
+
+[[example]]
 name = "popup_placeholder"
 required-features = ["crossterm"]
 
 [[example]]
-name = "ratatui_minimal"
-required-features = ["ratatui-crossterm"]
-
-[[example]]
-name = "ratatui_popup_placeholder"
-required-features = ["ratatui-crossterm"]
-
-[[example]]
-name = "ratatui_editor"
-required-features = ["ratatui-crossterm", "search"]
-
-[[example]]
-name = "ratatui_termion"
-required-features = ["ratatui-termion"]
-
-[[example]]
 name = "termwiz"
-required-features = ["ratatui-termwiz"]
+required-features = ["termwiz"]
+
+[[example]]
+name = "termion"
+required-features = ["termion"]
+
+[[example]]
+name = "tuirs_minimal"
+required-features = ["tuirs-crossterm"]
+
+[[example]]
+name = "tuirs_editor"
+required-features = ["tuirs-crossterm", "search"]
+
+[[example]]
+name = "tuirs_popup_placeholder"
+required-features = ["tuirs-crossterm"]
+
+[[example]]
+name = "tuirs_termion"
+required-features = ["tuirs-termion"]
 
 [workspace]
 members = [

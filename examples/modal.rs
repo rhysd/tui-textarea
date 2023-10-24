@@ -2,15 +2,15 @@ use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use ratatui::backend::CrosstermBackend;
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::widgets::{Block, Borders};
+use ratatui::Terminal;
 use std::env;
 use std::fmt;
 use std::fs;
 use std::io;
 use std::io::BufRead;
-use tui::backend::CrosstermBackend;
-use tui::style::{Color, Modifier, Style};
-use tui::widgets::{Block, Borders};
-use tui::Terminal;
 use tui_textarea::{CursorMove, Input, Key, Scrolling, TextArea};
 
 enum Mode {
