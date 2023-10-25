@@ -2,7 +2,7 @@ use super::{Input, Key};
 use termion::event::{Event, Key as KeyEvent, MouseButton, MouseEvent};
 
 impl From<Event> for Input {
-    /// Convert [`termion::event::Event`] to [`Input`].
+    /// Convert [`termion::event::Event`] into [`Input`].
     fn from(event: Event) -> Self {
         match event {
             Event::Key(key) => Self::from(key),
@@ -13,7 +13,7 @@ impl From<Event> for Input {
 }
 
 impl From<KeyEvent> for Input {
-    /// Convert [`termion::event::Key`] to [`Input`].
+    /// Convert [`termion::event::Key`] into [`Input`].
     fn from(key: KeyEvent) -> Self {
         let mut ctrl = false;
         let mut alt = false;
@@ -48,13 +48,24 @@ impl From<KeyEvent> for Input {
     }
 }
 
+impl From<MouseButton> for Key {
+    /// Convert [`termion::event::MouseButton`] into [`Key`].
+    fn from(button: MouseButton) -> Self {
+        match button {
+            MouseButton::WheelUp => Key::MouseScrollUp,
+            MouseButton::WheelDown => Key::MouseScrollDown,
+            _ => Key::Null,
+        }
+    }
+}
+
 impl From<MouseEvent> for Input {
-    /// Convert [`termion::event::MouseEvent`] to [`Input`].
+    /// Convert [`termion::event::MouseEvent`] into [`Input`].
     fn from(mouse: MouseEvent) -> Self {
-        let key = match mouse {
-            MouseEvent::Press(MouseButton::WheelUp, ..) => Key::MouseScrollUp,
-            MouseEvent::Press(MouseButton::WheelDown, ..) => Key::MouseScrollDown,
-            _ => return Self::default(),
+        let key = if let MouseEvent::Press(button, ..) = mouse {
+            Key::from(button)
+        } else {
+            Key::Null
         };
         Self {
             key,

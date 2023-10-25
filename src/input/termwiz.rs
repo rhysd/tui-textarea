@@ -4,7 +4,7 @@ use termwiz::input::{
 };
 
 impl From<InputEvent> for Input {
-    /// Convert [`termwiz::input::InputEvent`] to [`Input`].
+    /// Convert [`termwiz::input::InputEvent`] into [`Input`].
     fn from(input: InputEvent) -> Self {
         match input {
             InputEvent::Key(key) => Self::from(key),
@@ -15,11 +15,10 @@ impl From<InputEvent> for Input {
     }
 }
 
-impl From<KeyEvent> for Input {
-    /// Convert [`termwiz::input::KeyEvent`] to [`Input`].
-    fn from(key: KeyEvent) -> Self {
-        let KeyEvent { key, modifiers } = key;
-        let key = match key {
+impl From<KeyCode> for Key {
+    /// Convert [`termwiz::input::KeyCode`] into [`Key`].
+    fn from(key: KeyCode) -> Self {
+        match key {
             KeyCode::Char(c) => Key::Char(c),
             KeyCode::Backspace => Key::Backspace,
             KeyCode::Tab => Key::Tab,
@@ -36,7 +35,15 @@ impl From<KeyEvent> for Input {
             KeyCode::Delete => Key::Delete,
             KeyCode::Function(x) => Key::F(x),
             _ => Key::Null,
-        };
+        }
+    }
+}
+
+impl From<KeyEvent> for Input {
+    /// Convert [`termwiz::input::KeyEvent`] into [`Input`].
+    fn from(key: KeyEvent) -> Self {
+        let KeyEvent { key, modifiers } = key;
+        let key = Key::from(key);
         let ctrl = modifiers.contains(Modifiers::CTRL);
         let alt = modifiers.contains(Modifiers::ALT);
 
@@ -45,7 +52,7 @@ impl From<KeyEvent> for Input {
 }
 
 impl From<MouseButtons> for Key {
-    /// Convert [`termwiz::input::MouseButtons`] to [`Key`].
+    /// Convert [`termwiz::input::MouseButtons`] into [`Key`].
     fn from(buttons: MouseButtons) -> Self {
         if buttons.contains(MouseButtons::VERT_WHEEL) {
             if buttons.contains(MouseButtons::WHEEL_POSITIVE) {
@@ -60,7 +67,7 @@ impl From<MouseButtons> for Key {
 }
 
 impl From<MouseEvent> for Input {
-    /// Convert [`termwiz::input::MouseEvent`] to [`Input`].
+    /// Convert [`termwiz::input::MouseEvent`] into [`Input`].
     fn from(mouse: MouseEvent) -> Self {
         let MouseEvent {
             mouse_buttons,
@@ -76,13 +83,14 @@ impl From<MouseEvent> for Input {
 }
 
 impl From<PixelMouseEvent> for Input {
-    /// Convert [`termwiz::input::PixelMouseEvent`] to [`Input`].
+    /// Convert [`termwiz::input::PixelMouseEvent`] into [`Input`].
     fn from(mouse: PixelMouseEvent) -> Self {
         let PixelMouseEvent {
             mouse_buttons,
             modifiers,
             ..
         } = mouse;
+
         let key = Key::from(mouse_buttons);
         let ctrl = modifiers.contains(Modifiers::CTRL);
         let alt = modifiers.contains(Modifiers::ALT);
