@@ -1,13 +1,13 @@
 use super::{Input, Key};
-use crate::crossterm::event::{
-    Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
-};
+#[cfg(target_os = "windows")]
+use crate::crossterm::event::KeyEventKind;
+use crate::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 
 impl From<Event> for Input {
     /// Convert [`crossterm::event::Event`] to [`Input`].
     fn from(event: Event) -> Self {
         match event {
-            Event::Key(key) if key.kind != KeyEventKind::Release => Self::from(key),
+            Event::Key(key) => Self::from(key),
             Event::Mouse(mouse) => Self::from(mouse),
             _ => Self::default(),
         }
@@ -17,6 +17,12 @@ impl From<Event> for Input {
 impl From<KeyEvent> for Input {
     /// Convert [`crossterm::event::KeyEvent`] to [`Input`].
     fn from(key: KeyEvent) -> Self {
+        #[cfg(target_os = "windows")]
+        if key.kind == KeyEventKind::Release {
+            // On Windows, handle only button press events (#14)
+            return Self::default();
+        }
+
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         let alt = key.modifiers.contains(KeyModifiers::ALT);
         let key = match key.code {
@@ -37,6 +43,7 @@ impl From<KeyEvent> for Input {
             KeyCode::F(x) => Key::F(x),
             _ => Key::Null,
         };
+
         Self { key, ctrl, alt }
     }
 }
