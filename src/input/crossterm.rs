@@ -1,7 +1,7 @@
 use super::{Input, Key};
-#[cfg(target_os = "windows")]
-use crate::crossterm::event::KeyEventKind;
-use crate::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
+use crate::crossterm::event::{
+    Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
+};
 
 impl From<Event> for Input {
     /// Convert [`crossterm::event::Event`] to [`Input`].
@@ -17,9 +17,9 @@ impl From<Event> for Input {
 impl From<KeyEvent> for Input {
     /// Convert [`crossterm::event::KeyEvent`] to [`Input`].
     fn from(key: KeyEvent) -> Self {
-        #[cfg(target_os = "windows")]
         if key.kind == KeyEventKind::Release {
-            // On Windows, handle only button press events (#14)
+            // On Windows or when `crossterm::event::PushKeyboardEnhancementFlags` is set,
+            // key release event can be reported. Ignore it. (#14)
             return Self::default();
         }
 
@@ -65,7 +65,7 @@ impl From<MouseEvent> for Input {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crossterm::event::{KeyEventKind, KeyEventState};
+    use crate::crossterm::event::KeyEventState;
     use crate::input::tests::input;
 
     fn key_event(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
@@ -171,8 +171,7 @@ mod tests {
 
     // Regression for https://github.com/rhysd/tui-textarea/issues/14
     #[test]
-    #[cfg(target_os = "windows")]
-    fn press_ignore_on_windows() {
+    fn ignore_key_release_event() {
         let mut k = key_event(KeyCode::Char('a'), KeyModifiers::empty());
         k.kind = KeyEventKind::Release;
         let want = input(Key::Null, false, false);
