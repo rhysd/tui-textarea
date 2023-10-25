@@ -1,5 +1,5 @@
 use super::{Input, Key};
-use termion::event::{Event, Key as KeyEvent, MouseEvent};
+use termion::event::{Event, Key as KeyEvent, MouseButton, MouseEvent};
 
 impl From<Event> for Input {
     /// Convert [`termion::event::Event`] to [`Input`].
@@ -15,34 +15,32 @@ impl From<Event> for Input {
 impl From<KeyEvent> for Input {
     /// Convert [`termion::event::Key`] to [`Input`].
     fn from(key: KeyEvent) -> Self {
-        use KeyEvent::*;
-
         let mut ctrl = false;
         let mut alt = false;
         let key = match key {
-            Char('\n' | '\r') => Key::Enter,
-            Char(c) => Key::Char(c),
-            Ctrl(c) => {
+            KeyEvent::Char('\n' | '\r') => Key::Enter,
+            KeyEvent::Char(c) => Key::Char(c),
+            KeyEvent::Ctrl(c) => {
                 ctrl = true;
                 Key::Char(c)
             }
-            Alt(c) => {
+            KeyEvent::Alt(c) => {
                 alt = true;
                 Key::Char(c)
             }
-            Backspace => Key::Backspace,
-            Left => Key::Left,
-            Right => Key::Right,
-            Up => Key::Up,
-            Down => Key::Down,
-            Home => Key::Home,
-            End => Key::End,
-            PageUp => Key::PageUp,
-            PageDown => Key::PageDown,
-            BackTab => Key::Tab,
-            Delete => Key::Delete,
-            Esc => Key::Esc,
-            F(x) => Key::F(x),
+            KeyEvent::Backspace => Key::Backspace,
+            KeyEvent::Left => Key::Left,
+            KeyEvent::Right => Key::Right,
+            KeyEvent::Up => Key::Up,
+            KeyEvent::Down => Key::Down,
+            KeyEvent::Home => Key::Home,
+            KeyEvent::End => Key::End,
+            KeyEvent::PageUp => Key::PageUp,
+            KeyEvent::PageDown => Key::PageDown,
+            KeyEvent::BackTab => Key::Tab,
+            KeyEvent::Delete => Key::Delete,
+            KeyEvent::Esc => Key::Esc,
+            KeyEvent::F(x) => Key::F(x),
             _ => Key::Null,
         };
 
@@ -53,7 +51,6 @@ impl From<KeyEvent> for Input {
 impl From<MouseEvent> for Input {
     /// Convert [`termion::event::MouseEvent`] to [`Input`].
     fn from(mouse: MouseEvent) -> Self {
-        use termion::event::MouseButton;
         let key = match mouse {
             MouseEvent::Press(MouseButton::WheelUp, ..) => Key::MouseScrollUp,
             MouseEvent::Press(MouseButton::WheelDown, ..) => Key::MouseScrollDown,
@@ -63,6 +60,67 @@ impl From<MouseEvent> for Input {
             key,
             ctrl: false,
             alt: false,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::input::tests::input;
+
+    #[test]
+    fn key_to_input() {
+        for (from, to) in [
+            (KeyEvent::Char('a'), input(Key::Char('a'), false, false)),
+            (KeyEvent::Ctrl('a'), input(Key::Char('a'), true, false)),
+            (KeyEvent::Alt('a'), input(Key::Char('a'), false, true)),
+            (KeyEvent::Char('\n'), input(Key::Enter, false, false)),
+            (KeyEvent::Char('\r'), input(Key::Enter, false, false)),
+            (KeyEvent::F(1), input(Key::F(1), false, false)),
+            (KeyEvent::BackTab, input(Key::Tab, false, false)),
+            (KeyEvent::Null, input(Key::Null, false, false)),
+        ] {
+            assert_eq!(Input::from(from), to, "{:?} -> {:?}", from, to);
+        }
+    }
+
+    #[test]
+    fn mouse_to_input() {
+        for (from, to) in [
+            (
+                MouseEvent::Press(MouseButton::WheelDown, 1, 1),
+                input(Key::MouseScrollDown, false, false),
+            ),
+            (
+                MouseEvent::Press(MouseButton::WheelUp, 1, 1),
+                input(Key::MouseScrollUp, false, false),
+            ),
+            (
+                MouseEvent::Press(MouseButton::Left, 1, 1),
+                input(Key::Null, false, false),
+            ),
+            (MouseEvent::Release(1, 1), input(Key::Null, false, false)),
+            (MouseEvent::Hold(1, 1), input(Key::Null, false, false)),
+        ] {
+            assert_eq!(Input::from(from), to, "{:?} -> {:?}", from, to);
+        }
+    }
+
+    #[test]
+    fn event_to_input() {
+        for (from, to) in [
+            (
+                Event::Key(KeyEvent::Char('a')),
+                input(Key::Char('a'), false, false),
+            ),
+            (
+                Event::Mouse(MouseEvent::Press(MouseButton::WheelDown, 1, 1)),
+                input(Key::MouseScrollDown, false, false),
+            ),
+            (Event::Unsupported(vec![]), input(Key::Null, false, false)),
+        ] {
+            assert_eq!(Input::from(from.clone()), to, "{:?} -> {:?}", from, to);
         }
     }
 }

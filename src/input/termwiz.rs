@@ -1,5 +1,7 @@
 use super::{Input, Key};
-use termwiz::input::{InputEvent, KeyEvent, MouseButtons, MouseEvent, PixelMouseEvent};
+use termwiz::input::{
+    InputEvent, KeyCode, KeyEvent, Modifiers, MouseButtons, MouseEvent, PixelMouseEvent,
+};
 
 impl From<InputEvent> for Input {
     /// Convert [`termwiz::input::InputEvent`] to [`Input`].
@@ -16,8 +18,6 @@ impl From<InputEvent> for Input {
 impl From<KeyEvent> for Input {
     /// Convert [`termwiz::input::KeyEvent`] to [`Input`].
     fn from(key: KeyEvent) -> Self {
-        use termwiz::input::{KeyCode, Modifiers};
-
         let KeyEvent { key, modifiers } = key;
         let key = match key {
             KeyCode::Char(c) => Key::Char(c),
@@ -62,8 +62,6 @@ impl From<MouseButtons> for Key {
 impl From<MouseEvent> for Input {
     /// Convert [`termwiz::input::MouseEvent`] to [`Input`].
     fn from(mouse: MouseEvent) -> Self {
-        use termwiz::input::Modifiers;
-
         let MouseEvent {
             mouse_buttons,
             modifiers,
@@ -80,8 +78,6 @@ impl From<MouseEvent> for Input {
 impl From<PixelMouseEvent> for Input {
     /// Convert [`termwiz::input::PixelMouseEvent`] to [`Input`].
     fn from(mouse: PixelMouseEvent) -> Self {
-        use termwiz::input::Modifiers;
-
         let PixelMouseEvent {
             mouse_buttons,
             modifiers,
@@ -92,5 +88,130 @@ impl From<PixelMouseEvent> for Input {
         let alt = modifiers.contains(Modifiers::ALT);
 
         Self { key, ctrl, alt }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::input::tests::input;
+
+    fn key_event(key: KeyCode, modifiers: Modifiers) -> KeyEvent {
+        KeyEvent { key, modifiers }
+    }
+
+    fn mouse_event(mouse_buttons: MouseButtons, modifiers: Modifiers) -> MouseEvent {
+        MouseEvent {
+            mouse_buttons,
+            modifiers,
+            x: 1,
+            y: 1,
+        }
+    }
+
+    fn pixel_mouse_event(mouse_buttons: MouseButtons, modifiers: Modifiers) -> PixelMouseEvent {
+        PixelMouseEvent {
+            mouse_buttons,
+            modifiers,
+            x_pixels: 1,
+            y_pixels: 1,
+        }
+    }
+
+    #[test]
+    fn key_to_input() {
+        for (from, to) in [
+            (
+                key_event(KeyCode::Char('a'), Modifiers::empty()),
+                input(Key::Char('a'), false, false),
+            ),
+            (
+                key_event(KeyCode::Enter, Modifiers::empty()),
+                input(Key::Enter, false, false),
+            ),
+            (
+                key_event(KeyCode::LeftArrow, Modifiers::CTRL),
+                input(Key::Left, true, false),
+            ),
+            (
+                key_event(KeyCode::Home, Modifiers::ALT),
+                input(Key::Home, false, true),
+            ),
+            (
+                key_event(KeyCode::Function(1), Modifiers::ALT | Modifiers::CTRL),
+                input(Key::F(1), true, true),
+            ),
+            (
+                key_event(KeyCode::NumLock, Modifiers::CTRL),
+                input(Key::Null, true, false),
+            ),
+        ] {
+            assert_eq!(Input::from(from.clone()), to, "{:?} -> {:?}", from, to);
+        }
+    }
+
+    #[test]
+    fn mouse_to_input() {
+        for (from, to) in [
+            (
+                mouse_event(MouseButtons::VERT_WHEEL, Modifiers::empty()),
+                input(Key::MouseScrollDown, false, false),
+            ),
+            (
+                mouse_event(
+                    MouseButtons::VERT_WHEEL | MouseButtons::WHEEL_POSITIVE,
+                    Modifiers::empty(),
+                ),
+                input(Key::MouseScrollUp, false, false),
+            ),
+            (
+                mouse_event(MouseButtons::VERT_WHEEL, Modifiers::CTRL),
+                input(Key::MouseScrollDown, true, false),
+            ),
+            (
+                mouse_event(MouseButtons::VERT_WHEEL, Modifiers::ALT),
+                input(Key::MouseScrollDown, false, true),
+            ),
+            (
+                mouse_event(MouseButtons::VERT_WHEEL, Modifiers::CTRL | Modifiers::ALT),
+                input(Key::MouseScrollDown, true, true),
+            ),
+            (
+                mouse_event(MouseButtons::LEFT, Modifiers::empty()),
+                input(Key::Null, false, false),
+            ),
+        ] {
+            assert_eq!(Input::from(from.clone()), to, "{:?} -> {:?}", from, to);
+
+            let from = pixel_mouse_event(from.mouse_buttons, from.modifiers);
+            assert_eq!(Input::from(from.clone()), to, "{:?} -> {:?}", from, to);
+        }
+    }
+
+    #[test]
+    fn event_to_input() {
+        for (from, to) in [
+            (
+                InputEvent::Key(key_event(KeyCode::Char('a'), Modifiers::empty())),
+                input(Key::Char('a'), false, false),
+            ),
+            (
+                InputEvent::Mouse(mouse_event(MouseButtons::VERT_WHEEL, Modifiers::empty())),
+                input(Key::MouseScrollDown, false, false),
+            ),
+            (
+                InputEvent::PixelMouse(pixel_mouse_event(
+                    MouseButtons::VERT_WHEEL,
+                    Modifiers::empty(),
+                )),
+                input(Key::MouseScrollDown, false, false),
+            ),
+            (
+                InputEvent::Paste("x".into()),
+                input(Key::Null, false, false),
+            ),
+        ] {
+            assert_eq!(Input::from(from.clone()), to, "{:?} -> {:?}", from, to);
+        }
     }
 }
