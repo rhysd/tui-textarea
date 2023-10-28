@@ -82,6 +82,7 @@ pub struct Input {
     pub ctrl: bool,
     /// Alt modifier key. `true` means Alt key was pressed.
     pub alt: bool,
+    pub shift: bool,
 }
 
 impl Default for Input {
@@ -91,6 +92,7 @@ impl Default for Input {
             key: Key::Null,
             ctrl: false,
             alt: false,
+            shift: false,
         }
     }
 }
@@ -113,6 +115,7 @@ impl From<KeyEvent> for Input {
     fn from(key: KeyEvent) -> Self {
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         let alt = key.modifiers.contains(KeyModifiers::ALT);
+        let shift = key.modifiers.contains(KeyModifiers::SHIFT);
         let key = match key.code {
             KeyCode::Char(c) => Key::Char(c),
             KeyCode::Backspace => Key::Backspace,
@@ -131,7 +134,12 @@ impl From<KeyEvent> for Input {
             KeyCode::F(x) => Key::F(x),
             _ => Key::Null,
         };
-        Self { key, ctrl, alt }
+        Self {
+            key,
+            ctrl,
+            alt,
+            shift,
+        }
     }
 }
 
@@ -146,7 +154,13 @@ impl From<CrosstermMouseEvent> for Input {
         };
         let ctrl = mouse.modifiers.contains(KeyModifiers::CONTROL);
         let alt = mouse.modifiers.contains(KeyModifiers::ALT);
-        Self { key, ctrl, alt }
+        let shift = mouse.modifiers.contains(KeyModifiers::SHIFT);
+        Self {
+            key,
+            ctrl,
+            alt,
+            shift,
+        }
     }
 }
 
@@ -170,6 +184,7 @@ impl From<TermionKey> for Input {
 
         let mut ctrl = false;
         let mut alt = false;
+        let shift = false;
         let key = match key {
             Char('\n' | '\r') => Key::Enter,
             Char(c) => Key::Char(c),
@@ -197,7 +212,12 @@ impl From<TermionKey> for Input {
             _ => Key::Null,
         };
 
-        Input { key, ctrl, alt }
+        Input {
+            key,
+            ctrl,
+            alt,
+            shift,
+        }
     }
 }
 
@@ -215,6 +235,7 @@ impl From<TermionMouseEvent> for Input {
             key,
             ctrl: false,
             alt: false,
+            shift: false,
         }
     }
 }

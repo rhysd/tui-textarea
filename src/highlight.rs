@@ -22,6 +22,7 @@ enum Boundary {
     Cursor(Style),
     #[cfg(feature = "search")]
     Search(Style),
+    Select(Style),
     End,
 }
 
@@ -29,9 +30,10 @@ impl Boundary {
     fn cmp(&self, other: &Boundary) -> Ordering {
         fn rank(b: &Boundary) -> u8 {
             match b {
-                Boundary::Cursor(_) => 2,
+                Boundary::Cursor(_) => 3,
                 #[cfg(feature = "search")]
                 Boundary::Search(_) => 1,
+                Boundary::Select(_) => 2,
                 Boundary::End => 0,
             }
         }
@@ -44,6 +46,7 @@ impl Boundary {
             #[cfg(feature = "search")]
             Boundary::Search(s) => Some(*s),
             Boundary::End => None,
+            Boundary::Select(s) => Some(*s),
         }
     }
 }
@@ -144,7 +147,10 @@ impl<'a> LineHighlighter<'a> {
             }
         }
     }
-
+    pub fn select(&mut self, start: usize, end: usize, style: Style) {
+        self.boundaries.push((Boundary::Select(style), start));
+        self.boundaries.push((Boundary::End, end));
+    }
     pub fn into_spans(self, mask: Option<char>) -> Spans<'a> {
         let Self {
             line,

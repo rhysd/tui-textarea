@@ -13,11 +13,21 @@
     ),
 ))]
 compile_error!("tui-rs support and ratatui support are exclussive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
-
+#[macro_export]
+macro_rules! trace {
+    ($fmt:literal, $($arg:expr),*) => {
+        #[cfg(debug_assertions)]
+        {
+            log::warn!($fmt, $($arg),*);
+        }
+    };
+}
 mod cursor;
 mod highlight;
 mod history;
 mod input;
+
+mod key_dispatch;
 mod scroll;
 #[cfg(feature = "search")]
 mod search;
@@ -25,7 +35,6 @@ mod textarea;
 mod util;
 mod widget;
 mod word;
-
 #[cfg(any(
     feature = "ratatui-crossterm",
     feature = "ratatui-termion",

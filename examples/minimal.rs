@@ -2,13 +2,20 @@ use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use simplelog::*;
+use std::fs::File;
 use std::io;
 use tui::backend::CrosstermBackend;
 use tui::widgets::{Block, Borders};
 use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
-
 fn main() -> io::Result<()> {
+    CombinedLogger::init(vec![WriteLogger::new(
+        LevelFilter::Info,
+        Config::default(),
+        File::create("my_rust_binary.log").unwrap(),
+    )])
+    .unwrap();
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
 

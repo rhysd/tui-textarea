@@ -2,6 +2,8 @@ use crate::cursor::CursorMove;
 use crate::highlight::LineHighlighter;
 use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
+use crate::key_dispatch;
+//use crate::key_dispatch::{self, input};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
@@ -64,6 +66,8 @@ pub struct TextArea<'a> {
     pub(crate) placeholder: String,
     pub(crate) placeholder_style: Style,
     mask: Option<char>,
+    select_start: Option<(usize, usize)>,
+    select_style: Style,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -164,6 +168,8 @@ impl<'a> TextArea<'a> {
             placeholder: String::new(),
             placeholder_style: Style::default().fg(Color::DarkGray),
             mask: None,
+            select_start: None,
+            select_style: Style::default().bg(Color::Blue),
         }
     }
 
@@ -198,333 +204,8 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn input(&mut self, input: impl Into<Input>) -> bool {
         let input = input.into();
-        let modified = match input {
-            Input {
-                key: Key::Char('m'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input {
-                key: Key::Char('\n' | '\r'),
-                ctrl: false,
-                alt: false,
-            }
-            | Input {
-                key: Key::Enter, ..
-            } => {
-                self.insert_newline();
-                true
-            }
-            Input {
-                key: Key::Char(c),
-                ctrl: false,
-                alt: false,
-            } => {
-                self.insert_char(c);
-                true
-            }
-            Input {
-                key: Key::Tab,
-                ctrl: false,
-                alt: false,
-            } => self.insert_tab(),
-            Input {
-                key: Key::Char('h'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input {
-                key: Key::Backspace,
-                ctrl: false,
-                alt: false,
-            } => self.delete_char(),
-            Input {
-                key: Key::Char('d'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input {
-                key: Key::Delete,
-                ctrl: false,
-                alt: false,
-            } => self.delete_next_char(),
-            Input {
-                key: Key::Char('k'),
-                ctrl: true,
-                alt: false,
-            } => self.delete_line_by_end(),
-            Input {
-                key: Key::Char('j'),
-                ctrl: true,
-                alt: false,
-            } => self.delete_line_by_head(),
-            Input {
-                key: Key::Char('w'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input {
-                key: Key::Char('h'),
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::Backspace,
-                ctrl: false,
-                alt: true,
-            } => self.delete_word(),
-            Input {
-                key: Key::Delete,
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::Char('d'),
-                ctrl: false,
-                alt: true,
-            } => self.delete_next_word(),
-            Input {
-                key: Key::Char('n'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input {
-                key: Key::Down,
-                ctrl: false,
-                alt: false,
-            } => {
-                self.move_cursor(CursorMove::Down);
-                false
-            }
-            Input {
-                key: Key::Char('p'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input {
-                key: Key::Up,
-                ctrl: false,
-                alt: false,
-            } => {
-                self.move_cursor(CursorMove::Up);
-                false
-            }
-            Input {
-                key: Key::Char('f'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input {
-                key: Key::Right,
-                ctrl: false,
-                alt: false,
-            } => {
-                self.move_cursor(CursorMove::Forward);
-                false
-            }
-            Input {
-                key: Key::Char('b'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input {
-                key: Key::Left,
-                ctrl: false,
-                alt: false,
-            } => {
-                self.move_cursor(CursorMove::Back);
-                false
-            }
-            Input {
-                key: Key::Char('a'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input { key: Key::Home, .. }
-            | Input {
-                key: Key::Left | Key::Char('b'),
-                ctrl: true,
-                alt: true,
-            } => {
-                self.move_cursor(CursorMove::Head);
-                false
-            }
-            Input {
-                key: Key::Char('e'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input { key: Key::End, .. }
-            | Input {
-                key: Key::Right | Key::Char('f'),
-                ctrl: true,
-                alt: true,
-            } => {
-                self.move_cursor(CursorMove::End);
-                false
-            }
-            Input {
-                key: Key::Char('<'),
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::Up | Key::Char('p'),
-                ctrl: true,
-                alt: true,
-            } => {
-                self.move_cursor(CursorMove::Top);
-                false
-            }
-            Input {
-                key: Key::Char('>'),
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::Down | Key::Char('n'),
-                ctrl: true,
-                alt: true,
-            } => {
-                self.move_cursor(CursorMove::Bottom);
-                false
-            }
-            Input {
-                key: Key::Char('f'),
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::Right,
-                ctrl: true,
-                alt: false,
-            } => {
-                self.move_cursor(CursorMove::WordForward);
-                false
-            }
-            Input {
-                key: Key::Char('b'),
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::Left,
-                ctrl: true,
-                alt: false,
-            } => {
-                self.move_cursor(CursorMove::WordBack);
-                false
-            }
-            Input {
-                key: Key::Char(']'),
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::Char('n'),
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::Down,
-                ctrl: true,
-                alt: false,
-            } => {
-                self.move_cursor(CursorMove::ParagraphForward);
-                false
-            }
-            Input {
-                key: Key::Char('['),
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::Char('p'),
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::Up,
-                ctrl: true,
-                alt: false,
-            } => {
-                self.move_cursor(CursorMove::ParagraphBack);
-                false
-            }
-            Input {
-                key: Key::Char('u'),
-                ctrl: true,
-                alt: false,
-            } => self.undo(),
-            Input {
-                key: Key::Char('r'),
-                ctrl: true,
-                alt: false,
-            } => self.redo(),
-            Input {
-                key: Key::Char('y'),
-                ctrl: true,
-                alt: false,
-            } => self.paste(),
-            Input {
-                key: Key::Char('v'),
-                ctrl: true,
-                alt: false,
-            }
-            | Input {
-                key: Key::PageDown, ..
-            } => {
-                self.scroll(Scrolling::PageDown);
-                false
-            }
-            Input {
-                key: Key::Char('v'),
-                ctrl: false,
-                alt: true,
-            }
-            | Input {
-                key: Key::PageUp, ..
-            } => {
-                self.scroll(Scrolling::PageUp);
-                false
-            }
-            Input {
-                key: Key::MouseScrollDown,
-                ..
-            } => {
-                self.scroll((1, 0));
-                false
-            }
-            Input {
-                key: Key::MouseScrollUp,
-                ..
-            } => {
-                self.scroll((-1, 0));
-                false
-            }
-            _ => false,
-        };
-
-        // Check invariants
-        debug_assert!(!self.lines.is_empty(), "no line after {:?}", input);
-        let (r, c) = self.cursor;
-        debug_assert!(
-            self.lines.len() > r,
-            "cursor {:?} exceeds max lines {} after {:?}",
-            self.cursor,
-            self.lines.len(),
-            input,
-        );
-        debug_assert!(
-            self.lines[r].chars().count() >= c,
-            "cursor {:?} exceeds max col {} at line {:?} after {:?}",
-            self.cursor,
-            self.lines[r].chars().count(),
-            self.lines[r],
-            input,
-        );
-
-        modified
+        trace!("input {:?}", input);
+        key_dispatch::input(self, input)
     }
 
     /// Handle a key input without default key mappings. This method handles only
@@ -539,50 +220,11 @@ impl<'a> TextArea<'a> {
     ///
     /// This method is useful when you want to define your own key mappings and don't want default key mappings.
     /// See 'Define your own key mappings' section in [the module document](./index.html).
+    ///
     pub fn input_without_shortcuts(&mut self, input: impl Into<Input>) -> bool {
-        match input.into() {
-            Input {
-                key: Key::Char(c),
-                ctrl: false,
-                alt: false,
-            } => {
-                self.insert_char(c);
-                true
-            }
-            Input {
-                key: Key::Tab,
-                ctrl: false,
-                alt: false,
-            } => self.insert_tab(),
-            Input {
-                key: Key::Backspace,
-                ..
-            } => self.delete_char(),
-            Input {
-                key: Key::Delete, ..
-            } => self.delete_next_char(),
-            Input {
-                key: Key::Enter, ..
-            } => {
-                self.insert_newline();
-                true
-            }
-            Input {
-                key: Key::MouseScrollDown,
-                ..
-            } => {
-                self.scroll((1, 0));
-                false
-            }
-            Input {
-                key: Key::MouseScrollUp,
-                ..
-            } => {
-                self.scroll((-1, 0));
-                false
-            }
-            _ => false,
-        }
+        let input = input.into();
+        trace!("input {:?}", input);
+        key_dispatch::input_without_shortcuts(self, input)
     }
 
     fn push_history(&mut self, kind: EditKind, cursor_before: (usize, usize)) {
@@ -600,6 +242,8 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["a"]);
     /// ```
     pub fn insert_char(&mut self, c: char) {
+        self.delete_selection();
+
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
         let i = line
@@ -658,30 +302,11 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_str(1, 2);
     /// assert_eq!(textarea.lines(), ["🐱🐮"]);
     /// ```
+
     pub fn delete_str(&mut self, col: usize, chars: usize) -> bool {
-        if chars == 0 {
-            return false;
-        }
-
-        let cursor_before = self.cursor;
-        let row = cursor_before.0;
-        let line = &mut self.lines[row];
-        if let Some((i, _)) = line.char_indices().nth(col) {
-            let bytes = line[i..]
-                .char_indices()
-                .nth(chars)
-                .map(|(i, _)| i)
-                .unwrap_or_else(|| line[i..].len());
-            let removed = line[i..i + bytes].to_string();
-            line.replace_range(i..i + bytes, "");
-
-            self.cursor = (row, col);
-            self.push_history(EditKind::Remove(removed.clone(), i), cursor_before);
-            self.yank = removed;
-            true
-        } else {
-            false
-        }
+        let start = (self.cursor.0, col);
+        let end = (start.0, start.1 + chars);
+        self.delete_range(start, end)
     }
 
     /// Insert a tab at current cursor position. Note that this method does nothing when the tab length is 0. This
@@ -773,6 +398,9 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["bc"]);
     /// ```
     pub fn delete_char(&mut self) -> bool {
+        if self.select_start.is_some() {
+            return self.delete_selection();
+        }
         let (row, col) = self.cursor;
         if col == 0 {
             return self.delete_newline();
@@ -789,6 +417,99 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    fn delete_selection(&mut self) -> bool {
+        let deleted = match self.select_start {
+            Some(_) => {
+                let (start, end) = self.normalize_selection();
+                self.delete_range(start, end)
+            }
+            None => false,
+        };
+
+        self.select_start = None;
+        deleted
+    }
+    // erase a range of text, start and end must be normalized
+    // erase text is put in history and yank buffer
+    fn delete_range(&mut self, start: (usize, usize), end: (usize, usize)) -> bool {
+        // debug_assert!(start.0 <= end.0 && start.1 < end.1);
+        let (row, col) = self.cursor;
+        let (start_row, start_col) = start;
+        let (end_row, end_col) = end;
+        let mut allremoved = String::new();
+        let mut byte_count = 0;
+        let mut begin: usize;
+        let mut endoff: usize;
+        trace!("delete_range {:?} {:?}", start, end);
+        let mut hit_list = Vec::new();
+        for row in start_row..=end_row {
+            let line = &mut self.lines[row];
+            let line_len = line.char_indices().count();
+            match (start_row == row, end_row == row) {
+                (true, true) => {
+                    begin = start_col;
+                    endoff = std::cmp::min(end_col, line_len);
+                }
+                (true, false) => {
+                    begin = start_col;
+                    endoff = line_len;
+                }
+                (false, true) => {
+                    if end_col > 0 {
+                        begin = 0;
+                        endoff = end_col
+                    } else {
+                        continue;
+                    }
+                }
+                (false, false) => {
+                    begin = 0;
+                    endoff = line_len;
+                }
+            }
+            trace!("delete_range {:?} {:?} {:?} {:?}", row, begin, endoff, line);
+            if let Some((i, _)) = line.char_indices().nth(begin) {
+                let bytes = line[i..]
+                    .char_indices()
+                    .nth(endoff - begin)
+                    .map(|(k, _)| k)
+                    .unwrap_or_else(|| line[i..].len());
+                let removed = line[i..i + bytes].to_string();
+                line.replace_range(i..i + bytes, "");
+
+                byte_count += i;
+
+                // if we empited a line keep note
+                // cannot erase from self.lines are we are enumerating them
+                if !removed.is_empty() && line.is_empty() {
+                    trace!("kill hit {:?}", row);
+                    hit_list.push(row);
+                }
+
+                allremoved = format!("{}\n{}", allremoved, removed);
+            }
+        }
+        self.cursor = (start_row, start_col);
+        self.push_history(EditKind::Remove(allremoved.clone(), byte_count), (row, col));
+        self.yank = allremoved.clone();
+        let mut offset = 0;
+
+        // now delete dead lines
+        // the row offsets change as we delete
+        // that what offset is for
+
+        for hit in hit_list {
+            self.lines.remove(hit - offset);
+            offset += 1;
+        }
+
+        // make sure there is something in the lines array
+        if self.lines.is_empty() {
+            self.lines.push(String::new());
+        }
+        !allremoved.is_empty()
+    }
+
     /// Delete one character next to cursor. When the cursor is at end of line, the newline next to the cursor will be
     /// removed. This method returns if a character was deleted or not in the textarea.
     /// ```
@@ -801,8 +522,11 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["ac"]);
     /// ```
     pub fn delete_next_char(&mut self) -> bool {
+        if self.select_start.is_some() {
+            return self.delete_selection();
+        }
         let before = self.cursor;
-        self.move_cursor(CursorMove::Forward);
+        self.move_cursor(CursorMove::Forward, false);
         if before == self.cursor {
             return false; // Cursor didn't move, meant no character at next of cursor.
         }
@@ -914,6 +638,65 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    pub fn copy(&mut self) {
+        if self.select_start.is_some() {
+            let (start, end) = self.normalize_selection();
+            let mut allremoved = String::new();
+            let mut byte_count = 0;
+            let mut begin: usize;
+            let mut endoff: usize;
+            trace!("copy_range {:?} {:?}", start, end);
+            for row in start.0..=end.0 {
+                let line = &mut self.lines[row];
+                let line_len = line.char_indices().count();
+                match (start.0 == row, end.0 == row) {
+                    (true, true) => {
+                        begin = start.1;
+                        endoff = std::cmp::min(end.1, line_len);
+                    }
+                    (true, false) => {
+                        begin = start.1;
+                        endoff = line_len;
+                    }
+                    (false, true) => {
+                        if end.1 > 0 {
+                            begin = 0;
+                            endoff = end.1
+                        } else {
+                            continue;
+                        }
+                    }
+                    (false, false) => {
+                        begin = 0;
+                        endoff = line_len;
+                    }
+                }
+                if let Some((i, _)) = line.char_indices().nth(begin) {
+                    let bytes = line[i..]
+                        .char_indices()
+                        .nth(endoff - begin)
+                        .map(|(k, _)| k)
+                        .unwrap_or_else(|| line[i..].len());
+                    let removed = line[i..i + bytes].to_string();
+                    trace!(
+                        "copy_range {:?} {:?} {:?} {:?} {} {}",
+                        row,
+                        begin,
+                        endoff,
+                        line,
+                        bytes,
+                        removed
+                    );
+                    //line.replace_range(i..i + bytes, "");
+
+                    byte_count += i;
+                    allremoved = format!("{}\n{}", allremoved, removed);
+                }
+            }
+            self.yank = allremoved.clone();
+        }
+    }
+
     /// Paste a string previously deleted by [`TextArea::delete_line_by_head`], [`TextArea::delete_line_by_end`],
     /// [`TextArea::delete_word`], [`TextArea::delete_next_word`]. This method returns if some text was inserted or not
     /// in the textarea.
@@ -928,7 +711,18 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), [" bbb cccaaa"]);
     /// ```
     pub fn paste(&mut self) -> bool {
-        self.insert_str(self.yank.to_string())
+        self.delete_selection();
+        let yank = self.yank.clone();
+        let lines: Vec<&str> = yank.lines().collect();
+        for i in 0..lines.len() {
+            self.insert_str(lines[i]);
+            if i > 0 && i < lines.len() - 1 {
+                self.insert_newline();
+            }
+        }
+        !self.yank.is_empty()
+
+        //self.insert_str(self.yank)
     }
 
     /// Move the cursor to the position specified by the [`CursorMove`] parameter. For each kind of cursor moves, see
@@ -943,8 +737,27 @@ impl<'a> TextArea<'a> {
     /// textarea.move_cursor(CursorMove::Down);
     /// assert_eq!(textarea.cursor(), (1, 1));
     /// ```
-    pub fn move_cursor(&mut self, m: CursorMove) {
+
+    // added select argument
+
+    pub fn move_cursor(&mut self, m: CursorMove, select: bool) {
         if let Some(cursor) = m.next_cursor(self.cursor, &self.lines, &self.viewport) {
+            match (self.select_start, select) {
+                (Some(_), true) => {
+                    // extend selection
+                }
+                (Some(_), false) => {
+                    // clear selection
+                    self.select_start = None;
+                }
+                (None, true) => {
+                    // start selection
+                    self.select_start = Some(self.cursor);
+                }
+                (None, false) => {
+                    self.select_start = None;
+                }
+            }
             self.cursor = cursor;
         }
     }
@@ -990,7 +803,15 @@ impl<'a> TextArea<'a> {
             false
         }
     }
-
+    fn normalize_selection(&self) -> ((usize, usize), (usize, usize)) {
+        let start = self.select_start.unwrap();
+        let end = self.cursor;
+        if start.0 > end.0 || start.1 > end.1 {
+            (end, start)
+        } else {
+            (start, end)
+        }
+    }
     pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Spans<'b> {
         let mut hl = LineHighlighter::new(line, self.cursor_style, self.tab_len);
 
@@ -1006,7 +827,35 @@ impl<'a> TextArea<'a> {
         if let Some(matches) = self.search.matches(line) {
             hl.search(matches, self.search.style);
         }
-
+        if self.select_start.is_some() {
+            let (start, end) = self.normalize_selection();
+            trace!(
+                "start: {:?}, end: {:?}, row: {}, line: {}",
+                start,
+                end,
+                row,
+                line
+            );
+            if start.0 <= row && end.0 >= row {
+                trace!("hit{}", row);
+                match (start.0 == row, end.0 == row) {
+                    (true, true) => {
+                        hl.select(start.1, end.1, self.select_style);
+                    }
+                    (true, false) => {
+                        hl.select(start.1, line.len(), self.select_style);
+                    }
+                    (false, true) => {
+                        if end.1 > 0 {
+                            hl.select(0, end.1, self.select_style);
+                        }
+                    }
+                    (false, false) => {
+                        hl.select(0, line.len(), self.select_style);
+                    }
+                }
+            }
+        }
         hl.into_spans(self.mask)
     }
 
@@ -1689,7 +1538,7 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn scroll(&mut self, scrolling: impl Into<Scrolling>) {
         scrolling.into().scroll(&mut self.viewport);
-        self.move_cursor(CursorMove::InViewport);
+        self.move_cursor(CursorMove::InViewport, false);
     }
 }
 
