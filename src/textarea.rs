@@ -4,6 +4,7 @@ use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
 use crate::key_dispatch;
 use crate::ratatui::layout::Alignment;
+
 use crate::ratatui::style::{Color, Modifier, Style};
 use crate::ratatui::widgets::{Block, Widget};
 use crate::scroll::Scrolling;

@@ -110,6 +110,11 @@ impl<'a> LineHighlighter<'a> {
             .push(Span::styled(format!("{}{} ", pad, row + 1), style));
     }
 
+    pub fn select(&mut self, start: usize, end: usize, style: Style) {
+        self.boundaries.push((Boundary::Select(style), start));
+        self.boundaries.push((Boundary::End, end));
+    }
+
     pub fn cursor_line(&mut self, cursor_col: usize, style: Style) {
         if let Some((start, c)) = self.line.char_indices().nth(cursor_col) {
             self.boundaries
@@ -130,10 +135,7 @@ impl<'a> LineHighlighter<'a> {
             }
         }
     }
-    pub fn select(&mut self, start: usize, end: usize, style: Style) {
-        self.boundaries.push((Boundary::Select(style), start));
-        self.boundaries.push((Boundary::End, end));
-    }
+
     pub fn into_spans(self) -> Line<'a> {
         let Self {
             line,
