@@ -23,11 +23,7 @@ fn main() -> io::Result<()> {
     crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut term = Terminal::new(backend)?;
-    let mut textarea = TextArea::from(["abc"]);
 
-    textarea.move_cursor(tui_textarea::CursorMove::Forward);
-    textarea.delete_next_char();
-    assert_eq!(textarea.lines(), ["ac"]);
     let mut textarea = TextArea::default();
     textarea.set_block(
         Block::default()
