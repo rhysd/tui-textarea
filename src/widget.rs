@@ -1,8 +1,8 @@
+use crate::ratatui::buffer::Buffer;
+use crate::ratatui::layout::Rect;
+use crate::ratatui::text::Text;
+use crate::ratatui::widgets::{Paragraph, Widget};
 use crate::textarea::TextArea;
-use crate::tui::buffer::Buffer;
-use crate::tui::layout::Rect;
-use crate::tui::text::Text;
-use crate::tui::widgets::{Paragraph, Widget};
 use crate::util::num_digits;
 use std::cmp;
 use std::sync::atomic::{AtomicU64, Ordering};

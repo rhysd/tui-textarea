@@ -2,12 +2,12 @@ use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use ratatui::backend::CrosstermBackend;
+use ratatui::widgets::{Block, Borders};
+use ratatui::Terminal;
 use simplelog::*;
 use std::fs::File;
 use std::io;
-use tui::backend::CrosstermBackend;
-use tui::widgets::{Block, Borders};
-use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
 fn main() -> io::Result<()> {
     CombinedLogger::init(vec![WriteLogger::new(
@@ -23,7 +23,11 @@ fn main() -> io::Result<()> {
     crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut term = Terminal::new(backend)?;
+    let mut textarea = TextArea::from(["abc"]);
 
+    textarea.move_cursor(tui_textarea::CursorMove::Forward);
+    textarea.delete_next_char();
+    assert_eq!(textarea.lines(), ["ac"]);
     let mut textarea = TextArea::default();
     textarea.set_block(
         Block::default()

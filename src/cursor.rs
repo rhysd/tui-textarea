@@ -199,9 +199,9 @@ pub enum CursorMove {
     ///
     /// This is useful when you moved a cursor but you don't want to move the viewport.
     /// ```
-    /// # use tui::buffer::Buffer;
-    /// # use tui::layout::Rect;
-    /// # use tui::widgets::Widget;
+    /// # use ratatui::buffer::Buffer;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::widgets::Widget;
     /// use tui_textarea::{TextArea, CursorMove};
     ///
     /// // Let's say terminal height is 8.
@@ -324,12 +324,12 @@ impl CursorMove {
 
 #[cfg(test)]
 mod tests {
-    // Seaparate tests for ratatui support
+    // Seaparate tests for tui-rs support
     #[test]
     fn in_viewport() {
-        use crate::tui::buffer::Buffer;
-        use crate::tui::layout::Rect;
-        use crate::tui::widgets::Widget;
+        use crate::ratatui::buffer::Buffer;
+        use crate::ratatui::layout::Rect;
+        use crate::ratatui::widgets::Widget;
         use crate::{CursorMove, TextArea};
 
         let mut textarea: TextArea = (0..20).map(|i| i.to_string()).collect();

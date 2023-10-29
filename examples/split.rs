@@ -2,23 +2,21 @@ use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use ratatui::backend::CrosstermBackend;
+use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::widgets::{Block, Borders};
+use ratatui::Terminal;
 use std::io;
-use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Color, Modifier, Style};
-use tui::widgets::{Block, Borders};
-use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
 
 fn inactivate(textarea: &mut TextArea<'_>) {
     textarea.set_cursor_line_style(Style::default());
     textarea.set_cursor_style(Style::default());
-    let b = textarea
-        .block()
-        .cloned()
-        .unwrap_or_else(|| Block::default().borders(Borders::ALL));
     textarea.set_block(
-        b.style(Style::default().fg(Color::DarkGray))
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::DarkGray))
             .title(" Inactive (^X to switch) "),
     );
 }
@@ -26,11 +24,12 @@ fn inactivate(textarea: &mut TextArea<'_>) {
 fn activate(textarea: &mut TextArea<'_>) {
     textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
     textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
-    let b = textarea
-        .block()
-        .cloned()
-        .unwrap_or_else(|| Block::default().borders(Borders::ALL));
-    textarea.set_block(b.style(Style::default()).title(" Active "));
+    textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default())
+            .title(" Active "),
+    );
 }
 
 fn main() -> io::Result<()> {
@@ -54,9 +53,9 @@ fn main() -> io::Result<()> {
     loop {
         term.draw(|f| {
             let chunks = layout.split(f.size());
-            for (textarea, chunk) in textarea.iter().zip(chunks) {
+            for (textarea, chunk) in textarea.iter().zip(chunks.iter()) {
                 let widget = textarea.widget();
-                f.render_widget(widget, chunk);
+                f.render_widget(widget, *chunk);
             }
         })?;
         match crossterm::event::read()?.into() {

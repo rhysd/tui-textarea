@@ -4,7 +4,7 @@ tui-textarea
 [![docs][doc-badge]][doc]
 [![CI][ci-badge]][ci]
 
-[tui-textarea][crate] is a simple yet powerful text editor widget like `<textarea>` in HTML for [tui-rs][] and [ratatui][].
+[tui-textarea][crate] is a simple yet powerful text editor widget like `<textarea>` in HTML for [ratatui][] and [tui-rs][].
 Multi-line text editor can be easily put as part of your TUI application.
 
 **Features:**
@@ -17,9 +17,9 @@ Multi-line text editor can be easily put as part of your TUI application.
 - Search with regular expressions
 - Mouse scrolling
 - Yank support. Paste text deleted with `C-k`, `C-j`, ...
-- Backend agnostic. [crossterm][], [termion][], and your own backend are all supported
+- Backend agnostic. [crossterm][], [termion][], [termwiz][], and your own backend are all supported
 - Multiple textarea widgets in the same screen
-- Support both [tui-rs][] (the original) and [ratatui][] (the fork by community)
+- Support both [ratatui][] (the fork by community) and [tui-rs][] (the original)
 
 [Documentation][doc]
 
@@ -67,14 +67,6 @@ Two split textareas in a screen and switch them. An example for multiple textare
 
 <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/split.gif" width=539 height=124 alt="multiple textareas example">
 
-### [`termion`](./examples/termion.rs)
-
-```sh
-cargo run --example termion --features=termion
-```
-
-Minimal usage with [termion][] support.
-
 ### [`variable`](./examples/variable.rs)
 
 ```sh
@@ -101,23 +93,46 @@ Popup textarea with a placeholder text.
 
 <img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/placepop.gif" width=539 height=220 alt="popup textarea with placeholder example">
 
-### Examples for [ratatui][] support
-
-All above examples use [tui-rs][], but some examples provide [ratatui][] version. Try `ratatui_` prefix. In these cases,
-you need to specify features to use ratatui and `--no-default-features` flag explicitly.
+### [`password`](./examples/password.rs)
 
 ```sh
-# ratatui version of `minimal` example
-cargo run --example ratatui_minimal --no-default-features --features=ratatui-crossterm
+cargo run --example password
+```
 
-# ratatui version of `editor` example
-cargo run --example ratatui_editor --no-default-features --features=ratatui-crossterm,search file.txt
+Password input form with masking text with ●.
 
-# ratatui version of `termion` example
-cargo run --example ratatui_termion --no-default-features --features=ratatui-termion
+<img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/password.gif" width=589 height=92 alt="password example">
 
-# ratatui version of `popup_placeholder` example
-cargo run --example ratatui_popup_placeholder --no-default-features --features=ratatui-crossterm
+### [`termion`](./examples/termion.rs)
+
+```sh
+cargo run --example termion --no-default-features --features=termion
+```
+
+Minimal usage with [termion][] support.
+
+### [`termwiz`](./examples/termwiz.rs)
+
+```sh
+cargo run --example termwiz --no-default-features --features=termwiz
+```
+
+Minimal usage with [termwiz][] support.
+
+### Examples for [tui-rs][] support
+
+All above examples use [ratatui][], but some examples provide tui-rs version. Try `tuirs_` prefix. In these cases, you
+need to specify features to use tui-rs and `--no-default-features` flag explicitly.
+
+```sh
+# tui-rs version of `minimal` example
+cargo run --example tuirs_minimal --no-default-features --features=tuirs-crossterm
+
+# tui-rs version of `editor` example
+cargo run --example tuirs_editor --no-default-features --features=tuirs-crossterm,search file.txt
+
+# tui-rs version of `termion` example
+cargo run --example tuirs_termion --no-default-features --features=tuirs-termion
 ```
 
 ## Installation
@@ -126,7 +141,7 @@ Add `tui-textarea` crate to dependencies in your `Cargo.toml`. This enables cros
 
 ```toml
 [dependencies]
-tui = "*"
+ratatui = "*"
 tui-textarea = "*"
 ```
 
@@ -135,48 +150,54 @@ dependency.
 
 ```toml
 [dependencies]
-tui = "*"
+ratatui = "*"
 tui-textarea = { version = "*", features = ["search"] }
 ```
 
-If you're using tui-rs with [termion][], enable `termion` feature instead of `crossterm` feature.
+If you're using ratatui with [termion][] or [termwiz][], enable respective feature instead of `crossterm` feature.
 
 ```toml
 [dependencies]
-tui = { version = "*", default-features = false, features = ["termion"] }
+
+# For termion
+ratatui = { version = "*", default-features = false, features = ["termion"] }
 tui-textarea = { version = "*", default-features = false, features = ["termion"] }
+
+# For termwiz
+ratatui = { version = "*", default-features = false, features = ["termwiz"] }
+tui-textarea = { version = "*", default-features = false, features = ["termwiz"] }
 ```
 
-If you're using [ratatui][] instead of [tui-rs][], you need to enable features for using ratatui crate. The following table
-shows feature names corresponding to the dependencies.
+If you're using [tui-rs][] instead of [ratatui][], you need to enable features for using tui-rs crate and to disable
+default features. The following table shows feature names corresponding to the dependencies.
 
-|         | crossterm                        | termion           | Your own backend       |
-|---------|----------------------------------|-------------------|------------------------|
-| tui-rs  | `crossterm` (enabled by default) | `termion`         | `your-backend`         |
-| ratatui | `ratatui-crossterm`              | `ratatui-termion` | `ratatui-your-backend` |
+|         | crossterm                        | termion         | termwiz   | Your own backend   |
+|---------|----------------------------------|-----------------|-----------|--------------------|
+| ratatui | `crossterm` (enabled by default) | `termion`       | `termwiz` | `no-backend`       |
+| tui-rs  | `tuirs-crossterm`                | `tuirs-termion` | N/A       | `tuirs-no-backend` |
 
-For example, when you want to use the combination of [ratatui][] and [crossterm][],
+For example, when you want to use the combination of [tui-rs][] and [crossterm][],
 
 ```toml
 [dependencies]
-ratatui = "*"
-tui-textarea = { version = "*", features = ["ratatui-crossterm"], default-features = false }
+tui = "*"
+tui-textarea = { version = "*", features = ["tuirs-crossterm"], default-features = false }
 ```
 
-Note that [tui-rs][] support and [ratatui][] support are exclusive. When you use [ratatui][] support, you must disable
-[tui-rs][] support by `default-features = false`.
+Note that [ratatui][] support and [tui-rs][] support are exclusive. When you use [tui-rs][] support, you must disable
+[ratatui][] support by `default-features = false`.
 
-In addition to above dependencies, you also need to install [crossterm][] or [termion][] to initialize your application
-and to receive key inputs. Note that version of [crossterm][] crate is different between [tui-rs][] and [ratatui][].
-Please select the correct version.
+In addition to above dependencies, you also need to install [crossterm][] or [termion][] or [termwiz][] to initialize
+your application and to receive key inputs. Note that version of [crossterm][] crate is different between [ratatui][]
+and [tui-rs][]. Please select the correct version.
 
 ## Minimal Usage
 
-```rust
+```rust,ignore
 use tui_textarea::TextArea;
 use crossterm::event::{Event, read};
 
-let mut term = tui::Terminal::new(...);
+let mut term = ratatui::Terminal::new(...);
 
 // Create an empty `TextArea` instance which manages the editor state
 let mut textarea = TextArea::default();
@@ -184,7 +205,7 @@ let mut textarea = TextArea::default();
 // Event loop
 loop {
     term.draw(|f| {
-        // Get `tui::layout::Rect` where the editor should be rendered
+        // Get `ratatui::layout::Rect` where the editor should be rendered
         let rect = ...;
         // `TextArea::widget` builds a widget to render the editor with tui
         let widget = textarea.widget();
@@ -255,13 +276,13 @@ If you don't want to use default key mappings, see the 'Advanced Usage' section.
 
 `TextArea` implements `Default` trait to create an editor instance with an empty text.
 
-```rust
+```rust,ignore
 let mut textarea = TextArea::default();
 ```
 
 `TextArea::new()` creates an editor instance with text lines passed as `Vec<String>`.
 
-```rust
+```rust,ignore
 let mut lines: Vec<String> = ...;
 let mut textarea = TextArea::new(lines);
 ```
@@ -269,7 +290,7 @@ let mut textarea = TextArea::new(lines);
 `TextArea` implements `From<impl Iterator<Item=impl Into<String>>>`. `TextArea::from()` can create an editor instance
 from any iterators whose elements can be converted to `String`.
 
-```rust
+```rust,ignore
 // Create `TextArea` from from `[&str]`
 let mut textarea = TextArea::from([
     "this is first line",
@@ -285,7 +306,7 @@ let mut textarea = TextARea::from(text.lines());
 `TextArea` also implements `FromIterator<impl Into<String>>`. `Iterator::collect()` can collect strings as an editor
 instance. This allows to create `TextArea` reading lines from file efficiently using `io::BufReader`.
 
-```rust
+```rust,ignore
 let file = fs::File::open(path)?;
 let mut textarea: TextArea = io::BufReader::new(file).lines().collect::<io::Result<_>>()?;
 ```
@@ -294,21 +315,21 @@ let mut textarea: TextArea = io::BufReader::new(file).lines().collect::<io::Resu
 
 `TextArea::lines()` returns text lines as `&[String]`. It borrows text contents temporarily.
 
-```rust
+```rust,ignore
 let text: String = textarea.lines().join("\n");
 ```
 
 `TextArea::into_lines()` moves `TextArea` instance into text lines as `Vec<String>`. This can retrieve the text contents
 without any copy.
 
-```rust
+```rust,ignore
 let lines: Vec<String> = textarea.into_lines();
 ```
 
 Note that `TextArea` always contains at least one line. For example, an empty text means one empty line. This is because
 any text file must end with newline.
 
-```rust
+```rust,ignore
 let textarea = TextArea::default();
 assert_eq!(textarea.into_lines(), [""]);
 ```
@@ -319,8 +340,8 @@ By default, `TextArea` does now show line numbers. To enable, set a style for re
 `TextArea::set_line_number_style()`. For example, the following renders line numbers in dark gray background
 color.
 
-```rust
-use tui::style::{Style, Color};
+```rust,ignore
+use ratatui::style::{Style, Color};
 
 let style = Style::default().bg(Color::DarkGray);
 textarea.set_line_number_style(style);
@@ -332,8 +353,8 @@ By default, `TextArea` renders the line at cursor with underline so that users c
 is. To change the style of cursor line, use `TextArea::set_cursor_line_style()`. For example, the following styles the
 cursor line with bold text.
 
-```rust
-use tui::style::{Style, Modifier};
+```rust,ignore
+use ratatui::style::{Style, Modifier};
 
 let style = Style::default().add_modifier(Modifier::BOLD);
 textarea.set_line_number_style(style);
@@ -341,8 +362,8 @@ textarea.set_line_number_style(style);
 
 To disable cursor line style, set the default style as follows:
 
-```rust
-use tui::style::{Style, Modifier};
+```rust,ignore
+use ratatui::style::{Style, Modifier};
 
 textarea.set_line_number_style(Style::default());
 ```
@@ -352,7 +373,7 @@ textarea.set_line_number_style(Style::default());
 The default tab width is 4. To change it, use `TextArea::set_tab_length()` method. The following sets 2 to tab width.
 Typing tab key inserts 2 spaces.
 
-```rust
+```rust,ignore
 textarea.set_tab_length(2);
 ```
 
@@ -361,13 +382,13 @@ textarea.set_tab_length(2);
 By default, past 50 modifications are stored as edit history. The history is used for undo/redo. To change how many past
 edits are remembered, use `TextArea::set_max_histories()` method. The following remembers past 1000 changes.
 
-```rust
+```rust,ignore
 textarea.set_max_histories(1000);
 ```
 
 Setting 0 disables undo/redo.
 
-```rust
+```rust,ignore
 textarea.set_max_histories(0);
 ```
 
@@ -383,7 +404,7 @@ the pattern from start of the file.
 Matches are highlighted in textarea. The text style to highlight matches can be changed with
 `TextArea::set_search_style()`. Setting an empty string to `TextArea::set_search_pattern()` stops the text search.
 
-```rust
+```rust,ignore
 // Start text search matching to "hello" or "hi". This highlights matches in textarea but does not move cursor.
 // `regex::Error` is returned on invalid pattern.
 textarea.set_search_pattern("(hello|hi)").unwrap();
@@ -415,7 +436,7 @@ tui-textarea = { version = "*", features = ["search"] }
 
 To use `TextArea` for single-line input widget like `<input>` in HTML, ignore all key mappings which inserts newline.
 
-```rust
+```rust,ignore
 use crossterm::event::{Event, read};
 use tui_textarea::{Input, Key};
 
@@ -486,7 +507,7 @@ notify how to move the cursor.
 To define your own key mappings, simply call the above methods in your code instead of `TextArea::input()` method. The
 following example defines modal key mappings like Vim.
 
-```rust
+```rust,ignore
 use crossterm::event::{Event, read};
 use tui_textarea::{Input, Key, CursorMove, Scrolling};
 
@@ -531,7 +552,7 @@ If you don't want to use default key mappings, `TextArea::input_without_shortcut
 `TextArea::input()`. The method only handles very basic operations such as inserting/deleting single characters, tabs,
 newlines.
 
-```rust
+```rust,ignore
 match read()?.into() {
     // Handle your own key mappings here
     // ...
@@ -541,17 +562,16 @@ match read()?.into() {
 
 ### Use your own backend
 
-tui-rs allows to make your own backend by implementing [`tui::backend::Backend`][tui-backend] trait. tui-textarea also
-supports it. In this case, please use `your-backend` feature for [tui-rs][] or `ratatui-your-backend` feature for
-[ratatui][]. They avoid adding backend crates (crossterm and termion) since you're using your own backend.
+ratatui and tui-rs allows to make your own backend by implementing [`ratatui::backend::Backend`][ratatui-backend] trait.
+tui-textarea supports it as well. Please use `no-backend` feature for [ratatui][] or `tuirs-no-backend` feature for
+[tui-rs][]. They avoid adding backend crates (crossterm, termion, or termwiz) since you're using your own backend.
 
 ```toml
 [dependencies]
-tui = { version = "*", default-features = false }
-# For tui-rs
-tui-textarea = { version = "*", default-features = false, features = ["your-backend"] }
 # For ratatui
-tui-textarea = { version = "*", default-features = false, features = ["ratatui-your-backend"] }
+tui-textarea = { version = "*", default-features = false, features = ["no-backend"] }
+# For tui-rs
+tui-textarea = { version = "*", default-features = false, features = ["tuirs-no-backend"] }
 ```
 
 `tui_textarea::Input` is a type for backend-agnostic key input. What you need to do is converting key event in your own
@@ -560,7 +580,7 @@ backend into the `tui_textarea::Input` instance. Then `TextArea::input()` method
 In the following example, let's say `your_backend::KeyDown` is a key event type for your backend and
 `your_backend::read_next_key()` returns the next key event.
 
-```rust
+```rust,ignore
 // In your backend implementation
 
 pub enum KeyDown {
@@ -579,7 +599,7 @@ pub fn read_next_key() -> (KeyDown, bool, bool) {
 
 Then you can implement the logic to convert `your_backend::KeyDown` value into `tui_textarea::Input` value.
 
-```rust
+```rust,ignore
 use tui_textarea::{Input, Key};
 use your_backend::KeyDown;
 
@@ -600,7 +620,7 @@ key. An editor will do nothing with the key.
 
 Finally, convert your own backend's key input type into `tui_textarea::Input` and pass it to `TextArea::input()`.
 
-```rust
+```rust,ignore
 let mut textarea = ...;
 
 // Event loop
@@ -621,7 +641,7 @@ You don't need to do anything special. Create multiple `TextArea` instances and 
 
 The following is an example to put two textarea widgets in application and manage the focus.
 
-```rust
+```rust,ignore
 use tui_textarea::{TextArea, Input, Key};
 use crossterm::event::{Event, read};
 
@@ -673,7 +693,7 @@ This project is developed [on GitHub][repo].
 For feature requests or bug reports, please [create an issue][new-issue]. For submitting patches, please [create a pull
 request][pulls].
 
-Please see [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting an issue or making a PR.
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting an issue or making a PR.
 
 ## License
 
@@ -686,10 +706,11 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 [ci-badge]: https://github.com/rhysd/tui-textarea/actions/workflows/ci.yml/badge.svg?event=push
 [ci]: https://github.com/rhysd/tui-textarea/actions/workflows/ci.yml
 [tui-rs]: https://github.com/fdehau/tui-rs
-[ratatui]: https://github.com/tui-rs-revival/ratatui
-[termion]: https://docs.rs/termion/latest/termion/
+[ratatui]: https://github.com/ratatui-org/ratatui
 [crossterm]: https://docs.rs/crossterm/latest/crossterm/
-[tui-backend]: https://docs.rs/tui/latest/tui/backend/trait.Backend.html
+[termion]: https://docs.rs/termion/latest/termion/
+[termwiz]: https://docs.rs/termwiz/latest/termwiz/
+[ratatui-backend]: https://docs.rs/ratatui/latest/ratatui/backend/trait.Backend.html
 [repo]: https://github.com/rhysd/tui-textarea
 [new-issue]: https://github.com/rhysd/tui-textarea/issues/new
 [pulls]: https://github.com/rhysd/tui-textarea/pulls

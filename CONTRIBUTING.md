@@ -10,7 +10,8 @@ For reporting a bug, please make sure your report includes the following points.
 - Environment
   - Your terminal
   - Rust version
-  - `tui` crate version
+  - `ratatui` or `tui` crate version
+  - Enabled features of `tui-textarea` crate
 
 An example of bug report: https://github.com/rhysd/tui-textarea/issues/1
 
@@ -21,21 +22,21 @@ Please ensure that all tests and linter checks passed on your branch before crea
 To run tests:
 
 ```sh
-cargo test --features=search -- --skip src/lib.rs
+cargo test --features=search
 ```
-
-`--skip` is necessary since `cargo test` tries to run code blocks in [README file](./README.md).
 
 To run linters:
 
 ```sh
-cargo clippy --features=search --tests --examples
-cargo clippy --features=ratatui-crossterm,search --no-default-features --tests --examples
+cargo clippy --features=search,termwiz,termion --tests --examples
+cargo clippy --features=tuirs-crossterm,tuirs-termion,search --no-default-features --tests --examples
 cargo fmt -- --check
 ```
 
+Note: On Windows, remove `termion` and `tuirs-termion` features from `--features` argument since termion doesn't support Windows.
+
 If you use [cargo-watch][], `cargo watch-check` and `cargo watch-test` aliases are useful to run checks/tests automatically
-on writing to a file.
+on files being changed.
 
 ## Print debugging
 
@@ -56,7 +57,7 @@ cargo run --example minimal 2>debug.txt
 ```
 
 Then the debug prints are output to the `debug.txt` file. If timing is important or you want to see the output in real-time,
-printing the file content with `tail` command would be useful.
+it would be useful to monitor the file content with `tail` command in another terminal window.
 
 ```sh
 # In a terminal, reproduce the issue
@@ -68,7 +69,7 @@ tail -F debug.txt
 
 ## Running a fuzzer
 
-To run fuzzing tests, [cargo-fuzz][] is necessary.
+To run fuzzing tests, [cargo-fuzz][] and Rust nightly toolchain are necessary.
 
 ```sh
 cargo +nightly fuzz run edit

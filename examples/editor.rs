@@ -3,6 +3,12 @@ use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, is_raw_mode_enabled, EnterAlternateScreen,
     LeaveAlternateScreen,
 };
+use ratatui::backend::CrosstermBackend;
+use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::Terminal;
 use std::borrow::Cow;
 use std::env;
 use std::fmt::Display;
@@ -10,12 +16,6 @@ use std::fs;
 use std::io;
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
-use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Color, Modifier, Style};
-use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, Paragraph};
-use tui::Terminal;
 use tui_textarea::{CursorMove, Input, Key, TextArea};
 
 macro_rules! error {
@@ -223,9 +223,9 @@ impl<'a> Editor<'a> {
 
                 // Render message at bottom
                 let message = if let Some(message) = self.message.take() {
-                    Spans::from(Span::raw(message))
+                    Line::from(Span::raw(message))
                 } else if search_height > 0 {
-                    Spans::from(vec![
+                    Line::from(vec![
                         Span::raw("Press "),
                         Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
                         Span::raw(" to jump to first match and close, "),
@@ -243,7 +243,7 @@ impl<'a> Editor<'a> {
                         Span::raw(" to search previous"),
                     ])
                 } else {
-                    Spans::from(vec![
+                    Line::from(vec![
                         Span::raw("Press "),
                         Span::styled("^Q", Style::default().add_modifier(Modifier::BOLD)),
                         Span::raw(" to quit, "),
@@ -265,6 +265,7 @@ impl<'a> Editor<'a> {
                         key: Key::Char('g' | 'n'),
                         ctrl: true,
                         alt: false,
+                        ..
                     }
                     | Input { key: Key::Down, .. } => {
                         if !textarea.search_forward(false) {
@@ -275,11 +276,13 @@ impl<'a> Editor<'a> {
                         key: Key::Char('g'),
                         ctrl: false,
                         alt: true,
+                        ..
                     }
                     | Input {
                         key: Key::Char('p'),
                         ctrl: true,
                         alt: false,
+                        ..
                     }
                     | Input { key: Key::Up, .. } => {
                         if !textarea.search_back(false) {

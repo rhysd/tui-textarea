@@ -4,15 +4,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
 
-#[cfg(all(
-    any(feature = "crossterm", feature = "termion", feature = "your-backend"),
-    any(
-        feature = "ratatui-crossterm",
-        feature = "ratatui-termion",
-        feature = "ratatui-your-backend"
-    ),
-))]
-compile_error!("tui-rs support and ratatui support are exclussive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
+#[cfg(all(feature = "ratatui", feature = "tuirs"))]
+compile_error!("ratatui support and tui-rs support are exclussive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
 #[macro_export]
 macro_rules! trace {
     ($fmt:literal, $($arg:expr),*) => {
@@ -35,25 +28,18 @@ mod textarea;
 mod util;
 mod widget;
 mod word;
-#[cfg(any(
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-    feature = "ratatui-your-backend",
-))]
-use ratatui as tui;
-#[cfg(not(any(
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-    feature = "ratatui-your-backend",
-)))]
+
+#[cfg(feature = "ratatui")]
 #[allow(clippy::single_component_path_imports)]
-use tui;
+use ratatui;
+#[cfg(feature = "tuirs")]
+use tui as ratatui;
 
 #[cfg(feature = "crossterm")]
 #[allow(clippy::single_component_path_imports)]
 use crossterm;
-#[cfg(feature = "ratatui-crossterm")]
-use crossterm_027 as crossterm;
+#[cfg(feature = "tuirs-crossterm")]
+use crossterm_025 as crossterm;
 
 pub use cursor::CursorMove;
 pub use input::{Input, Key};

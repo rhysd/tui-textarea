@@ -2,12 +2,12 @@ use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use ratatui::backend::CrosstermBackend;
+use ratatui::layout::{Constraint, Layout};
+use ratatui::style::{Color, Style};
+use ratatui::widgets::{Block, Borders};
+use ratatui::Terminal;
 use std::io;
-use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Layout};
-use tui::style::{Color, Style};
-use tui::widgets::{Block, Borders};
-use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
 
 fn main() -> io::Result<()> {
@@ -23,10 +23,11 @@ fn main() -> io::Result<()> {
     textarea.set_cursor_line_style(Style::default());
     textarea.set_mask_char('\u{2022}'); //U+2022 BULLET (•)
     textarea.set_placeholder_text("Please enter your password");
-    let layout =
-        Layout::default().constraints([Constraint::Length(3), Constraint::Min(1)].as_slice());
+    let constraints = [Constraint::Length(3), Constraint::Min(1)].as_slice();
+    let layout = Layout::default().constraints(constraints);
     textarea.set_style(Style::default().fg(Color::LightGreen));
     textarea.set_block(Block::default().borders(Borders::ALL).title("Password"));
+
     loop {
         term.draw(|f| {
             let chunks = layout.split(f.size());
@@ -35,15 +36,13 @@ fn main() -> io::Result<()> {
         })?;
 
         match crossterm::event::read()?.into() {
-            Input { key: Key::Esc, .. } => break,
             Input {
-                key: Key::Enter, ..
+                key: Key::Esc | Key::Enter,
+                ..
             } => break,
-
             input => {
-                // TextArea::input returns if the input modified its text
                 if textarea.input(input) {
-                    //  is_valid = validate(&mut textarea);
+                    // When the input modified its text, validate the text content
                 }
             }
         }
@@ -53,7 +52,7 @@ fn main() -> io::Result<()> {
     crossterm::execute!(
         term.backend_mut(),
         LeaveAlternateScreen,
-        DisableMouseCapture
+        DisableMouseCapture,
     )?;
     term.show_cursor()?;
 

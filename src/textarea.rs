@@ -3,28 +3,20 @@ use crate::highlight::LineHighlighter;
 use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
 use crate::key_dispatch;
-//use crate::key_dispatch::{self, input};
+use crate::ratatui::layout::Alignment;
+use crate::ratatui::style::{Color, Modifier, Style};
+use crate::ratatui::widgets::{Block, Widget};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
-use crate::tui::layout::Alignment;
-use crate::tui::style::{Color, Modifier, Style};
-#[cfg(any(
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-    feature = "ratatui-your-backend",
-))]
-use crate::tui::text::Line as Spans;
-#[cfg(not(any(
-    feature = "ratatui-crossterm",
-    feature = "ratatui-termion",
-    feature = "ratatui-your-backend",
-)))]
-use crate::tui::text::Spans;
-use crate::tui::widgets::{Block, Widget};
 use crate::util::spaces;
 use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
+#[cfg(feature = "ratatui")]
+use ratatui::text::Line;
+#[cfg(feature = "tuirs")]
+use tui::text::Spans as Line;
+use unicode_width::UnicodeWidthChar as _;
 
 /// A type to manage state of textarea.
 ///
@@ -37,7 +29,7 @@ use crate::word::{find_word_end_forward, find_word_start_backward};
 /// let mut textarea = TextArea::default();
 ///
 /// // Input 'a'
-/// let input = Input { key: Key::Char('a'), ctrl: false, alt: false };
+/// let input = Input { key: Key::Char('a'), ctrl: false, alt: false, shift:false };
 /// textarea.input(input);
 ///
 /// // Get widget to render.
@@ -66,7 +58,7 @@ pub struct TextArea<'a> {
     pub(crate) placeholder: String,
     pub(crate) placeholder_style: Style,
     mask: Option<char>,
-    select_start: Option<(usize, usize)>,
+    pub(crate) select_start: Option<(usize, usize)>,
     select_style: Style,
 }
 
@@ -175,8 +167,8 @@ impl<'a> TextArea<'a> {
 
     /// Handle a key input with default key mappings. For default key mappings, see the table in
     /// [the module document](./index.html).
-    /// `crossterm` and `termion` features enable conversion from their own key event types into [`Input`] so this
-    /// method can take the event values directly.
+    /// `crossterm`, `termion`, and `termwiz` features enable conversion from their own key event types into
+    /// [`Input`] so this method can take the event values directly.
     /// This method returns if the input modified text contents or not in the textarea.
     /// ```ignore
     /// use tui_textarea::{TextArea, Key, Input};
@@ -197,6 +189,13 @@ impl<'a> TextArea<'a> {
     ///     textarea.input(key);
     /// }
     ///
+    /// // Handle termwiz key events
+    /// let event: termwiz::input::InputEvent = ...;
+    /// textarea.input(event);
+    /// if let termwiz::input::InputEvent::Key(key) = event {
+    ///     textarea.input(key);
+    /// }
+    ///
     /// // Handle backend-agnostic key input
     /// let input = Input { key: Key::Char('a'), ctrl: false, alt: false };
     /// let modified = textarea.input(input);
@@ -204,6 +203,9 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn input(&mut self, input: impl Into<Input>) -> bool {
         let input = input.into();
+        if input.key == Key::Null {
+            return false;
+        }
         trace!("input {:?}", input);
         key_dispatch::input(self, input)
     }
@@ -223,6 +225,9 @@ impl<'a> TextArea<'a> {
     ///
     pub fn input_without_shortcuts(&mut self, input: impl Into<Input>) -> bool {
         let input = input.into();
+        if input.key == Key::Null {
+            return false;
+        }
         trace!("input {:?}", input);
         key_dispatch::input_without_shortcuts(self, input)
     }
@@ -311,26 +316,35 @@ impl<'a> TextArea<'a> {
 
     /// Insert a tab at current cursor position. Note that this method does nothing when the tab length is 0. This
     /// method returns if a tab string was inserted or not in the textarea.
-    /// textarea.
     /// ```
-    /// use tui_textarea::TextArea;
+    /// use tui_textarea::{TextArea, CursorMove};
     ///
     /// let mut textarea = TextArea::from(["hi"]);
     ///
+    /// textarea.move_cursor(CursorMove::End); // Move to the end of line
+    ///
     /// textarea.insert_tab();
-    /// assert_eq!(textarea.lines(), ["    hi"]);
+    /// assert_eq!(textarea.lines(), ["hi  "]);
+    /// textarea.insert_tab();
+    /// assert_eq!(textarea.lines(), ["hi      "]);
     /// ```
     pub fn insert_tab(&mut self) -> bool {
         if self.tab_len == 0 {
             return false;
         }
-        let tab = if self.hard_tab_indent {
-            "\t"
-        } else {
-            let len = self.tab_len - (self.cursor.1 % self.tab_len as usize) as u8;
-            spaces(len)
-        };
-        self.insert_str(tab)
+
+        if self.hard_tab_indent {
+            return self.insert_str("\t");
+        }
+
+        let (row, col) = self.cursor;
+        let width: usize = self.lines[row]
+            .chars()
+            .take(col)
+            .map(|c| c.width().unwrap_or(0))
+            .sum();
+        let len = self.tab_len - (width % self.tab_len as usize) as u8;
+        self.insert_str(spaces(len))
     }
 
     /// Insert a newline at current cursor position.
@@ -429,10 +443,12 @@ impl<'a> TextArea<'a> {
         self.select_start = None;
         deleted
     }
+    fn line_length(&self, row: usize) -> usize {
+        self.lines[row].chars().count()
+    }
     // erase a range of text, start and end must be normalized
     // erase text is put in history and yank buffer
     fn delete_range(&mut self, start: (usize, usize), end: (usize, usize)) -> bool {
-        // debug_assert!(start.0 <= end.0 && start.1 < end.1);
         let (row, col) = self.cursor;
         let (start_row, start_col) = start;
         let (end_row, end_col) = end;
@@ -444,7 +460,7 @@ impl<'a> TextArea<'a> {
         let mut hit_list = Vec::new();
         for row in start_row..=end_row {
             let line = &mut self.lines[row];
-            let line_len = line.char_indices().count();
+            let line_len = line.chars().count();
             match (start_row == row, end_row == row) {
                 (true, true) => {
                     begin = start_col;
@@ -485,22 +501,23 @@ impl<'a> TextArea<'a> {
                     trace!("kill hit {:?}", row);
                     hit_list.push(row);
                 }
-
-                allremoved = format!("{}\n{}", allremoved, removed);
+                if allremoved.is_empty() {
+                    allremoved = removed;
+                } else {
+                    allremoved = format!("{}\n{}", allremoved, removed);
+                }
             }
         }
         self.cursor = (start_row, start_col);
         self.push_history(EditKind::Remove(allremoved.clone(), byte_count), (row, col));
         self.yank = allremoved.clone();
-        let mut offset = 0;
 
         // now delete dead lines
         // the row offsets change as we delete
         // that what offset is for
 
-        for hit in hit_list {
+        for (offset, hit) in hit_list.into_iter().enumerate() {
             self.lines.remove(hit - offset);
-            offset += 1;
         }
 
         // make sure there is something in the lines array
@@ -526,7 +543,7 @@ impl<'a> TextArea<'a> {
             return self.delete_selection();
         }
         let before = self.cursor;
-        self.move_cursor(CursorMove::Forward, false);
+        self.move_cursor(CursorMove::Forward);
         if before == self.cursor {
             return false; // Cursor didn't move, meant no character at next of cursor.
         }
@@ -548,7 +565,9 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["ab"]);
     /// ```
     pub fn delete_line_by_end(&mut self) -> bool {
-        if self.delete_str(self.cursor.1, usize::MAX) {
+        let start = self.cursor;
+        let end = (self.cursor.0, self.line_length(self.cursor.0));
+        if self.delete_range(start, end) {
             return true;
         }
         self.delete_next_char() // At the end of the line. Try to delete next line
@@ -639,10 +658,11 @@ impl<'a> TextArea<'a> {
     }
 
     pub fn copy(&mut self) {
+        // this is basically delete_selection except it doesnt delete
         if self.select_start.is_some() {
             let (start, end) = self.normalize_selection();
             let mut allremoved = String::new();
-            let mut byte_count = 0;
+
             let mut begin: usize;
             let mut endoff: usize;
             trace!("copy_range {:?} {:?}", start, end);
@@ -687,9 +707,6 @@ impl<'a> TextArea<'a> {
                         bytes,
                         removed
                     );
-                    //line.replace_range(i..i + bytes, "");
-
-                    byte_count += i;
                     allremoved = format!("{}\n{}", allremoved, removed);
                 }
             }
@@ -738,26 +755,18 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.cursor(), (1, 1));
     /// ```
 
-    // added select argument
+    pub fn start_selection(&mut self) {
+        trace!("start selection {:?}", self.cursor);
+        self.select_start = Some(self.cursor);
+    }
 
-    pub fn move_cursor(&mut self, m: CursorMove, select: bool) {
+    pub fn end_selection(&mut self) {
+        trace!("end selection {:?}", self.cursor);
+        self.select_start = None;
+    }
+
+    pub fn move_cursor(&mut self, m: CursorMove) {
         if let Some(cursor) = m.next_cursor(self.cursor, &self.lines, &self.viewport) {
-            match (self.select_start, select) {
-                (Some(_), true) => {
-                    // extend selection
-                }
-                (Some(_), false) => {
-                    // clear selection
-                    self.select_start = None;
-                }
-                (None, true) => {
-                    // start selection
-                    self.select_start = Some(self.cursor);
-                }
-                (None, false) => {
-                    self.select_start = None;
-                }
-            }
             self.cursor = cursor;
         }
     }
@@ -812,8 +821,9 @@ impl<'a> TextArea<'a> {
             (start, end)
         }
     }
-    pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Spans<'b> {
-        let mut hl = LineHighlighter::new(line, self.cursor_style, self.tab_len);
+
+    pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Line<'b> {
+        let mut hl = LineHighlighter::new(line, self.cursor_style, self.tab_len, self.mask);
 
         if let Some(style) = self.line_number_style {
             hl.line_number(row, lnum_len, style);
@@ -837,7 +847,6 @@ impl<'a> TextArea<'a> {
                 line
             );
             if start.0 <= row && end.0 >= row {
-                trace!("hit{}", row);
                 match (start.0 == row, end.0 == row) {
                     (true, true) => {
                         hl.select(start.1, end.1, self.select_style);
@@ -856,15 +865,15 @@ impl<'a> TextArea<'a> {
                 }
             }
         }
-        hl.into_spans(self.mask)
+        hl.into_spans()
     }
 
-    /// Build a tui-rs widget to render the current state of the textarea. The widget instance returned from this
-    /// method can be rendered with [`tui::terminal::Frame::render_widget`].
+    /// Build a ratatui (or tui-rs) widget to render the current state of the textarea. The widget instance returned
+    /// from this method can be rendered with [`ratatui::terminal::Frame::render_widget`].
     /// ```no_run
-    /// use tui::backend::CrosstermBackend;
-    /// use tui::layout::{Constraint, Direction, Layout};
-    /// use tui::Terminal;
+    /// use ratatui::backend::CrosstermBackend;
+    /// use ratatui::layout::{Constraint, Direction, Layout};
+    /// use ratatui::Terminal;
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -891,7 +900,7 @@ impl<'a> TextArea<'a> {
 
     /// Set the style of textarea. By default, textarea is not styled.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -911,7 +920,7 @@ impl<'a> TextArea<'a> {
     /// Set the block of textarea. By default, no block is set.
     /// ```
     /// use tui_textarea::TextArea;
-    /// use tui::widgets::{Block, Borders};
+    /// use ratatui::widgets::{Block, Borders};
     ///
     /// let mut textarea = TextArea::default();
     /// let block = Block::default().borders(Borders::ALL).title("Block Title");
@@ -925,7 +934,7 @@ impl<'a> TextArea<'a> {
     /// Remove the block of textarea which was set by [`TextArea::set_block`].
     /// ```
     /// use tui_textarea::TextArea;
-    /// use tui::widgets::{Block, Borders};
+    /// use ratatui::widgets::{Block, Borders};
     ///
     /// let mut textarea = TextArea::default();
     /// let block = Block::default().borders(Borders::ALL).title("Block Title");
@@ -942,13 +951,12 @@ impl<'a> TextArea<'a> {
         self.block.as_ref()
     }
 
-    /// Set the length of tab character. Due to limitation of tui-rs, hard tab is not supported. Setting 0 disables tab
-    /// inputs.
+    /// Set the length of tab character. Setting 0 disables tab inputs.
     /// ```
     /// use tui_textarea::{TextArea, Input, Key};
     ///
     /// let mut textarea = TextArea::default();
-    /// let tab_input = Input { key: Key::Tab, ctrl: false, alt: false };
+    /// let tab_input = Input { key: Key::Tab, ctrl: false, alt: false, shift: false };
     ///
     /// textarea.set_tab_length(8);
     /// textarea.input(tab_input.clone());
@@ -1029,7 +1037,7 @@ impl<'a> TextArea<'a> {
     /// Set the style of line at cursor. By default, the cursor line is styled with underline. To stop styling the
     /// cursor line, set the default style.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1054,7 +1062,7 @@ impl<'a> TextArea<'a> {
     /// that line numbers are disabled by default. If you want to show line numbers but don't want to style them, set
     /// the default style.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1071,7 +1079,7 @@ impl<'a> TextArea<'a> {
     /// Remove the style of line number which was set by [`TextArea::set_line_number_style`]. After calling this
     /// method, Line numbers will no longer be shown.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1109,7 +1117,7 @@ impl<'a> TextArea<'a> {
 
     /// Set the style of the placeholder text. The default style is a dark gray text.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1155,22 +1163,55 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    /// Specifies that the text should be masked with the specified character
+    /// Specify a character masking the text. All characters in the textarea will be replaced by this character.
+    /// This API is useful for making a kind of credentials form such as a password input.
+    /// ```
+    /// use tui_textarea::TextArea;
     ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.set_mask_char('*');
+    /// assert_eq!(textarea.mask_char(), Some('*'));
+    /// textarea.set_mask_char('●');
+    /// assert_eq!(textarea.mask_char(), Some('●'));
+    /// ```
     pub fn set_mask_char(&mut self, mask: char) {
         self.mask = Some(mask);
     }
 
-    /// Clear the previously set masking character
+    /// Clear the masking character previously set by [`TextArea::set_mask_char`].
+    /// ```
+    /// use tui_textarea::TextArea;
     ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.set_mask_char('*');
+    /// assert_eq!(textarea.mask_char(), Some('*'));
+    /// textarea.clear_mask_char();
+    /// assert_eq!(textarea.mask_char(), None);
+    /// ```
     pub fn clear_mask_char(&mut self) {
         self.mask = None;
+    }
+
+    /// Get the charater to mask text. When no character is set, `None` is returned.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// assert_eq!(textarea.mask_char(), None);
+    /// textarea.set_mask_char('*');
+    /// assert_eq!(textarea.mask_char(), Some('*'));
+    /// ```
+    pub fn mask_char(&self) -> Option<char> {
+        self.mask
     }
 
     /// Set the style of cursor. By default, a cursor is rendered in the reversed color. Setting the same style as
     /// cursor line hides a cursor.
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1246,8 +1287,8 @@ impl<'a> TextArea<'a> {
     /// Set text alignment. When [`Alignment::Center`] or [`Alignment::Right`] is set, line number is automatically
     /// disabled because those alignments don't work well with line numbers.
     /// ```
+    /// use ratatui::layout::Alignment;
     /// use tui_textarea::TextArea;
-    /// use tui::layout::Alignment;
     ///
     /// let mut textarea = TextArea::default();
     ///
@@ -1263,8 +1304,8 @@ impl<'a> TextArea<'a> {
 
     /// Get current text alignment. The default alignment is [`Alignment::Left`].
     /// ```
+    /// use ratatui::layout::Alignment;
     /// use tui_textarea::TextArea;
-    /// use tui::layout::Alignment;
     ///
     /// let mut textarea = TextArea::default();
     ///
@@ -1466,7 +1507,7 @@ impl<'a> TextArea<'a> {
     /// Get the text style at matches of text search. The default style is colored with blue in background.
     ///
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let textarea = TextArea::default();
@@ -1482,7 +1523,7 @@ impl<'a> TextArea<'a> {
     /// Set the text style at matches of text search. The default style is colored with blue in background.
     ///
     /// ```
-    /// use tui::style::{Style, Color};
+    /// use ratatui::style::{Style, Color};
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
@@ -1503,9 +1544,9 @@ impl<'a> TextArea<'a> {
     /// the cursor position will be adjusted to stay in the viewport using the same logic as [`CursorMove::InViewport`].
     ///
     /// ```
-    /// # use tui::buffer::Buffer;
-    /// # use tui::layout::Rect;
-    /// # use tui::widgets::Widget;
+    /// # use ratatui::buffer::Buffer;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::widgets::Widget;
     /// use tui_textarea::TextArea;
     ///
     /// // Let's say terminal height is 8.
@@ -1538,7 +1579,7 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn scroll(&mut self, scrolling: impl Into<Scrolling>) {
         scrolling.into().scroll(&mut self.viewport);
-        self.move_cursor(CursorMove::InViewport, false);
+        self.move_cursor(CursorMove::InViewport);
     }
 }
 
@@ -1546,12 +1587,12 @@ impl<'a> TextArea<'a> {
 mod tests {
     use super::*;
 
-    // Seaparate tests for ratatui support
+    // Seaparate tests for tui-rs support
     #[test]
     fn scroll() {
-        use crate::tui::buffer::Buffer;
-        use crate::tui::layout::Rect;
-        use crate::tui::widgets::Widget;
+        use crate::ratatui::buffer::Buffer;
+        use crate::ratatui::layout::Rect;
+        use crate::ratatui::widgets::Widget;
 
         let mut textarea: TextArea = (0..20).map(|i| i.to_string()).collect();
         let r = Rect {
