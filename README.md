@@ -300,7 +300,7 @@ let mut textarea = TextArea::from([
 
 // Create `TextArea` from `String`
 let mut text: String = ...;
-let mut textarea = TextARea::from(text.lines());
+let mut textarea = TextArea::from(text.lines());
 ```
 
 `TextArea` also implements `FromIterator<impl Into<String>>`. `Iterator::collect()` can collect strings as an editor
