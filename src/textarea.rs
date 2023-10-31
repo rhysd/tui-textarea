@@ -1345,7 +1345,7 @@ impl<'a> TextArea<'a> {
         self.mask = None;
     }
 
-    /// Get the charater to mask text. When no character is set, `None` is returned.
+    /// Get the character to mask text. When no character is set, `None` is returned.
     /// ```
     /// use tui_textarea::TextArea;
     ///

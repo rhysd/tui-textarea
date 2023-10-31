@@ -5,7 +5,7 @@
 #![doc = include_str!("../README.md")]
 
 #[cfg(all(feature = "ratatui", feature = "tuirs"))]
-compile_error!("ratatui support and tui-rs support are exclussive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
+compile_error!("ratatui support and tui-rs support are exclusive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
 
 mod cursor;
 mod highlight;
