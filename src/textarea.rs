@@ -13,7 +13,6 @@ use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
-use std::mem;
 #[cfg(feature = "tuirs")]
 use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
@@ -625,11 +624,11 @@ impl<'a> TextArea<'a> {
     /// textarea.insert_str(", world\ngoodbye, world");
     /// assert_eq!(textarea.lines(), ["hello, world", "goodbye, world"]);
     /// ```
-    pub fn insert_str(&mut self, s: &str) -> bool {
-        let mut lines: Vec<_> = s.lines().map(ToString::to_string).collect();
+    pub fn insert_str<S: AsRef<str>>(&mut self, s: S) -> bool {
+        let mut lines: Vec<_> = s.as_ref().lines().map(ToString::to_string).collect();
         match lines.len() {
             0 => false,
-            1 => self.insert_piece(mem::take(&mut lines[0])),
+            1 => self.insert_piece(lines.remove(0)),
             _ => self.insert_chunk(lines),
         }
     }
@@ -647,7 +646,7 @@ impl<'a> TextArea<'a> {
 
         self.cursor = (
             row + chunk.len() - 1,
-            col + chunk[chunk.len() - 1].chars().count(),
+            chunk[chunk.len() - 1].chars().count(),
         );
 
         let edit = EditKind::InsertChunk(chunk, i);
