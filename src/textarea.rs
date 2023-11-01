@@ -13,6 +13,7 @@ use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
+use std::mem;
 #[cfg(feature = "tuirs")]
 use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
@@ -612,8 +613,7 @@ impl<'a> TextArea<'a> {
         self.push_history(EditKind::InsertChar(c, i), (row, col));
     }
 
-    /// Insert a string at current cursor position. Currently the string must not contain any newlines. This method
-    /// returns if some text was inserted or not in the textarea.
+    /// Insert a string at current cursor position. This method returns if some text was inserted or not in the textarea.
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -621,9 +621,43 @@ impl<'a> TextArea<'a> {
     ///
     /// textarea.insert_str("hello");
     /// assert_eq!(textarea.lines(), ["hello"]);
+    ///
+    /// textarea.insert_str(", world\ngoodbye, world");
+    /// assert_eq!(textarea.lines(), ["hello, world", "goodbye, world"]);
     /// ```
-    pub fn insert_str<S: Into<String>>(&mut self, s: S) -> bool {
-        let s = s.into();
+    pub fn insert_str(&mut self, s: &str) -> bool {
+        let mut lines: Vec<_> = s.lines().map(ToString::to_string).collect();
+        match lines.len() {
+            0 => false,
+            1 => self.insert_piece(mem::take(&mut lines[0])),
+            _ => self.insert_chunk(lines),
+        }
+    }
+
+    fn insert_chunk(&mut self, chunk: Vec<String>) -> bool {
+        debug_assert!(chunk.len() > 1, "Chunk size must be > 1: {:?}", chunk);
+
+        let (row, col) = self.cursor;
+        let line = &mut self.lines[row];
+        let i = line
+            .char_indices()
+            .nth(col)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+
+        self.cursor = (
+            row + chunk.len() - 1,
+            col + chunk[chunk.len() - 1].chars().count(),
+        );
+
+        let edit = EditKind::InsertChunk(chunk, i);
+        edit.apply(row, &mut self.lines);
+
+        self.push_history(edit, (row, col));
+        true
+    }
+
+    fn insert_piece(&mut self, s: String) -> bool {
         if s.is_empty() {
             return false;
         }
@@ -631,7 +665,7 @@ impl<'a> TextArea<'a> {
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
         debug_assert!(
-            !line.contains('\n'),
+            !s.contains('\n'),
             "string given to insert_str must not contain newline: {:?}",
             line,
         );
@@ -644,7 +678,7 @@ impl<'a> TextArea<'a> {
         line.insert_str(i, &s);
 
         self.cursor.1 += s.chars().count();
-        self.push_history(EditKind::Insert(s, i), (row, col));
+        self.push_history(EditKind::InsertStr(s, i), (row, col));
         true
     }
 
@@ -676,7 +710,7 @@ impl<'a> TextArea<'a> {
             line.replace_range(i..i + bytes, "");
 
             self.cursor = (row, col);
-            self.push_history(EditKind::Remove(removed.clone(), i), cursor_before);
+            self.push_history(EditKind::DeleteStr(removed.clone(), i), cursor_before);
             self.yank = removed;
             true
         } else {
@@ -704,7 +738,7 @@ impl<'a> TextArea<'a> {
         }
 
         if self.hard_tab_indent {
-            return self.insert_str("\t");
+            return self.insert_piece("\t".to_string());
         }
 
         let (row, col) = self.cursor;
@@ -714,7 +748,7 @@ impl<'a> TextArea<'a> {
             .map(|c| c.width().unwrap_or(0))
             .sum();
         let len = self.tab_len - (width % self.tab_len as usize) as u8;
-        self.insert_str(spaces(len))
+        self.insert_piece(spaces(len).to_string())
     }
 
     /// Insert a newline at current cursor position.
@@ -937,7 +971,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), [" bbb cccaaa"]);
     /// ```
     pub fn paste(&mut self) -> bool {
-        self.insert_str(self.yank.to_string())
+        self.insert_piece(self.yank.to_string())
     }
 
     /// Move the cursor to the position specified by the [`CursorMove`] parameter. For each kind of cursor moves, see

@@ -6,12 +6,14 @@ pub enum EditKind {
     DeleteChar(char, usize),
     InsertNewline(usize),
     DeleteNewline(usize),
-    Insert(String, usize),
-    Remove(String, usize),
+    InsertStr(String, usize),
+    DeleteStr(String, usize),
+    InsertChunk(Vec<String>, usize),
+    DeleteChunk(Vec<String>, usize),
 }
 
 impl EditKind {
-    fn apply(&self, row: usize, lines: &mut Vec<String>) {
+    pub(crate) fn apply(&self, row: usize, lines: &mut Vec<String>) {
         match self {
             EditKind::InsertChar(c, i) => {
                 lines[row].insert(*i, *c);
@@ -31,12 +33,35 @@ impl EditKind {
                     lines[row - 1].push_str(&line);
                 }
             }
-            EditKind::Insert(s, i) => {
+            EditKind::InsertStr(s, i) => {
                 lines[row].insert_str(*i, s.as_str());
             }
-            EditKind::Remove(s, i) => {
+            EditKind::DeleteStr(s, i) => {
                 let end = *i + s.len();
                 lines[row].replace_range(*i..end, "");
+            }
+            EditKind::InsertChunk(c, i) => {
+                debug_assert!(c.len() > 1, "Chunk size must be > 1: {:?}", c);
+
+                // Handle first line of chunk
+                let first_line = &mut lines[row];
+                let mut last_line = first_line.drain(*i..).as_str().to_string();
+                first_line.push_str(&c[0]);
+
+                // Handle last line of chunk
+                last_line.insert_str(0, c.last().unwrap());
+                lines.insert(row + 1, last_line);
+
+                // Handle last line of chunk
+                lines.splice(row + 1..row + 1, c[1..c.len() - 1].iter().cloned());
+            }
+            EditKind::DeleteChunk(c, i) => {
+                debug_assert!(c.len() > 1, "Chunk size must be > 1: {:?}", c);
+
+                lines[row].truncate(*i);
+                let mut last_line = lines.drain(row + 1..row + c.len()).last().unwrap();
+                last_line.drain(..c[c.len() - 1].len());
+                lines[row].push_str(&last_line);
             }
         }
     }
@@ -48,8 +73,10 @@ impl EditKind {
             DeleteChar(c, i) => InsertChar(c, i),
             InsertNewline(i) => DeleteNewline(i),
             DeleteNewline(i) => InsertNewline(i),
-            Insert(s, i) => Remove(s, i),
-            Remove(s, i) => Insert(s, i),
+            InsertStr(s, i) => DeleteStr(s, i),
+            DeleteStr(s, i) => InsertStr(s, i),
+            InsertChunk(c, i) => DeleteChunk(c, i),
+            DeleteChunk(c, i) => InsertChunk(c, i),
         }
     }
 }
@@ -146,5 +173,378 @@ impl History {
 
     pub fn max_items(&self) -> usize {
         self.max_items
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn insert_delete_chunk() {
+        #[rustfmt::skip]
+        let tests = [
+            // Positions
+            (
+                // Text before edit
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                // (row, offset) position before edit
+                (0, 0),
+                // Chunk to be inserted
+                &[
+                    "x", "y",
+                ][..],
+                // Text after edit
+                &[
+                    "x",
+                    "yab",
+                    "cd",
+                    "ef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (0, 1),
+                &[
+                    "x", "y",
+                ][..],
+                &[
+                    "ax",
+                    "yb",
+                    "cd",
+                    "ef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (0, 2),
+                &[
+                    "x", "y",
+                ][..],
+                &[
+                    "abx",
+                    "y",
+                    "cd",
+                    "ef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (1, 0),
+                &[
+                    "x", "y",
+                ][..],
+                &[
+                    "ab",
+                    "x",
+                    "ycd",
+                    "ef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (1, 1),
+                &[
+                    "x", "y",
+                ][..],
+                &[
+                    "ab",
+                    "cx",
+                    "yd",
+                    "ef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (1, 2),
+                &[
+                    "x", "y",
+                ][..],
+                &[
+                    "ab",
+                    "cdx",
+                    "y",
+                    "ef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (2, 0),
+                &[
+                    "x", "y",
+                ][..],
+                &[
+                    "ab",
+                    "cd",
+                    "x",
+                    "yef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (2, 1),
+                &[
+                    "x", "y",
+                ][..],
+                &[
+                    "ab",
+                    "cd",
+                    "ex",
+                    "yf",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (2, 2),
+                &[
+                    "x", "y",
+                ][..],
+                &[
+                    "ab",
+                    "cd",
+                    "efx",
+                    "y",
+                ][..],
+            ),
+            // More than 2 lines
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (1, 1),
+                &[
+                    "x", "y", "z", "w"
+                ][..],
+                &[
+                    "ab",
+                    "cx",
+                    "y",
+                    "z",
+                    "wd",
+                    "ef",
+                ][..],
+            ),
+            // Empty lines
+            (
+                &[
+                    "",
+                    "",
+                    "",
+                ][..],
+                (0, 0),
+                &[
+                    "x", "y", "z"
+                ][..],
+                &[
+                    "x",
+                    "y",
+                    "z",
+                    "",
+                    "",
+                ][..],
+            ),
+            (
+                &[
+                    "",
+                    "",
+                    "",
+                ][..],
+                (1, 0),
+                &[
+                    "x", "y", "z"
+                ][..],
+                &[
+                    "",
+                    "x",
+                    "y",
+                    "z",
+                    "",
+                ][..],
+            ),
+            (
+                &[
+                    "",
+                    "",
+                    "",
+                ][..],
+                (2, 0),
+                &[
+                    "x", "y", "z"
+                ][..],
+                &[
+                    "",
+                    "",
+                    "x",
+                    "y",
+                    "z",
+                ][..],
+            ),
+            // Empty buffer
+            (
+                &[
+                    "",
+                ][..],
+                (0, 0),
+                &[
+                    "x", "y", "z"
+                ][..],
+                &[
+                    "x",
+                    "y",
+                    "z",
+                ][..],
+            ),
+            // Insert empty lines
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (0, 0),
+                &[
+                    "", "", "",
+                ][..],
+                &[
+                    "",
+                    "",
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (1, 0),
+                &[
+                    "", "", "",
+                ][..],
+                &[
+                    "ab",
+                    "",
+                    "",
+                    "cd",
+                    "ef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (1, 1),
+                &[
+                    "", "", "",
+                ][..],
+                &[
+                    "ab",
+                    "c",
+                    "",
+                    "d",
+                    "ef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (1, 2),
+                &[
+                    "", "", "",
+                ][..],
+                &[
+                    "ab",
+                    "cd",
+                    "",
+                    "",
+                    "ef",
+                ][..],
+            ),
+            (
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                ][..],
+                (2, 2),
+                &[
+                    "", "", "",
+                ][..],
+                &[
+                    "ab",
+                    "cd",
+                    "ef",
+                    "",
+                    "",
+                ][..],
+            ),
+        ];
+
+        for (before, pos, input, expected) in tests {
+            let (row, offset) = pos;
+            let mut lines: Vec<_> = before.iter().map(|s| s.to_string()).collect();
+            let chunk: Vec<_> = input.iter().map(|s| s.to_string()).collect();
+
+            let edit = EditKind::InsertChunk(chunk.clone(), offset);
+            edit.apply(row, &mut lines);
+            assert_eq!(
+                &lines, expected,
+                "{:?} at {:?} with {:?}",
+                before, pos, input,
+            );
+
+            let edit = EditKind::DeleteChunk(chunk, offset);
+            edit.apply(row, &mut lines);
+            assert_eq!(
+                &lines, &before,
+                "{:?} at {:?} with {:?}",
+                before, pos, input,
+            );
+        }
     }
 }
