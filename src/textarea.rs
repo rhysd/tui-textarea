@@ -17,6 +17,33 @@ use ratatui::text::Line;
 use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
 
+#[derive(Debug, Clone)]
+enum YankText {
+    Piece(String),
+    Chunk(Vec<String>),
+}
+
+impl Default for YankText {
+    fn default() -> Self {
+        Self::Piece(String::new())
+    }
+}
+
+impl<S: Into<String>> From<S> for YankText {
+    fn from(s: S) -> Self {
+        Self::Piece(s.into())
+    }
+}
+
+impl ToString for YankText {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Piece(s) => s.clone(),
+            Self::Chunk(ss) => ss.join("\n"),
+        }
+    }
+}
+
 /// A type to manage state of textarea.
 ///
 /// [`TextArea::default`] creates an empty textarea. [`TextArea::new`] creates a textarea with given text lines.
@@ -50,7 +77,7 @@ pub struct TextArea<'a> {
     line_number_style: Option<Style>,
     pub(crate) viewport: Viewport,
     cursor_style: Style,
-    yank: String,
+    yank: YankText,
     #[cfg(feature = "search")]
     search: Search,
     alignment: Alignment,
@@ -150,7 +177,7 @@ impl<'a> TextArea<'a> {
             line_number_style: None,
             viewport: Viewport::default(),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
-            yank: String::new(),
+            yank: YankText::default(),
             #[cfg(feature = "search")]
             search: Search::default(),
             alignment: Alignment::Left,
@@ -612,8 +639,7 @@ impl<'a> TextArea<'a> {
         self.push_history(EditKind::InsertChar(c, i), (row, col));
     }
 
-    /// Insert a string at current cursor position. Currently the string must not contain any newlines. This method
-    /// returns if some text was inserted or not in the textarea.
+    /// Insert a string at current cursor position. This method returns if some text was inserted or not in the textarea.
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -621,9 +647,43 @@ impl<'a> TextArea<'a> {
     ///
     /// textarea.insert_str("hello");
     /// assert_eq!(textarea.lines(), ["hello"]);
+    ///
+    /// textarea.insert_str(", world\ngoodbye, world");
+    /// assert_eq!(textarea.lines(), ["hello, world", "goodbye, world"]);
     /// ```
-    pub fn insert_str<S: Into<String>>(&mut self, s: S) -> bool {
-        let s = s.into();
+    pub fn insert_str<S: AsRef<str>>(&mut self, s: S) -> bool {
+        let mut lines: Vec<_> = s.as_ref().lines().map(ToString::to_string).collect();
+        match lines.len() {
+            0 => false,
+            1 => self.insert_piece(lines.remove(0)),
+            _ => self.insert_chunk(lines),
+        }
+    }
+
+    fn insert_chunk(&mut self, chunk: Vec<String>) -> bool {
+        debug_assert!(chunk.len() > 1, "Chunk size must be > 1: {:?}", chunk);
+
+        let (row, col) = self.cursor;
+        let line = &mut self.lines[row];
+        let i = line
+            .char_indices()
+            .nth(col)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+
+        self.cursor = (
+            row + chunk.len() - 1,
+            chunk[chunk.len() - 1].chars().count(),
+        );
+
+        let edit = EditKind::InsertChunk(chunk, row, i);
+        edit.apply(row, &mut self.lines);
+
+        self.push_history(edit, (row, col));
+        true
+    }
+
+    fn insert_piece(&mut self, s: String) -> bool {
         if s.is_empty() {
             return false;
         }
@@ -631,7 +691,7 @@ impl<'a> TextArea<'a> {
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
         debug_assert!(
-            !line.contains('\n'),
+            !s.contains('\n'),
             "string given to insert_str must not contain newline: {:?}",
             line,
         );
@@ -644,21 +704,104 @@ impl<'a> TextArea<'a> {
         line.insert_str(i, &s);
 
         self.cursor.1 += s.chars().count();
-        self.push_history(EditKind::Insert(s, i), (row, col));
+        self.push_history(EditKind::InsertStr(s, i), (row, col));
         true
     }
 
-    /// Delete a string in current cursor line. The `chars` parameter means number of characters, not a byte length of
-    /// the string. This method returns if some text was deleted or not in the textarea.
+    /// Delete a string from the current cursor position. The `chars` parameter means number of characters, not a byte
+    /// length of the string. Newlines at the end of lines are counted in the number. This method returns if some text
+    /// was deleted or not.
     /// ```
-    /// use tui_textarea::TextArea;
+    /// use tui_textarea::{TextArea, CursorMove};
     ///
     /// let mut textarea = TextArea::from(["🐱🐶🐰🐮"]);
+    /// textarea.move_cursor(CursorMove::Forward);
     ///
-    /// textarea.delete_str(1, 2);
+    /// textarea.delete_str(2);
     /// assert_eq!(textarea.lines(), ["🐱🐮"]);
+    ///
+    /// let mut textarea = TextArea::from(["🐱", "🐶", "🐰", "🐮"]);
+    /// textarea.move_cursor(CursorMove::Down);
+    ///
+    /// textarea.delete_str(4); // Deletes 🐶, \n, 🐰, \n
+    /// assert_eq!(textarea.lines(), ["🐱", "🐮"]);
     /// ```
-    pub fn delete_str(&mut self, col: usize, chars: usize) -> bool {
+    pub fn delete_str(&mut self, chars: usize) -> bool {
+        if chars == 0 {
+            return false;
+        }
+
+        let (row, col) = self.cursor;
+
+        let mut remaining = chars;
+        let mut find_end = move |line: &str| {
+            for (i, _) in line.char_indices() {
+                if remaining == 0 {
+                    return Some(i);
+                }
+                remaining -= 1;
+            }
+            if remaining == 0 {
+                Some(line.len())
+            } else {
+                remaining -= 1;
+                None
+            }
+        };
+
+        let line = &self.lines[row];
+        let first_start = {
+            line.char_indices()
+                .nth(col)
+                .map(|(i, _)| i)
+                .unwrap_or(line.len())
+        };
+
+        // First line
+        if let Some(offset) = find_end(&line[first_start..]) {
+            let removed = self.lines[row]
+                .drain(first_start..first_start + offset)
+                .as_str()
+                .to_string();
+            self.yank = removed.clone().into();
+            self.push_history(EditKind::DeleteStr(removed, first_start), self.cursor);
+            return true;
+        }
+
+        let mut r = row + 1;
+        let mut i = 0;
+
+        while r < self.lines.len() {
+            let line = &self.lines[r];
+            if let Some(offset) = find_end(line) {
+                i = offset;
+                break;
+            }
+            r += 1;
+        }
+
+        let mut deleted = vec![self.lines[row].drain(first_start..).as_str().to_string()];
+        deleted.extend(self.lines.drain(row + 1..r));
+        if row + 1 < self.lines.len() {
+            let mut last_line = self.lines.remove(row + 1);
+            self.lines[row].push_str(&last_line[i..]);
+            last_line.truncate(i);
+            deleted.push(last_line);
+        }
+
+        self.yank = YankText::Chunk(deleted.clone());
+
+        let edit = if deleted.len() == 1 {
+            EditKind::DeleteStr(deleted.remove(0), first_start)
+        } else {
+            EditKind::DeleteChunk(deleted, row, first_start)
+        };
+        self.push_history(edit, self.cursor);
+
+        true
+    }
+
+    fn delete_piece(&mut self, col: usize, chars: usize) -> bool {
         if chars == 0 {
             return false;
         }
@@ -676,8 +819,8 @@ impl<'a> TextArea<'a> {
             line.replace_range(i..i + bytes, "");
 
             self.cursor = (row, col);
-            self.push_history(EditKind::Remove(removed.clone(), i), cursor_before);
-            self.yank = removed;
+            self.push_history(EditKind::DeleteStr(removed.clone(), i), cursor_before);
+            self.yank = removed.into();
             true
         } else {
             false
@@ -704,7 +847,7 @@ impl<'a> TextArea<'a> {
         }
 
         if self.hard_tab_indent {
-            return self.insert_str("\t");
+            return self.insert_piece("\t".to_string());
         }
 
         let (row, col) = self.cursor;
@@ -714,7 +857,7 @@ impl<'a> TextArea<'a> {
             .map(|c| c.width().unwrap_or(0))
             .sum();
         let len = self.tab_len - (width % self.tab_len as usize) as u8;
-        self.insert_str(spaces(len))
+        self.insert_piece(spaces(len).to_string())
     }
 
     /// Insert a newline at current cursor position.
@@ -833,7 +976,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["ab"]);
     /// ```
     pub fn delete_line_by_end(&mut self) -> bool {
-        if self.delete_str(self.cursor.1, usize::MAX) {
+        if self.delete_piece(self.cursor.1, usize::MAX) {
             return true;
         }
         self.delete_next_char() // At the end of the line. Try to delete next line
@@ -854,7 +997,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["cde"]);
     /// ```
     pub fn delete_line_by_head(&mut self) -> bool {
-        if self.delete_str(0, self.cursor.1) {
+        if self.delete_piece(0, self.cursor.1) {
             return true;
         }
         self.delete_newline()
@@ -881,9 +1024,9 @@ impl<'a> TextArea<'a> {
     pub fn delete_word(&mut self) -> bool {
         let (r, c) = self.cursor;
         if let Some(col) = find_word_start_backward(&self.lines[r], c) {
-            self.delete_str(col, c - col)
+            self.delete_piece(col, c - col)
         } else if c > 0 {
-            self.delete_str(0, c)
+            self.delete_piece(0, c)
         } else {
             self.delete_newline()
         }
@@ -909,11 +1052,11 @@ impl<'a> TextArea<'a> {
         let (r, c) = self.cursor;
         let line = &self.lines[r];
         if let Some(col) = find_word_end_forward(line, c) {
-            self.delete_str(c, col - c)
+            self.delete_piece(c, col - c)
         } else {
             let end_col = line.chars().count();
             if c < end_col {
-                self.delete_str(c, end_col - c)
+                self.delete_piece(c, end_col - c)
             } else if r + 1 < self.lines.len() {
                 self.cursor = (r + 1, 0);
                 self.delete_newline()
@@ -937,7 +1080,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), [" bbb cccaaa"]);
     /// ```
     pub fn paste(&mut self) -> bool {
-        self.insert_str(self.yank.to_string())
+        self.insert_piece(self.yank.to_string())
     }
 
     /// Move the cursor to the position specified by the [`CursorMove`] parameter. For each kind of cursor moves, see
@@ -1481,7 +1624,8 @@ impl<'a> TextArea<'a> {
     }
 
     /// Get the yanked text. Text is automatically yanked when deleting strings by [`TextArea::delete_line_by_head`],
-    /// [`TextArea::delete_line_by_end`], [`TextArea::delete_word`], [`TextArea::delete_next_word`].
+    /// [`TextArea::delete_line_by_end`], [`TextArea::delete_word`], [`TextArea::delete_next_word`],
+    /// [`TextArea::delete_str`].
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -1490,8 +1634,8 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_next_word();
     /// assert_eq!(textarea.yank_text(), "abc");
     /// ```
-    pub fn yank_text(&'a self) -> &'a str {
-        &self.yank
+    pub fn yank_text(&self) -> String {
+        self.yank.to_string()
     }
 
     /// Set a yanked text. The text can be inserted by [`TextArea::paste`]. The string passed to method must not contain
@@ -1506,7 +1650,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["hello, world"]);
     /// ```
     pub fn set_yank_text(&mut self, text: impl Into<String>) {
-        self.yank = text.into();
+        self.yank = text.into().into();
     }
 
     /// Set a regular expression pattern for text search. Setting an empty string stops the text search.
