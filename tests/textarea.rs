@@ -37,6 +37,10 @@ fn test_insert_str_one_line() {
         want.insert(i, 'x');
         assert_eq!(&want, have, "{}", i);
     }
+
+    let mut t = TextArea::default();
+    assert!(t.insert_str("x"));
+    assert_eq!(t.lines(), ["x"]);
 }
 
 #[test]
@@ -383,5 +387,319 @@ fn test_insert_str_multiple_lines() {
         assert!(t.insert_str(input), "{:?}", test);
         assert_eq!(t.cursor(), after_pos, "{:?}", test);
         assert_eq!(t.lines(), expected, "{:?}", test);
+    }
+}
+
+#[test]
+fn test_delete_str_delete_nothing() {
+    for i in 0..="ab".len() {
+        let mut t = TextArea::from(["ab"]);
+        assert!(!t.delete_str(0), "{}", i);
+    }
+    let mut t = TextArea::default();
+    assert!(!t.delete_str(0));
+}
+
+#[test]
+fn test_delete_str_delete_within_line() {
+    for i in 0.."abc".len() {
+        for j in 1..="abc".len() - i {
+            let mut t = TextArea::from(["abc"]);
+            t.move_cursor(CursorMove::Jump(0, i as _));
+            assert!(t.delete_str(j), "at {}, size={}", i, j);
+            let have = &t.lines()[0];
+
+            let mut want = "abc".to_string();
+            want.drain(i..i + j);
+            assert_eq!(&want, have, "at {}, size={}", i, j);
+        }
+    }
+}
+
+#[test]
+fn test_delete_str_delete_multiple_lines() {
+    #[rustfmt::skip]
+    let tests = [
+        // Length
+        (
+            // Text before edit
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            // (row, offset) cursor position
+            (0, 0),
+            // Chars to be deleted
+            3,
+            // Deleted text
+            "ab\n",
+            // Text after edit
+            &[
+                "cd",
+                "ef",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            4,
+            "ab\nc",
+            &[
+                "d",
+                "ef",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            5,
+            "ab\ncd",
+            &[
+                "",
+                "ef",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            6,
+            "ab\ncd\n",
+            &[
+                "ef",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            7,
+            "ab\ncd\ne",
+            &[
+                "f",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            8,
+            "ab\ncd\nef",
+            &[
+                "",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            9,
+            "ab\ncd\nef",
+            &[
+                "",
+            ][..],
+        ),
+        // Positions
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 1),
+            3,
+            "b\nc",
+            &[
+                "ad",
+                "ef",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 2),
+            4,
+            "\ncd\n",
+            &[
+                "abef",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (1, 0),
+            4,
+            "cd\ne",
+            &[
+                "ab",
+                "f",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (2, 0),
+            3,
+            "ef",
+            &[
+                "ab",
+                "cd",
+                "",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (2, 1),
+            2,
+            "f",
+            &[
+                "ab",
+                "cd",
+                "e",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (2, 2),
+            1,
+            "",
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+        ),
+        // Empty lines
+        (
+            &[
+                "",
+                "",
+                "",
+            ][..],
+            (0, 0),
+            1,
+            "\n",
+            &[
+                "",
+                "",
+            ][..],
+        ),
+        (
+            &[
+                "",
+                "",
+                "",
+            ][..],
+            (0, 0),
+            2,
+            "\n\n",
+            &[
+                "",
+            ][..],
+        ),
+        (
+            &[
+                "",
+                "",
+                "",
+            ][..],
+            (0, 0),
+            3,
+            "\n\n",
+            &[
+                "",
+            ][..],
+        ),
+        (
+            &[
+                "",
+                "",
+                "",
+            ][..],
+            (1, 0),
+            1,
+            "\n",
+            &[
+                "",
+                "",
+            ][..],
+        ),
+        (
+            &[
+                "",
+                "",
+                "",
+            ][..],
+            (2, 0),
+            1,
+            "",
+            &[
+                "",
+                "",
+                "",
+            ][..],
+        ),
+        // Empty buffer
+        (
+            &[
+                "",
+            ][..],
+            (0, 0),
+            1,
+            "",
+            &[
+                "",
+            ][..],
+        ),
+    ];
+
+    for test in tests {
+        let (before, (row, col), chars, deleted, after) = test;
+
+        let mut t = TextArea::from(before.iter().map(|s| s.to_string()));
+        t.move_cursor(CursorMove::Jump(row as _, col as _));
+
+        assert!(t.delete_str(chars), "did not modified: {:?}", test);
+        assert_eq!(t.cursor(), (row, col), "cursor position: {:?}", test);
+        assert_eq!(t.lines(), after, "text buffer content: {:?}", test);
+        assert_eq!(t.yank_text(), deleted, "yanked text: {:?}", test);
     }
 }

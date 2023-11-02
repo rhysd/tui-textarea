@@ -681,17 +681,93 @@ impl<'a> TextArea<'a> {
         true
     }
 
-    /// Delete a string in current cursor line. The `chars` parameter means number of characters, not a byte length of
-    /// the string. This method returns if some text was deleted or not in the textarea.
+    /// Delete a string from the current cursor position. The `chars` parameter means number of characters, not a byte
+    /// length of the string. Newlines at the end of lines are counted in the number. This method returns if some text
+    /// was deleted or not.
     /// ```
-    /// use tui_textarea::TextArea;
+    /// use tui_textarea::{TextArea, CursorMove};
     ///
     /// let mut textarea = TextArea::from(["🐱🐶🐰🐮"]);
+    /// textarea.move_cursor(CursorMove::Forward);
     ///
-    /// textarea.delete_str(1, 2);
+    /// textarea.delete_str(2);
     /// assert_eq!(textarea.lines(), ["🐱🐮"]);
+    ///
+    /// let mut textarea = TextArea::from(["🐱", "🐶", "🐰", "🐮"]);
+    /// textarea.move_cursor(CursorMove::Down);
+    ///
+    /// textarea.delete_str(4); // Deletes 🐶, \n, 🐰, \n
+    /// assert_eq!(textarea.lines(), ["🐱", "🐮"]);
     /// ```
-    pub fn delete_str(&mut self, col: usize, chars: usize) -> bool {
+    pub fn delete_str(&mut self, chars: usize) -> bool {
+        if chars == 0 {
+            return false;
+        }
+
+        let (row, col) = self.cursor;
+
+        let mut remaining = chars;
+        let mut find_end = move |line: &str| {
+            for (i, _) in line.char_indices() {
+                if remaining == 0 {
+                    return Some(i);
+                }
+                remaining -= 1;
+            }
+            if remaining == 0 {
+                Some(line.len())
+            } else {
+                remaining -= 1;
+                None
+            }
+        };
+
+        let line = &self.lines[row];
+        let first_start = {
+            line.char_indices()
+                .nth(col)
+                .map(|(i, _)| i)
+                .unwrap_or(line.len())
+        };
+
+        // First line
+        if let Some(offset) = find_end(&line[first_start..]) {
+            let removed = self.lines[row]
+                .drain(first_start..first_start + offset)
+                .as_str()
+                .to_string();
+            self.yank = removed.clone();
+            self.push_history(EditKind::DeleteStr(removed, first_start), self.cursor);
+            return true;
+        }
+
+        let mut r = row + 1;
+        let mut i = 0;
+
+        while r < self.lines.len() {
+            let line = &self.lines[r];
+            if let Some(offset) = find_end(line) {
+                i = offset;
+                break;
+            }
+            r += 1;
+        }
+
+        let mut deleted = vec![self.lines[row].drain(first_start..).as_str().to_string()];
+        deleted.extend(self.lines.drain(row + 1..r));
+        if row + 1 < self.lines.len() {
+            let mut last_line = self.lines.remove(row + 1);
+            self.lines[row].push_str(&last_line[i..]);
+            last_line.truncate(i);
+            deleted.push(last_line);
+        }
+
+        self.yank = deleted.join("\n"); // TODO
+        self.push_history(EditKind::DeleteChunk(deleted, first_start), self.cursor);
+        true
+    }
+
+    fn delete_piece(&mut self, col: usize, chars: usize) -> bool {
         if chars == 0 {
             return false;
         }
@@ -866,7 +942,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["ab"]);
     /// ```
     pub fn delete_line_by_end(&mut self) -> bool {
-        if self.delete_str(self.cursor.1, usize::MAX) {
+        if self.delete_piece(self.cursor.1, usize::MAX) {
             return true;
         }
         self.delete_next_char() // At the end of the line. Try to delete next line
@@ -887,7 +963,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["cde"]);
     /// ```
     pub fn delete_line_by_head(&mut self) -> bool {
-        if self.delete_str(0, self.cursor.1) {
+        if self.delete_piece(0, self.cursor.1) {
             return true;
         }
         self.delete_newline()
@@ -914,9 +990,9 @@ impl<'a> TextArea<'a> {
     pub fn delete_word(&mut self) -> bool {
         let (r, c) = self.cursor;
         if let Some(col) = find_word_start_backward(&self.lines[r], c) {
-            self.delete_str(col, c - col)
+            self.delete_piece(col, c - col)
         } else if c > 0 {
-            self.delete_str(0, c)
+            self.delete_piece(0, c)
         } else {
             self.delete_newline()
         }
@@ -942,11 +1018,11 @@ impl<'a> TextArea<'a> {
         let (r, c) = self.cursor;
         let line = &self.lines[r];
         if let Some(col) = find_word_end_forward(line, c) {
-            self.delete_str(c, col - c)
+            self.delete_piece(c, col - c)
         } else {
             let end_col = line.chars().count();
             if c < end_col {
-                self.delete_str(c, end_col - c)
+                self.delete_piece(c, end_col - c)
             } else if r + 1 < self.lines.len() {
                 self.cursor = (r + 1, 0);
                 self.delete_newline()
