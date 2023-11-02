@@ -387,6 +387,11 @@ fn test_insert_str_multiple_lines() {
         assert!(t.insert_str(input), "{:?}", test);
         assert_eq!(t.cursor(), after_pos, "{:?}", test);
         assert_eq!(t.lines(), expected, "{:?}", test);
+
+        assert!(t.undo(), "undo: {:?}", test);
+        assert_eq!(t.lines(), before, "content after undo: {:?}", test);
+        let before_pos = (row as _, col as _);
+        assert_eq!(t.cursor(), before_pos, "cursor after undo: {:?}", test);
     }
 }
 
@@ -701,5 +706,9 @@ fn test_delete_str_delete_multiple_lines() {
         assert_eq!(t.cursor(), (row, col), "cursor position: {:?}", test);
         assert_eq!(t.lines(), after, "text buffer content: {:?}", test);
         assert_eq!(t.yank_text(), deleted, "yanked text: {:?}", test);
+
+        assert!(t.undo(), "undo: {:?}", test);
+        assert_eq!(t.lines(), before, "content after undo: {:?}", test);
+        assert_eq!(t.cursor(), (row, col), "cursor after undo: {:?}", test);
     }
 }

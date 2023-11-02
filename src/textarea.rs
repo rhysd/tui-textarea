@@ -763,7 +763,14 @@ impl<'a> TextArea<'a> {
         }
 
         self.yank = deleted.join("\n"); // TODO
-        self.push_history(EditKind::DeleteChunk(deleted, first_start), self.cursor);
+
+        let edit = if deleted.len() == 1 {
+            EditKind::DeleteStr(deleted.remove(0), first_start)
+        } else {
+            EditKind::DeleteChunk(deleted, first_start)
+        };
+        self.push_history(edit, self.cursor);
+
         true
     }
 
