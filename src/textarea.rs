@@ -1080,7 +1080,10 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), [" bbb cccaaa"]);
     /// ```
     pub fn paste(&mut self) -> bool {
-        self.insert_piece(self.yank.to_string())
+        match self.yank.clone() {
+            YankText::Piece(s) => self.insert_piece(s),
+            YankText::Chunk(c) => self.insert_chunk(c),
+        }
     }
 
     /// Move the cursor to the position specified by the [`CursorMove`] parameter. For each kind of cursor moves, see
