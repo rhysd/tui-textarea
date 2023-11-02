@@ -17,6 +17,33 @@ use ratatui::text::Line;
 use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
 
+#[derive(Debug, Clone)]
+enum YankText {
+    Piece(String),
+    Chunk(Vec<String>),
+}
+
+impl Default for YankText {
+    fn default() -> Self {
+        Self::Piece(String::new())
+    }
+}
+
+impl<S: Into<String>> From<S> for YankText {
+    fn from(s: S) -> Self {
+        Self::Piece(s.into())
+    }
+}
+
+impl ToString for YankText {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Piece(s) => s.clone(),
+            Self::Chunk(ss) => ss.join("\n"),
+        }
+    }
+}
+
 /// A type to manage state of textarea.
 ///
 /// [`TextArea::default`] creates an empty textarea. [`TextArea::new`] creates a textarea with given text lines.
@@ -50,7 +77,7 @@ pub struct TextArea<'a> {
     line_number_style: Option<Style>,
     pub(crate) viewport: Viewport,
     cursor_style: Style,
-    yank: String,
+    yank: YankText,
     #[cfg(feature = "search")]
     search: Search,
     alignment: Alignment,
@@ -150,7 +177,7 @@ impl<'a> TextArea<'a> {
             line_number_style: None,
             viewport: Viewport::default(),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
-            yank: String::new(),
+            yank: YankText::default(),
             #[cfg(feature = "search")]
             search: Search::default(),
             alignment: Alignment::Left,
@@ -736,7 +763,7 @@ impl<'a> TextArea<'a> {
                 .drain(first_start..first_start + offset)
                 .as_str()
                 .to_string();
-            self.yank = removed.clone();
+            self.yank = removed.clone().into();
             self.push_history(EditKind::DeleteStr(removed, first_start), self.cursor);
             return true;
         }
@@ -762,7 +789,7 @@ impl<'a> TextArea<'a> {
             deleted.push(last_line);
         }
 
-        self.yank = deleted.join("\n"); // TODO
+        self.yank = YankText::Chunk(deleted.clone());
 
         let edit = if deleted.len() == 1 {
             EditKind::DeleteStr(deleted.remove(0), first_start)
@@ -793,7 +820,7 @@ impl<'a> TextArea<'a> {
 
             self.cursor = (row, col);
             self.push_history(EditKind::DeleteStr(removed.clone(), i), cursor_before);
-            self.yank = removed;
+            self.yank = removed.into();
             true
         } else {
             false
@@ -1597,7 +1624,8 @@ impl<'a> TextArea<'a> {
     }
 
     /// Get the yanked text. Text is automatically yanked when deleting strings by [`TextArea::delete_line_by_head`],
-    /// [`TextArea::delete_line_by_end`], [`TextArea::delete_word`], [`TextArea::delete_next_word`].
+    /// [`TextArea::delete_line_by_end`], [`TextArea::delete_word`], [`TextArea::delete_next_word`],
+    /// [`TextArea::delete_str`].
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -1606,8 +1634,8 @@ impl<'a> TextArea<'a> {
     /// textarea.delete_next_word();
     /// assert_eq!(textarea.yank_text(), "abc");
     /// ```
-    pub fn yank_text(&'a self) -> &'a str {
-        &self.yank
+    pub fn yank_text(&self) -> String {
+        self.yank.to_string()
     }
 
     /// Set a yanked text. The text can be inserted by [`TextArea::paste`]. The string passed to method must not contain
@@ -1622,7 +1650,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["hello, world"]);
     /// ```
     pub fn set_yank_text(&mut self, text: impl Into<String>) {
-        self.yank = text.into();
+        self.yank = text.into().into();
     }
 
     /// Set a regular expression pattern for text search. Setting an empty string stops the text search.

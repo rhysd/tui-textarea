@@ -396,7 +396,7 @@ fn test_insert_str_multiple_lines() {
 }
 
 #[test]
-fn test_delete_str_delete_nothing() {
+fn test_delete_str_nothing() {
     for i in 0..="ab".len() {
         let mut t = TextArea::from(["ab"]);
         assert!(!t.delete_str(0), "{}", i);
@@ -406,7 +406,7 @@ fn test_delete_str_delete_nothing() {
 }
 
 #[test]
-fn test_delete_str_delete_within_line() {
+fn test_delete_str_within_line() {
     for i in 0.."abc".len() {
         for j in 1..="abc".len() - i {
             let mut t = TextArea::from(["abc"]);
@@ -422,7 +422,7 @@ fn test_delete_str_delete_within_line() {
 }
 
 #[test]
-fn test_delete_str_delete_multiple_lines() {
+fn test_delete_str_multiple_lines() {
     #[rustfmt::skip]
     let tests = [
         // Length
