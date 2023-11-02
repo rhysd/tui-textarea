@@ -676,7 +676,7 @@ impl<'a> TextArea<'a> {
             chunk[chunk.len() - 1].chars().count(),
         );
 
-        let edit = EditKind::InsertChunk(chunk, i);
+        let edit = EditKind::InsertChunk(chunk, row, i);
         edit.apply(row, &mut self.lines);
 
         self.push_history(edit, (row, col));
@@ -794,7 +794,7 @@ impl<'a> TextArea<'a> {
         let edit = if deleted.len() == 1 {
             EditKind::DeleteStr(deleted.remove(0), first_start)
         } else {
-            EditKind::DeleteChunk(deleted, first_start)
+            EditKind::DeleteChunk(deleted, row, first_start)
         };
         self.push_history(edit, self.cursor);
 

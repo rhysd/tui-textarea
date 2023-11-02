@@ -8,8 +8,8 @@ pub enum EditKind {
     DeleteNewline(usize),
     InsertStr(String, usize),
     DeleteStr(String, usize),
-    InsertChunk(Vec<String>, usize),
-    DeleteChunk(Vec<String>, usize),
+    InsertChunk(Vec<String>, usize, usize),
+    DeleteChunk(Vec<String>, usize, usize),
 }
 
 impl EditKind {
@@ -40,8 +40,9 @@ impl EditKind {
                 let end = *i + s.len();
                 lines[row].replace_range(*i..end, "");
             }
-            EditKind::InsertChunk(c, i) => {
+            EditKind::InsertChunk(c, row, i) => {
                 debug_assert!(c.len() > 1, "Chunk size must be > 1: {:?}", c);
+                let row = *row;
 
                 // Handle first line of chunk
                 let first_line = &mut lines[row];
@@ -55,8 +56,9 @@ impl EditKind {
                 // Handle last line of chunk
                 lines.splice(row + 1..row + 1, c[1..c.len() - 1].iter().cloned());
             }
-            EditKind::DeleteChunk(c, i) => {
+            EditKind::DeleteChunk(c, row, i) => {
                 debug_assert!(c.len() > 1, "Chunk size must be > 1: {:?}", c);
+                let row = *row;
 
                 lines[row].truncate(*i);
                 let mut last_line = lines.drain(row + 1..row + c.len()).last().unwrap();
@@ -75,8 +77,8 @@ impl EditKind {
             DeleteNewline(i) => InsertNewline(i),
             InsertStr(s, i) => DeleteStr(s, i),
             DeleteStr(s, i) => InsertStr(s, i),
-            InsertChunk(c, i) => DeleteChunk(c, i),
-            DeleteChunk(c, i) => InsertChunk(c, i),
+            InsertChunk(c, r, i) => DeleteChunk(c, r, i),
+            DeleteChunk(c, r, i) => InsertChunk(c, r, i),
         }
     }
 }
@@ -530,7 +532,7 @@ mod tests {
             let mut lines: Vec<_> = before.iter().map(|s| s.to_string()).collect();
             let chunk: Vec<_> = input.iter().map(|s| s.to_string()).collect();
 
-            let edit = EditKind::InsertChunk(chunk.clone(), offset);
+            let edit = EditKind::InsertChunk(chunk.clone(), row, offset);
             edit.apply(row, &mut lines);
             assert_eq!(
                 &lines, expected,
@@ -538,7 +540,7 @@ mod tests {
                 before, pos, input,
             );
 
-            let edit = EditKind::DeleteChunk(chunk, offset);
+            let edit = EditKind::DeleteChunk(chunk, row, offset);
             edit.apply(row, &mut lines);
             assert_eq!(
                 &lines, &before,
