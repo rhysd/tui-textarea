@@ -1,3 +1,3 @@
 [alias]
-watch-check = ["watch", "-x", "clippy --features=search,termwiz --examples --tests", "-x", "clippy --features tuirs-crossterm,search --no-default-features --examples --tests"]
-watch-test = ["watch", "-x", "test --features=search,termwiz", "-w", "src", "-w", "tests"]
+watch-check = ["watch", "--why", "-x", "clippy --features=search,termwiz --examples --tests", "-x", "clippy --features tuirs-crossterm,search --no-default-features --examples --tests"]
+watch-test = ["watch", "--why", "-x", "test --features=search,termwiz", "-w", "src", "-w", "tests"]
