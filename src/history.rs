@@ -185,6 +185,7 @@ mod tests {
     #[test]
     fn insert_delete_chunk() {
         #[rustfmt::skip]
+        #[allow(clippy::identity_op)]
         let tests = [
             // Positions
             (
