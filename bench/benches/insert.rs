@@ -62,6 +62,27 @@ fn random_lorem(repeat: usize) -> usize {
     textarea.lines().len()
 }
 
+#[inline]
+fn append_long_lorem(repeat: usize) -> usize {
+    let mut textarea = TextArea::default();
+    let mut term = dummy_terminal();
+
+    for _ in 0..repeat {
+        for line in LOREM {
+            for c in line.chars() {
+                textarea.input(Input {
+                    key: Key::Char(c),
+                    ctrl: false,
+                    alt: false,
+                });
+                term.draw_textarea(&textarea);
+            }
+        }
+    }
+
+    textarea.lines().len()
+}
+
 fn append(c: &mut Criterion) {
     c.bench_function("insert::append::1_lorem", |b| {
         b.iter(|| black_box(append_lorem(1)))
@@ -86,5 +107,17 @@ fn random(c: &mut Criterion) {
     });
 }
 
-criterion_group!(insert, append, random);
+fn long(c: &mut Criterion) {
+    c.bench_function("insert::long::1_lorem", |b| {
+        b.iter(|| black_box(append_long_lorem(1)))
+    });
+    c.bench_function("insert::long::5_lorem", |b| {
+        b.iter(|| black_box(append_long_lorem(5)))
+    });
+    c.bench_function("insert::long::10_lorem", |b| {
+        b.iter(|| black_box(append_long_lorem(10)))
+    });
+}
+
+criterion_group!(insert, append, random, long);
 criterion_main!(insert);
