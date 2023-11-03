@@ -41,7 +41,7 @@ impl Default for DummyBackend {
 
 impl Backend for DummyBackend {
     #[inline]
-    fn draw<'a, I>(&mut self, _content: I) -> Result<(), io::Error>
+    fn draw<'a, I>(&mut self, _content: I) -> io::Result<()>
     where
         I: Iterator<Item = (u16, u16, &'a Cell)>,
     {
@@ -49,33 +49,33 @@ impl Backend for DummyBackend {
     }
 
     #[inline]
-    fn hide_cursor(&mut self) -> Result<(), io::Error> {
+    fn hide_cursor(&mut self) -> io::Result<()> {
         Ok(())
     }
 
     #[inline]
-    fn show_cursor(&mut self) -> Result<(), io::Error> {
+    fn show_cursor(&mut self) -> io::Result<()> {
         Ok(())
     }
 
     #[inline]
-    fn get_cursor(&mut self) -> Result<(u16, u16), io::Error> {
+    fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
         Ok(self.cursor)
     }
 
     #[inline]
-    fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
+    fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {
         self.cursor = (x, y);
         Ok(())
     }
 
     #[inline]
-    fn clear(&mut self) -> Result<(), io::Error> {
+    fn clear(&mut self) -> io::Result<()> {
         Ok(())
     }
 
     #[inline]
-    fn size(&self) -> Result<Rect, io::Error> {
+    fn size(&self) -> io::Result<Rect> {
         Ok(Rect {
             x: 0,
             y: 0,
@@ -85,7 +85,7 @@ impl Backend for DummyBackend {
     }
 
     #[inline]
-    fn window_size(&mut self) -> Result<WindowSize, io::Error> {
+    fn window_size(&mut self) -> io::Result<WindowSize> {
         Ok(WindowSize {
             columns_rows: Size {
                 width: self.width,
@@ -99,7 +99,7 @@ impl Backend for DummyBackend {
     }
 
     #[inline]
-    fn flush(&mut self) -> Result<(), io::Error> {
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }

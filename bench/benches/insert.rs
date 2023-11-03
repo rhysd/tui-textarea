@@ -107,6 +107,7 @@ fn random(c: &mut Criterion) {
     });
 }
 
+// Inserting a long line is slower than multiple short lines into `TextArea`
 fn long(c: &mut Criterion) {
     c.bench_function("insert::long::1_lorem", |b| {
         b.iter(|| black_box(append_long_lorem(1)))
