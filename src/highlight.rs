@@ -169,12 +169,11 @@ impl<'a> LineHighlighter<'a> {
             o => o,
         });
 
-        let mut boundaries = boundaries.into_iter();
         let mut style = style_begin;
         let mut start = 0;
         let mut stack = vec![];
 
-        while let Some((next_boundary, end)) = boundaries.next() {
+        for (next_boundary, end) in boundaries {
             if start < end {
                 spans.push(Span::styled(builder.build(&line[start..end]), style));
             }
