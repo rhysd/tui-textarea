@@ -57,7 +57,7 @@ impl DisplayTextBuilder {
 
     fn build<'s>(&mut self, s: &'s str) -> Cow<'s, str> {
         if let Some(ch) = self.mask {
-            // No tab character processing in the mask case
+            // Note: We don't need to track width on masking text since width of tab character is fixed
             let masked = iter::repeat(ch).take(s.chars().count()).collect();
             return Cow::Owned(masked);
         }
@@ -200,17 +200,20 @@ impl<'a> LineHighlighter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use unicode_width::UnicodeWidthStr as _;
 
-    #[track_caller]
     fn build(text: &'static str, tab: u8, mask: Option<char>) -> Cow<'static, str> {
         DisplayTextBuilder::new(tab, mask).build(text)
     }
 
     #[track_caller]
-    fn build_with_offset(offset: usize, text: &'static str, tab: u8) -> (Cow<'static, str>, usize) {
+    fn build_with_offset(offset: usize, text: &'static str, tab: u8) -> Cow<'static, str> {
         let mut b = DisplayTextBuilder::new(tab, None);
         b.width = offset;
-        (b.build(text), b.width)
+        let built = b.build(text);
+        let want = offset + built.as_ref().width();
+        assert_eq!(b.width, want, "in={:?}, out={:?}", text, built); // Check post condition
+        built
     }
 
     #[test]
@@ -268,26 +271,26 @@ mod tests {
         assert_eq!(&build(  "あ\t",  4, Some('x')),                "xx");
 
         // When the start position of the text is not start of the line (#43)
-        assert_eq!(build_with_offset(1,         "", 0), (          "".into(), 1));
-        assert_eq!(build_with_offset(1,        "a", 0), (         "a".into(), 2));
-        assert_eq!(build_with_offset(1,       "あ", 0), (        "あ".into(), 3));
-        assert_eq!(build_with_offset(1,       "\t", 4), (       "   ".into(), 4));
-        assert_eq!(build_with_offset(1,      "a\t", 4), (       "a  ".into(), 4));
-        assert_eq!(build_with_offset(1,     "あ\t", 4), (       "あ ".into(), 4));
-        assert_eq!(build_with_offset(2,       "\t", 4), (        "  ".into(), 4));
-        assert_eq!(build_with_offset(2,      "a\t", 4), (        "a ".into(), 4));
-        assert_eq!(build_with_offset(2,     "あ\t", 4), (    "あ    ".into(), 8));
-        assert_eq!(build_with_offset(3,      "a\t", 4), (     "a    ".into(), 8));
-        assert_eq!(build_with_offset(4,       "\t", 4), (      "    ".into(), 8));
-        assert_eq!(build_with_offset(4,      "a\t", 4), (      "a   ".into(), 8));
-        assert_eq!(build_with_offset(4,     "あ\t", 4), (      "あ  ".into(), 8));
-        assert_eq!(build_with_offset(5,       "\t", 4), (       "   ".into(), 8));
-        assert_eq!(build_with_offset(5,      "a\t", 4), (       "a  ".into(), 8));
-        assert_eq!(build_with_offset(5,     "あ\t", 4), (       "あ ".into(), 8));
-        assert_eq!(build_with_offset(2,     "\t\t", 4), (    "      ".into(), 8));
-        assert_eq!(build_with_offset(2,   "a\ta\t", 4), (    "a a   ".into(), 8));
-        assert_eq!(build_with_offset(1, "あ\tあ\t", 4), (   "あ あ  ".into(), 8));
-        assert_eq!(build_with_offset(2, "あ\tあ\t", 4), ("あ    あ  ".into(), 12));
+        assert_eq!(&build_with_offset(1,         "", 0),           "");
+        assert_eq!(&build_with_offset(1,        "a", 0),          "a");
+        assert_eq!(&build_with_offset(1,       "あ", 0),         "あ");
+        assert_eq!(&build_with_offset(1,       "\t", 4),        "   ");
+        assert_eq!(&build_with_offset(1,      "a\t", 4),        "a  ");
+        assert_eq!(&build_with_offset(1,     "あ\t", 4),        "あ ");
+        assert_eq!(&build_with_offset(2,       "\t", 4),         "  ");
+        assert_eq!(&build_with_offset(2,      "a\t", 4),         "a ");
+        assert_eq!(&build_with_offset(2,     "あ\t", 4),     "あ    ");
+        assert_eq!(&build_with_offset(3,      "a\t", 4),      "a    ");
+        assert_eq!(&build_with_offset(4,       "\t", 4),       "    ");
+        assert_eq!(&build_with_offset(4,      "a\t", 4),       "a   ");
+        assert_eq!(&build_with_offset(4,     "あ\t", 4),       "あ  ");
+        assert_eq!(&build_with_offset(5,       "\t", 4),        "   ");
+        assert_eq!(&build_with_offset(5,      "a\t", 4),        "a  ");
+        assert_eq!(&build_with_offset(5,     "あ\t", 4),        "あ ");
+        assert_eq!(&build_with_offset(2,     "\t\t", 4),     "      ");
+        assert_eq!(&build_with_offset(2,   "a\ta\t", 4),     "a a   ");
+        assert_eq!(&build_with_offset(1, "あ\tあ\t", 4),    "あ あ  ");
+        assert_eq!(&build_with_offset(2, "あ\tあ\t", 4), "あ    あ  ");
     }
 
     // TODO: Add tests for LineHighlighter
