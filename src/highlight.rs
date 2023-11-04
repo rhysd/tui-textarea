@@ -40,44 +40,54 @@ impl Boundary {
     }
 }
 
-fn display_text(
-    s: &str,
+struct DisplayTextBuilder {
     tab_len: u8,
-    mut width: usize,
+    width: usize,
     mask: Option<char>,
-) -> (Cow<'_, str>, usize) {
-    if let Some(ch) = mask {
-        // No tab character processing in the mask case
-        let chars = s.chars().count();
-        let masked = iter::repeat(ch).take(chars).collect();
-        return (Cow::Owned(masked), width - ch.width().unwrap_or(0) * chars);
-    }
+}
 
-    let tab = spaces(tab_len);
-    let mut buf = String::new();
-    for (i, c) in s.char_indices() {
-        if c == '\t' {
-            if buf.is_empty() {
-                buf.reserve(s.len());
-                buf.push_str(&s[..i]);
-            }
-            if tab_len > 0 {
-                let len = tab_len as usize - (width % tab_len as usize);
-                buf.push_str(&tab[..len]);
-                width += len;
-            }
-        } else {
-            if !buf.is_empty() {
-                buf.push(c);
-            }
-            width += c.width().unwrap_or(0);
+impl DisplayTextBuilder {
+    fn new(tab_len: u8, mask: Option<char>) -> Self {
+        Self {
+            tab_len,
+            width: 0,
+            mask,
         }
     }
 
-    if !buf.is_empty() {
-        (Cow::Owned(buf), width)
-    } else {
-        (Cow::Borrowed(s), width)
+    fn build<'s>(&mut self, s: &'s str) -> Cow<'s, str> {
+        if let Some(ch) = self.mask {
+            // No tab character processing in the mask case
+            let masked = iter::repeat(ch).take(s.chars().count()).collect();
+            return Cow::Owned(masked);
+        }
+
+        let tab = spaces(self.tab_len);
+        let mut buf = String::new();
+        for (i, c) in s.char_indices() {
+            if c == '\t' {
+                if buf.is_empty() {
+                    buf.reserve(s.len());
+                    buf.push_str(&s[..i]);
+                }
+                if self.tab_len > 0 {
+                    let len = self.tab_len as usize - (self.width % self.tab_len as usize);
+                    buf.push_str(&tab[..len]);
+                    self.width += len;
+                }
+            } else {
+                if !buf.is_empty() {
+                    buf.push(c);
+                }
+                self.width += c.width().unwrap_or(0);
+            }
+        }
+
+        if !buf.is_empty() {
+            Cow::Owned(buf)
+        } else {
+            Cow::Borrowed(s)
+        }
     }
 }
 
@@ -144,10 +154,10 @@ impl<'a> LineHighlighter<'a> {
             cursor_at_end,
             mask,
         } = self;
+        let mut builder = DisplayTextBuilder::new(tab_len, mask);
 
         if boundaries.is_empty() {
-            let (text, _) = display_text(line, tab_len, 0, mask);
-            spans.push(Span::styled(text, style_begin));
+            spans.push(Span::styled(builder.build(line), style_begin));
             if cursor_at_end {
                 spans.push(Span::styled(" ", cursor_style));
             }
@@ -163,34 +173,28 @@ impl<'a> LineHighlighter<'a> {
         let mut style = style_begin;
         let mut start = 0;
         let mut stack = vec![];
-        let mut width = 0;
 
-        loop {
-            if let Some((next_boundary, end)) = boundaries.next() {
-                if start < end {
-                    let (text, w) = display_text(&line[start..end], tab_len, width, mask);
-                    spans.push(Span::styled(text, style));
-                    width = w;
-                }
-
-                style = if let Some(s) = next_boundary.style() {
-                    stack.push(style);
-                    s
-                } else {
-                    stack.pop().unwrap_or(style_begin)
-                };
-                start = end;
-            } else {
-                if start != line.len() {
-                    let (text, _) = display_text(&line[start..], tab_len, width, mask);
-                    spans.push(Span::styled(text, style));
-                }
-                if cursor_at_end {
-                    spans.push(Span::styled(" ", cursor_style));
-                }
-                return Line::from(spans);
+        while let Some((next_boundary, end)) = boundaries.next() {
+            if start < end {
+                spans.push(Span::styled(builder.build(&line[start..end]), style));
             }
+
+            style = if let Some(s) = next_boundary.style() {
+                stack.push(style);
+                s
+            } else {
+                stack.pop().unwrap_or(style_begin)
+            };
+            start = end;
         }
+
+        if start != line.len() {
+            spans.push(Span::styled(builder.build(&line[start..]), style));
+        }
+        if cursor_at_end {
+            spans.push(Span::styled(" ", cursor_style));
+        }
+        Line::from(spans)
     }
 }
 
@@ -198,52 +202,94 @@ impl<'a> LineHighlighter<'a> {
 mod tests {
     use super::*;
 
+    #[track_caller]
+    fn build(text: &'static str, tab: u8, mask: Option<char>) -> Cow<'static, str> {
+        DisplayTextBuilder::new(tab, mask).build(text)
+    }
+
+    #[track_caller]
+    fn build_with_offset(offset: usize, text: &'static str, tab: u8) -> (Cow<'static, str>, usize) {
+        let mut b = DisplayTextBuilder::new(tab, None);
+        b.width = offset;
+        (b.build(text), b.width)
+    }
+
     #[test]
     #[rustfmt::skip]
     fn test_line_display_text() {
-        assert_eq!(display_text(      "", 0, 0,      None), (Cow::Borrowed(                 ""), 0));
-        assert_eq!(display_text(      "", 4, 0,      None), (Cow::Borrowed(                 ""), 0));
-        assert_eq!(display_text(      "", 8, 0,      None), (Cow::Borrowed(                 ""), 0));
-        assert_eq!(display_text(      "", 0, 0, Some('x')), (Cow::Borrowed(                 ""), 0));
-        assert_eq!(display_text(      "", 4, 0, Some('x')), (Cow::Borrowed(                 ""), 0));
-        assert_eq!(display_text(      "", 8, 0, Some('x')), (Cow::Borrowed(                 ""), 0));
-        assert_eq!(display_text(     "a", 0, 0,      None), (Cow::Borrowed(                "a"), 0));
-        assert_eq!(display_text(     "a", 4, 0,      None), (Cow::Borrowed(                "a"), 0));
-        assert_eq!(display_text(     "a", 8, 0,      None), (Cow::Borrowed(                "a"), 0));
-        assert_eq!(display_text(     "a", 0, 0, Some('x')), (Cow::Borrowed(                "x"), 0));
-        assert_eq!(display_text(     "a", 4, 0, Some('x')), (Cow::Borrowed(                "x"), 0));
-        assert_eq!(display_text(     "a", 8, 0, Some('x')), (Cow::Borrowed(                "x"), 0));
-        assert_eq!(display_text(   "a\t", 0, 0,      None), (Cow::Borrowed(                "a"), 0));
-        assert_eq!(display_text(   "a\t", 4, 0,      None), (Cow::Borrowed(             "a   "), 0));
-        assert_eq!(display_text(   "a\t", 8, 0,      None), (Cow::Borrowed(         "a       "), 0));
-        assert_eq!(display_text(   "a\t", 0, 0, Some('x')), (Cow::Borrowed(               "xx"), 0));
-        assert_eq!(display_text(   "a\t", 4, 0, Some('x')), (Cow::Borrowed(               "xx"), 0));
-        assert_eq!(display_text(   "a\t", 8, 0, Some('x')), (Cow::Borrowed(               "xx"), 0));
-        assert_eq!(display_text(    "\t", 0, 0,      None), (Cow::Borrowed(               "\t"), 0));
-        assert_eq!(display_text(    "\t", 4, 0,      None), (Cow::Borrowed(             "    "), 0));
-        assert_eq!(display_text(    "\t", 8, 0,      None), (Cow::Borrowed(         "        "), 0));
-        assert_eq!(display_text(    "\t", 0, 0, Some('x')), (Cow::Borrowed(                "x"), 0));
-        assert_eq!(display_text(    "\t", 4, 0, Some('x')), (Cow::Borrowed(                "x"), 0));
-        assert_eq!(display_text(    "\t", 8, 0, Some('x')), (Cow::Borrowed(                "x"), 0));
-        assert_eq!(display_text(  "a\tb", 0, 0,      None), (Cow::Borrowed(               "ab"), 0));
-        assert_eq!(display_text(  "a\tb", 4, 0,      None), (Cow::Borrowed(            "a   b"), 0));
-        assert_eq!(display_text(  "a\tb", 8, 0,      None), (Cow::Borrowed(        "a       b"), 0));
-        assert_eq!(display_text(  "a\tb", 0, 0, Some('x')), (Cow::Borrowed(              "xxx"), 0));
-        assert_eq!(display_text(  "a\tb", 4, 0, Some('x')), (Cow::Borrowed(              "xxx"), 0));
-        assert_eq!(display_text(  "a\tb", 8, 0, Some('x')), (Cow::Borrowed(              "xxx"), 0));
-        assert_eq!(display_text("a\t\tb", 0, 0,      None), (Cow::Borrowed(               "ab"), 0));
-        assert_eq!(display_text("a\t\tb", 4, 0,      None), (Cow::Borrowed(        "a       b"), 0));
-        assert_eq!(display_text("a\t\tb", 8, 0,      None), (Cow::Borrowed("a               b"), 0));
-        assert_eq!(display_text("a\t\tb", 0, 0, Some('x')), (Cow::Borrowed(             "xxxx"), 0));
-        assert_eq!(display_text("a\t\tb", 4, 0, Some('x')), (Cow::Borrowed(             "xxxx"), 0));
-        assert_eq!(display_text("a\t\tb", 8, 0, Some('x')), (Cow::Borrowed(             "xxxx"), 0));
-        assert_eq!(display_text("ab\t\t", 0, 0,      None), (Cow::Borrowed(               "ab"), 0));
-        assert_eq!(display_text("ab\t\t", 4, 0,      None), (Cow::Borrowed(         "ab      "), 0));
-        assert_eq!(display_text("ab\t\t", 8, 0,      None), (Cow::Borrowed( "ab              "), 0));
-        assert_eq!(display_text("abcd\t", 4, 0,      None), (Cow::Borrowed(         "abcd    "), 0));
-        assert_eq!(display_text(  "あ\t", 0, 0,      None), (Cow::Borrowed(               "あ"), 0));
-        assert_eq!(display_text(  "あ\t", 4, 0,      None), (Cow::Borrowed(             "あ  "), 0));
-        assert_eq!(display_text(  "🐶\t", 4, 0,      None), (Cow::Borrowed(             "🐶  "), 0));
-        assert_eq!(display_text(  "あ\t", 4, 0, Some('x')), (Cow::Borrowed(               "xx"), 0));
+        assert_eq!(&build(      "",  0,      None),                  "");
+        assert_eq!(&build(      "",  4,      None),                  "");
+        assert_eq!(&build(      "",  8,      None),                  "");
+        assert_eq!(&build(      "",  0, Some('x')),                  "");
+        assert_eq!(&build(      "",  4, Some('x')),                  "");
+        assert_eq!(&build(      "",  8, Some('x')),                  "");
+        assert_eq!(&build(     "a",  0,      None),                 "a");
+        assert_eq!(&build(     "a",  4,      None),                 "a");
+        assert_eq!(&build(     "a",  8,      None),                 "a");
+        assert_eq!(&build(     "a",  0, Some('x')),                 "x");
+        assert_eq!(&build(     "a",  4, Some('x')),                 "x");
+        assert_eq!(&build(     "a",  8, Some('x')),                 "x");
+        assert_eq!(&build(   "a\t",  0,      None),                 "a");
+        assert_eq!(&build(   "a\t",  4,      None),              "a   ");
+        assert_eq!(&build(   "a\t",  8,      None),          "a       ");
+        assert_eq!(&build(   "a\t",  0, Some('x')),                "xx");
+        assert_eq!(&build(   "a\t",  4, Some('x')),                "xx");
+        assert_eq!(&build(   "a\t",  8, Some('x')),                "xx");
+        assert_eq!(&build(    "\t",  0,      None),                "\t");
+        assert_eq!(&build(    "\t",  4,      None),              "    ");
+        assert_eq!(&build(    "\t",  8,      None),          "        ");
+        assert_eq!(&build(    "\t",  0, Some('x')),                 "x");
+        assert_eq!(&build(    "\t",  4, Some('x')),                 "x");
+        assert_eq!(&build(    "\t",  8, Some('x')),                 "x");
+        assert_eq!(&build(  "a\tb",  0,      None),                "ab");
+        assert_eq!(&build(  "a\tb",  4,      None),             "a   b");
+        assert_eq!(&build(  "a\tb",  8,      None),         "a       b");
+        assert_eq!(&build(  "a\tb",  0, Some('x')),               "xxx");
+        assert_eq!(&build(  "a\tb",  4, Some('x')),               "xxx");
+        assert_eq!(&build(  "a\tb",  8, Some('x')),               "xxx");
+        assert_eq!(&build("a\t\tb",  0,      None),                "ab");
+        assert_eq!(&build("a\t\tb",  4,      None),         "a       b");
+        assert_eq!(&build("a\t\tb",  8,      None), "a               b");
+        assert_eq!(&build("a\t\tb",  0, Some('x')),              "xxxx");
+        assert_eq!(&build("a\t\tb",  4, Some('x')),              "xxxx");
+        assert_eq!(&build("a\t\tb",  8, Some('x')),              "xxxx");
+        assert_eq!(&build("a\tb\tc", 0,      None),               "abc");
+        assert_eq!(&build("a\tb\tc", 4,      None),         "a   b   c");
+        assert_eq!(&build("a\tb\tc", 8,      None), "a       b       c");
+        assert_eq!(&build("a\tb\tc", 0, Some('x')),             "xxxxx");
+        assert_eq!(&build("a\tb\tc", 4, Some('x')),             "xxxxx");
+        assert_eq!(&build("a\tb\tc", 8, Some('x')),             "xxxxx");
+        assert_eq!(&build("ab\t\t",  0,      None),                "ab");
+        assert_eq!(&build("ab\t\t",  4,      None),          "ab      ");
+        assert_eq!(&build("ab\t\t",  8,      None),  "ab              ");
+        assert_eq!(&build("abcd\t",  4,      None),          "abcd    ");
+        assert_eq!(&build(  "あ\t",  0,      None),                "あ");
+        assert_eq!(&build(  "あ\t",  4,      None),              "あ  ");
+        assert_eq!(&build(  "🐶\t",  4,      None),              "🐶  ");
+        assert_eq!(&build(  "あ\t",  4, Some('x')),                "xx");
+
+        // When the start position of the text is not start of the line (#43)
+        assert_eq!(build_with_offset(1,         "", 0), (          "".into(), 1));
+        assert_eq!(build_with_offset(1,        "a", 0), (         "a".into(), 2));
+        assert_eq!(build_with_offset(1,       "あ", 0), (        "あ".into(), 3));
+        assert_eq!(build_with_offset(1,       "\t", 4), (       "   ".into(), 4));
+        assert_eq!(build_with_offset(1,      "a\t", 4), (       "a  ".into(), 4));
+        assert_eq!(build_with_offset(1,     "あ\t", 4), (       "あ ".into(), 4));
+        assert_eq!(build_with_offset(2,       "\t", 4), (        "  ".into(), 4));
+        assert_eq!(build_with_offset(2,      "a\t", 4), (        "a ".into(), 4));
+        assert_eq!(build_with_offset(2,     "あ\t", 4), (    "あ    ".into(), 8));
+        assert_eq!(build_with_offset(3,      "a\t", 4), (     "a    ".into(), 8));
+        assert_eq!(build_with_offset(4,       "\t", 4), (      "    ".into(), 8));
+        assert_eq!(build_with_offset(4,      "a\t", 4), (      "a   ".into(), 8));
+        assert_eq!(build_with_offset(4,     "あ\t", 4), (      "あ  ".into(), 8));
+        assert_eq!(build_with_offset(5,       "\t", 4), (       "   ".into(), 8));
+        assert_eq!(build_with_offset(5,      "a\t", 4), (       "a  ".into(), 8));
+        assert_eq!(build_with_offset(5,     "あ\t", 4), (       "あ ".into(), 8));
+        assert_eq!(build_with_offset(2,     "\t\t", 4), (    "      ".into(), 8));
+        assert_eq!(build_with_offset(2,   "a\ta\t", 4), (    "a a   ".into(), 8));
+        assert_eq!(build_with_offset(1, "あ\tあ\t", 4), (   "あ あ  ".into(), 8));
+        assert_eq!(build_with_offset(2, "あ\tあ\t", 4), ("あ    あ  ".into(), 12));
     }
+
+    // TODO: Add tests for LineHighlighter
 }
