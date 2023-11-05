@@ -886,7 +886,12 @@ impl<'a> TextArea<'a> {
             vec![self.lines[row][first_start..].to_string()]
         };
 
-        deleted.extend(self.lines.drain(row + 1..r));
+        if delete {
+            deleted.extend(self.lines.drain(row + 1..r));
+        } else {
+            deleted.extend(self.lines[row + 1..r].iter().map(|s| s.to_string()));
+        }
+
         if row + 1 < self.lines.len() {
             let mut last_line = if delete {
                 let ll = self.lines.remove(row + 1);
