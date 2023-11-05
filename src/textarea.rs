@@ -862,7 +862,9 @@ impl<'a> TextArea<'a> {
             if yank {
                 self.yank = removed.clone().into();
             };
-            self.push_history(EditKind::DeleteStr(removed, first_start), self.cursor);
+            if delete {
+                self.push_history(EditKind::DeleteStr(removed, first_start), self.cursor);
+            }
             return true;
         };
 
@@ -900,13 +902,14 @@ impl<'a> TextArea<'a> {
         if yank {
             self.yank = YankText::Chunk(deleted.clone());
         };
-
-        let edit = if deleted.len() == 1 {
-            EditKind::DeleteStr(deleted.remove(0), first_start)
-        } else {
-            EditKind::DeleteChunk(deleted, row, first_start)
-        };
-        self.push_history(edit, self.cursor);
+        if delete {
+            let edit = if deleted.len() == 1 {
+                EditKind::DeleteStr(deleted.remove(0), first_start)
+            } else {
+                EditKind::DeleteChunk(deleted, row, first_start)
+            };
+            self.push_history(edit, self.cursor);
+        }
 
         true
     }
