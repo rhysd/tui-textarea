@@ -17,6 +17,7 @@ impl From<KeyEvent> for Input {
     fn from(key: KeyEvent) -> Self {
         let mut ctrl = false;
         let mut alt = false;
+        let shift = false;
         let key = match key {
             KeyEvent::Char('\n' | '\r') => Key::Enter,
             KeyEvent::Char(c) => Key::Char(c),
@@ -44,7 +45,12 @@ impl From<KeyEvent> for Input {
             _ => Key::Null,
         };
 
-        Input { key, ctrl, alt }
+        Input {
+            key,
+            ctrl,
+            alt,
+            shift,
+        }
     }
 }
 
@@ -71,6 +77,7 @@ impl From<MouseEvent> for Input {
             key,
             ctrl: false,
             alt: false,
+            shift: false,
         }
     }
 }

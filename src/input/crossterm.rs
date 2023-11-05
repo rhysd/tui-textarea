@@ -49,9 +49,15 @@ impl From<KeyEvent> for Input {
 
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         let alt = key.modifiers.contains(KeyModifiers::ALT);
+        let shift = key.modifiers.contains(KeyModifiers::SHIFT);
         let key = Key::from(key.code);
 
-        Self { key, ctrl, alt }
+        Self {
+            key,
+            ctrl,
+            alt,
+            shift,
+        }
     }
 }
 
@@ -72,7 +78,14 @@ impl From<MouseEvent> for Input {
         let key = Key::from(mouse.kind);
         let ctrl = mouse.modifiers.contains(KeyModifiers::CONTROL);
         let alt = mouse.modifiers.contains(KeyModifiers::ALT);
-        Self { key, ctrl, alt }
+        let shift = mouse.modifiers.contains(KeyModifiers::SHIFT);
+
+        Self {
+            key,
+            ctrl,
+            alt,
+            shift,
+        }
     }
 }
 

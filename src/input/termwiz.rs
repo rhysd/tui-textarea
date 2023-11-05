@@ -46,8 +46,13 @@ impl From<KeyEvent> for Input {
         let key = Key::from(key);
         let ctrl = modifiers.contains(Modifiers::CTRL);
         let alt = modifiers.contains(Modifiers::ALT);
-
-        Self { key, ctrl, alt }
+        let shift = modifiers.contains(Modifiers::SHIFT);
+        Self {
+            key,
+            ctrl,
+            alt,
+            shift,
+        }
     }
 }
 
@@ -77,8 +82,13 @@ impl From<MouseEvent> for Input {
         let key = Key::from(mouse_buttons);
         let ctrl = modifiers.contains(Modifiers::CTRL);
         let alt = modifiers.contains(Modifiers::ALT);
-
-        Self { key, ctrl, alt }
+        let shift = modifiers.contains(Modifiers::SHIFT);
+        Self {
+            key,
+            ctrl,
+            alt,
+            shift,
+        }
     }
 }
 
@@ -94,8 +104,13 @@ impl From<PixelMouseEvent> for Input {
         let key = Key::from(mouse_buttons);
         let ctrl = modifiers.contains(Modifiers::CTRL);
         let alt = modifiers.contains(Modifiers::ALT);
-
-        Self { key, ctrl, alt }
+        let shift = modifiers.contains(Modifiers::SHIFT);
+        Self {
+            key,
+            ctrl,
+            alt,
+            shift,
+        }
     }
 }
 
