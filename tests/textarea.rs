@@ -798,3 +798,365 @@ fn test_delete_str_multiple_lines() {
         assert_eq!(t.cursor(), (row, col), "cursor after undo: {:?}", test);
     }
 }
+
+//
+//            selection tests
+//
+
+use tui_textarea::{Input, Key};
+
+fn make_input(k: (Key, bool, bool, bool)) -> Input {
+    Input {
+        key: k.0,
+        ctrl: k.1,
+        alt: k.2,
+        shift: k.3,
+    }
+}
+fn input_key(textarea: &mut TextArea, k: (Key, bool, bool, bool)) {
+    textarea.input(make_input(k));
+}
+fn clear(ta: &mut TextArea) {
+    start(ta);
+    ta.delete_str(usize::MAX);
+}
+
+fn start(ta: &mut TextArea) {
+    input_key(ta, (Key::Up, true, true, false));
+    input_key(ta, (Key::Home, false, false, false));
+}
+
+#[test]
+fn select_copy() {
+    let mut textarea = TextArea::default();
+    for test in [
+        // plain ascii
+        (
+            "hello world",
+            vec![
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, true),
+                (Key::Right, false, false, true),
+            ],
+            "he",
+        ),
+        // plain ascii backwards
+        (
+            "hello world",
+            vec![
+                (Key::End, false, false, false),
+                (Key::Left, false, false, true),
+                (Key::Left, false, false, true),
+            ],
+            "ld",
+        ),
+        // utf8
+        (
+            "あい",
+            vec![
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, true),
+            ],
+            "あ",
+        ),
+        // multi line - all
+        (
+            "hello\nworld",
+            vec![
+                (Key::Char('P'), true, true, false),
+                (Key::Home, false, false, false),
+                (Key::Char('N'), true, true, true),
+                (Key::End, false, false, true),
+            ],
+            "hello\nworld",
+        ),
+        // multi line - some
+        (
+            "hello\nworld",
+            vec![
+                (Key::Char('P'), true, true, false),
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, false),
+                (Key::Char('N'), true, true, true),
+                (Key::End, false, false, true),
+                (Key::Left, false, false, true),
+            ],
+            "ello\nworl",
+        ),
+        // multi - line utf8
+        (
+            "あい\nうえ",
+            vec![
+                (Key::Char('P'), true, true, false),
+                (Key::Home, false, false, false),
+                (Key::Char('N'), true, true, true),
+                (Key::End, false, false, true),
+            ],
+            "あい\nうえ",
+        ),
+        // multi-line utf8 - some
+        (
+            "あい\nうえ",
+            vec![
+                (Key::Char('P'), true, true, false),
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, false),
+                (Key::Char('N'), true, true, true),
+                (Key::End, false, false, true),
+                (Key::Left, false, false, true),
+            ],
+            "い\nう",
+        ),
+    ] {
+        clear(&mut textarea);
+        textarea.insert_str(test.0);
+        for k in test.1 {
+            input_key(&mut textarea, k);
+        }
+        textarea.copy();
+        assert_eq!(textarea.yank_text(), test.2);
+    }
+}
+#[test]
+fn select_cut() {
+    let mut textarea = TextArea::default();
+    for test in [
+        // plain ascii
+        (
+            "hello world",
+            vec![
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, true),
+                (Key::Right, false, false, true),
+            ],
+            "he",
+            "llo world",
+        ),
+        // plain ascii backwards
+        (
+            "hello world",
+            vec![
+                (Key::End, false, false, false),
+                (Key::Left, false, false, true),
+                (Key::Left, false, false, true),
+            ],
+            "ld",
+            "hello wor",
+        ),
+        // utf8
+        (
+            "あい",
+            vec![
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, true),
+            ],
+            "あ",
+            "い",
+        ),
+        // multi line - all
+        (
+            "hello\nworld",
+            vec![
+                (Key::Char('P'), true, true, false),
+                (Key::Home, false, false, false),
+                (Key::Char('N'), true, true, true),
+                (Key::End, false, false, true),
+            ],
+            "hello\nworld",
+            "",
+        ),
+        // multi line - some
+        (
+            "hello\nworld",
+            vec![
+                (Key::Char('P'), true, true, false),
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, false),
+                (Key::Char('N'), true, true, true),
+                (Key::End, false, false, true),
+                (Key::Left, false, false, true),
+            ],
+            "ello\nworl",
+            "hd",
+        ),
+        // multi - line utf8
+        (
+            "あい\nうえ",
+            vec![
+                (Key::Char('P'), true, true, false),
+                (Key::Home, false, false, false),
+                (Key::Char('N'), true, true, true),
+                (Key::End, false, false, true),
+            ],
+            "あい\nうえ",
+            "",
+        ),
+        // multi-line utf8 - some
+        (
+            "あい\nうえ",
+            vec![
+                (Key::Char('P'), true, true, false),
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, false),
+                (Key::Char('N'), true, true, true),
+                (Key::End, false, false, true),
+                (Key::Left, false, false, true),
+            ],
+            "い\nう",
+            "あえ",
+        ),
+    ] {
+        clear(&mut textarea);
+        textarea.insert_str(test.0);
+        for k in test.1 {
+            input_key(&mut textarea, k);
+        }
+        textarea.cut();
+        assert_eq!(textarea.yank_text(), test.2);
+        assert_eq!(textarea.lines().join("\n"), test.3);
+    }
+}
+
+#[test]
+fn select_paste() {
+    let mut textarea = TextArea::default();
+    for test in [
+        // plain ascii
+        (
+            "hello world",
+            vec![
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, true),
+                (Key::Right, false, false, true),
+                (Key::Char('c'), true, false, false),
+                (Key::End, false, false, false),
+                (Key::Char('y'), true, false, false),
+            ],
+            "he",
+            "hello worldhe",
+        ),
+        (
+            "hello world",
+            vec![
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, true),
+                (Key::Right, false, false, true),
+                (Key::Char('c'), true, false, false),
+                (Key::End, false, false, false),
+                (Key::Left, false, false, true),
+                (Key::Left, false, false, true),
+                (Key::Char('y'), true, false, false),
+            ],
+            "he",
+            "hello worhe",
+        ),
+        (
+            "hello\nworld",
+            vec![
+                (Key::Home, false, false, false),
+                (Key::Right, false, false, false),
+                (Key::Right, false, false, false),
+                (Key::Down, false, false, true),
+                (Key::Char('c'), true, false, false),
+                (Key::End, false, false, false),
+                (Key::Enter, false, false, false),
+                (Key::Char('y'), true, false, false),
+            ],
+            "llo\nwo",
+            "hello\nworld\nllo\nwo",
+        ),
+    ] {
+        clear(&mut textarea);
+        textarea.insert_str(test.0);
+        start(&mut textarea);
+        for k in test.1 {
+            input_key(&mut textarea, k);
+        }
+        assert_eq!(textarea.yank_text(), test.2);
+        assert_eq!(textarea.lines().join("\n"), test.3);
+    }
+}
+#[test]
+fn select_all_keys() {
+    let mut textarea = TextArea::default();
+    for test in [
+        (
+            // enter key erases selection
+            "hello world",
+            vec![
+                (Key::End, false, false, true),
+                (Key::Enter, false, false, true),
+            ],
+            "",
+            "\n",
+        ),
+        (
+            // word forward select
+            "hello world",
+            vec![
+                (Key::Char('f'), false, true, true),
+                (Key::Char('c'), true, false, false),
+            ],
+            "hello ",
+            "hello world",
+        ),
+        (
+            // word back select
+            "hello world",
+            vec![
+                (Key::End, false, false, false),
+                (Key::Char('b'), false, true, true),
+                (Key::Char('c'), true, false, false),
+            ],
+            "world",
+            "hello world",
+        ),
+        (
+            // para forward select
+            "hello\nworld\n\nhow\nare\nyou",
+            vec![
+                (Key::Char('n'), false, true, true),
+                (Key::Char('x'), true, false, true),
+            ],
+            "hello\nworld\n\n",
+            "how\nare\nyou",
+        ),
+        (
+            // para back select
+            "hello\nworld\n\nhow\nare\nyou",
+            vec![
+                // goto end
+                (Key::Char('n'), true, true, false),
+                (Key::End, false, false, false),
+                (Key::Char('p'), false, true, true),
+                (Key::Char('x'), true, false, true),
+            ],
+            "\nare\nyou",
+            "hello\nworld\n\nhow",
+        ),
+        (
+            // undo
+            "hello\nworld\n\nhow\nare\nyou",
+            vec![
+                // goto end
+                (Key::Char('n'), true, true, false),
+                (Key::End, false, false, false),
+                (Key::Char('p'), false, true, true),
+                (Key::Char('x'), true, false, false),
+                (Key::Char('u'), true, false, false),
+            ],
+            "\nare\nyou",
+            "hello\nworld\n\nhow\nare\nyou",
+        ),
+    ] {
+        clear(&mut textarea);
+        textarea.insert_str(test.0);
+        start(&mut textarea);
+        for k in test.1 {
+            input_key(&mut textarea, k);
+        }
+
+        assert_eq!(textarea.yank_text(), test.2);
+        assert_eq!(textarea.lines().join("\n"), test.3);
+    }
+}

@@ -236,7 +236,6 @@ impl<'a> TextArea<'a> {
     pub fn input(&mut self, input: impl Into<Input>) -> bool {
         let input = input.into();
         self.should_select(&input);
-        trace!("input: {:?}", input);
         let modified = match input {
             Input {
                 key: Key::Char('m'),
@@ -558,7 +557,15 @@ impl<'a> TextArea<'a> {
                 self.copy();
                 false
             }
-
+            Input {
+                key: Key::Char('x'),
+                ctrl: true,
+                alt: false,
+                ..
+            } => {
+                self.cut();
+                false
+            }
             Input {
                 key: Key::Char('v' | 'V'),
                 ctrl: true,
@@ -617,7 +624,7 @@ impl<'a> TextArea<'a> {
             self.lines[r],
             input,
         );
-
+        self.should_end_selection();
         modified
     }
 
@@ -636,7 +643,7 @@ impl<'a> TextArea<'a> {
     pub fn input_without_shortcuts(&mut self, input: impl Into<Input>) -> bool {
         let input = input.into();
         self.should_select(&input);
-        match input {
+        let modified = match input {
             Input {
                 key: Key::Char(c),
                 ctrl: false,
@@ -680,7 +687,9 @@ impl<'a> TextArea<'a> {
                 false
             }
             _ => false,
-        }
+        };
+        self.should_end_selection();
+        modified
     }
 
     fn push_history(&mut self, kind: EditKind, cursor_before: (usize, usize)) {
@@ -698,7 +707,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["a"]);
     /// ```
     pub fn insert_char(&mut self, c: char) {
-        self.delete_selection();
+        self.delete_selection(false);
 
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
@@ -801,6 +810,15 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["🐱", "🐮"]);
     /// ```
     pub fn delete_str(&mut self, chars: usize) -> bool {
+        self.delete_str_internal(chars, true, true)
+    }
+
+    // grabs the specified (maybe multi line string)
+    // always placed in history
+    // sometimes yanked
+    // sometimes deleted from lines array
+
+    fn delete_str_internal(&mut self, chars: usize, yank: bool, delete: bool) -> bool {
         if chars == 0 {
             return false;
         }
@@ -833,14 +851,20 @@ impl<'a> TextArea<'a> {
 
         // First line
         if let Some(offset) = find_end(&line[first_start..]) {
-            let removed = self.lines[row]
-                .drain(first_start..first_start + offset)
-                .as_str()
-                .to_string();
-            self.yank = removed.clone().into();
+            let removed = if delete {
+                self.lines[row]
+                    .drain(first_start..first_start + offset)
+                    .as_str()
+                    .to_string()
+            } else {
+                self.lines[row][first_start..first_start + offset].to_string()
+            };
+            if yank {
+                self.yank = removed.clone().into();
+            };
             self.push_history(EditKind::DeleteStr(removed, first_start), self.cursor);
             return true;
-        }
+        };
 
         let mut r = row + 1;
         let mut i = 0;
@@ -854,16 +878,28 @@ impl<'a> TextArea<'a> {
             r += 1;
         }
 
-        let mut deleted = vec![self.lines[row].drain(first_start..).as_str().to_string()];
+        let mut deleted = if delete {
+            vec![self.lines[row].drain(first_start..).as_str().to_string()]
+        } else {
+            vec![self.lines[row][first_start..].to_string()]
+        };
+
         deleted.extend(self.lines.drain(row + 1..r));
         if row + 1 < self.lines.len() {
-            let mut last_line = self.lines.remove(row + 1);
-            self.lines[row].push_str(&last_line[i..]);
+            let mut last_line = if delete {
+                let ll = self.lines.remove(row + 1);
+                self.lines[row].push_str(&ll[i..]);
+                ll
+            } else {
+                self.lines[row + 1].clone()
+            };
             last_line.truncate(i);
             deleted.push(last_line);
         }
 
-        self.yank = YankText::Chunk(deleted.clone());
+        if yank {
+            self.yank = YankText::Chunk(deleted.clone());
+        };
 
         let edit = if deleted.len() == 1 {
             EditKind::DeleteStr(deleted.remove(0), first_start)
@@ -945,6 +981,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["h", "i"]);
     /// ```
     pub fn insert_newline(&mut self) {
+        self.delete_selection(false);
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
         let idx = line
@@ -1000,7 +1037,7 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn delete_char(&mut self) -> bool {
         if self.select_start.get().is_some() {
-            return self.delete_selection();
+            return self.delete_selection(false);
         }
         let (row, col) = self.cursor;
         if col == 0 {
@@ -1031,7 +1068,7 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn delete_next_char(&mut self) -> bool {
         if self.select_start.get().is_some() {
-            return self.delete_selection();
+            return self.delete_selection(false);
         }
         let before = self.cursor;
         self.move_cursor(CursorMove::Forward);
@@ -1160,7 +1197,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), [" bbb cccaaa"]);
     /// ```
     pub fn paste(&mut self) -> bool {
-        self.delete_selection();
+        self.delete_selection(false);
         match self.yank.clone() {
             YankText::Piece(s) => self.insert_piece(s),
             YankText::Chunk(c) => self.insert_chunk(c),
@@ -1993,7 +2030,7 @@ impl<'a> TextArea<'a> {
         self.move_cursor(CursorMove::InViewport);
     }
 
-    // public function for select
+    // public functions for select
 
     /// sets the style used for selected text
     /// the default is LightBlue
@@ -2008,13 +2045,8 @@ impl<'a> TextArea<'a> {
         if self.select_start.get().is_some() {
             let (start, end, swapped) = self.normalize_selection();
 
-            // this is a bit inelegant, really there needs to be
-            // a version of delete_str that doesnt delete
-            // ie does everything except the delete
-            // But raratui will only redraw once - so no screen flicker
             self.cursor = start;
-            self.delete_range(start, end);
-            self.undo();
+            self.delete_range(start, end, true, false);
             self.cursor = if swapped { start } else { end };
         }
     }
@@ -2023,20 +2055,16 @@ impl<'a> TextArea<'a> {
     /// and places it in the yank buffer
     ///
     pub fn cut(&mut self) {
-        if self.select_start.get().is_some() {
-            let (start, end, _) = self.normalize_selection();
-            self.cursor = start;
-            self.delete_range(start, end);
-            self.cursor = end;
-            self.end_selection();
-        }
+        self.delete_selection(true);
     }
 
     /// Must be called before calling textarea functions if you are
-    /// not calling [`TextArea::input`]  or [`TextArea::input_without_shortcuts`] . It is used to detect
-    /// whether or not a selection should be started or ended
+    /// not calling [`TextArea::input`]  or [`TextArea::input_without_shortcuts`] to dispatch they keys.
+    /// It is used to detect whether or not a selection should be started or ended
     ///
     /// Handled automatically when input are passed to [`TextArea::input`] or  [`TextArea::input_without_shortcuts`]
+    ///
+    /// Note: it is harmless to call this function even if you have some logic paths that call [`TextArea::input`]
 
     pub fn should_select(&mut self, input: &Input) {
         // Should we start selecting text, stop the current selection, or do nothing?
@@ -2066,7 +2094,7 @@ impl<'a> TextArea<'a> {
             });
     }
 
-    // private functionn for select
+    // functions for select
 
     fn should_end_selection(&self) {
         // Should we end the current selection?
@@ -2096,12 +2124,14 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    fn delete_selection(&mut self) -> bool {
+    // delete the currect selection, sometimes yank it
+
+    fn delete_selection(&mut self, yank: bool) -> bool {
         let deleted = match self.select_start.get() {
             Some(_) => {
                 let (start, end, _) = self.normalize_selection();
                 if start != end {
-                    self.delete_range(start, end);
+                    self.delete_range(start, end, yank, true);
                     true
                 } else {
                     false
@@ -2119,10 +2149,16 @@ impl<'a> TextArea<'a> {
     }
 
     // erase a range of text, start and end must be normalized
-    // erase text is put in history and yank buffer (by delete_str)
+    // erased text may be put in history and yank buffer (by delete_str)
     // the end range column is not included
 
-    fn delete_range(&mut self, start: (usize, usize), end: (usize, usize)) {
+    fn delete_range(
+        &mut self,
+        start: (usize, usize),
+        end: (usize, usize),
+        yank: bool,
+        delete: bool,
+    ) {
         // calculate length of range
         let (start_row, start_col) = start;
         let (end_row, end_col) = end;
@@ -2144,14 +2180,11 @@ impl<'a> TextArea<'a> {
         len += end_row - start_row;
 
         self.cursor = start;
-        trace!("delete_range {:?} {:?} len {}", start, end, len);
-        println!("delete_range {:?} {:?} len {}", start, end, len);
-        self.delete_str(len);
+        self.delete_str_internal(len, yank, delete);
     }
 }
 #[cfg(test)]
 mod tests {
-    use ratatui::text;
 
     use super::*;
 
@@ -2178,312 +2211,5 @@ mod tests {
         assert_eq!(textarea.cursor(), (15, 0));
         textarea.scroll((-5, 0));
         assert_eq!(textarea.cursor(), (12, 0));
-    }
-
-    // selection tests
-    fn input(key: Key, ctrl: bool, alt: bool, shift: bool) -> Input {
-        Input {
-            key,
-            ctrl,
-            alt,
-            shift,
-        }
-    }
-    fn clear(textarea: &mut TextArea) {
-        textarea.input(input(Key::Up, true, true, false));
-        textarea.input(input(Key::Home, false, false, false));
-        textarea.delete_str(usize::MAX);
-    }
-
-    #[test]
-    fn select_copy() {
-        let mut textarea = TextArea::default();
-        for test in [
-            // plain ascii
-            (
-                "hello world",
-                vec![
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, true),
-                    input(Key::Right, false, false, true),
-                ],
-                "he",
-            ),
-            // plain ascii backwards
-            (
-                "hello world",
-                vec![
-                    input(Key::End, false, false, false),
-                    input(Key::Left, false, false, true),
-                    input(Key::Left, false, false, true),
-                ],
-                "ld",
-            ),
-            // utf8
-            (
-                "あい",
-                vec![
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, true),
-                ],
-                "あ",
-            ),
-            // multi line - all
-            (
-                "hello\nworld",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                ],
-                "hello\nworld",
-            ),
-            // multi line - some
-            (
-                "hello\nworld",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                    input(Key::Left, false, false, true),
-                ],
-                "ello\nworl",
-            ),
-            // multi - line utf8
-            (
-                "あい\nうえ",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                ],
-                "あい\nうえ",
-            ),
-            // multi-line utf8 - some
-            (
-                "あい\nうえ",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                    input(Key::Left, false, false, true),
-                ],
-                "い\nう",
-            ),
-        ] {
-            clear(&mut textarea);
-            textarea.insert_str(test.0);
-            for k in test.1 {
-                textarea.input(k);
-            }
-            textarea.copy();
-            assert_eq!(textarea.yank_text(), test.2);
-        }
-    }
-    #[test]
-    fn select_cut() {
-        let mut textarea = TextArea::default();
-        for test in [
-            // plain ascii
-            (
-                "hello world",
-                vec![
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, true),
-                    input(Key::Right, false, false, true),
-                ],
-                "he",
-                ["llo world"],
-            ),
-            // plain ascii backwards
-            (
-                "hello world",
-                vec![
-                    input(Key::End, false, false, false),
-                    input(Key::Left, false, false, true),
-                    input(Key::Left, false, false, true),
-                ],
-                "ld",
-                ["hello wor"],
-            ),
-            // utf8
-            (
-                "あい",
-                vec![
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, true),
-                ],
-                "あ",
-                ["い"],
-            ),
-            // multi line - all
-            (
-                "hello\nworld",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                ],
-                "hello\nworld",
-                [""],
-            ),
-            // multi line - some
-            (
-                "hello\nworld",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                    input(Key::Left, false, false, true),
-                ],
-                "ello\nworl",
-                ["hd"],
-            ),
-            // multi - line utf8
-            (
-                "あい\nうえ",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                ],
-                "あい\nうえ",
-                [""],
-            ),
-            // multi-line utf8 - some
-            (
-                "あい\nうえ",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                    input(Key::Left, false, false, true),
-                ],
-                "い\nう",
-                ["あえ"],
-            ),
-        ] {
-            clear(&mut textarea);
-            textarea.insert_str(test.0);
-            for k in test.1 {
-                textarea.input(k);
-            }
-            textarea.cut();
-            assert_eq!(textarea.yank_text(), test.2);
-            assert_eq!(textarea.lines, test.3);
-        }
-    }
-
-    #[test]
-    fn select_paste() {
-        let mut textarea = TextArea::default();
-        for test in [
-            // plain ascii
-            (
-                "hello world",
-                vec![
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, true),
-                    input(Key::Right, false, false, true),
-                ],
-                "he",
-                ["llo world"],
-            ),
-            // plain ascii backwards
-            (
-                "hello world",
-                vec![
-                    input(Key::End, false, false, false),
-                    input(Key::Left, false, false, true),
-                    input(Key::Left, false, false, true),
-                ],
-                "ld",
-                ["hello wor"],
-            ),
-            // utf8
-            (
-                "あい",
-                vec![
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, true),
-                ],
-                "あ",
-                ["い"],
-            ),
-            // multi line - all
-            (
-                "hello\nworld",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                ],
-                "hello\nworld",
-                [""],
-            ),
-            // multi line - some
-            (
-                "hello\nworld",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                    input(Key::Left, false, false, true),
-                ],
-                "ello\nworl",
-                ["hd"],
-            ),
-            // multi - line utf8
-            (
-                "あい\nうえ",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                ],
-                "あい\nうえ",
-                [""],
-            ),
-            // multi-line utf8 - some
-            (
-                "あい\nうえ",
-                vec![
-                    input(Key::Char('P'), true, true, false),
-                    input(Key::Home, false, false, false),
-                    input(Key::Right, false, false, false),
-                    input(Key::Char('N'), true, true, true),
-                    input(Key::End, false, false, true),
-                    input(Key::Left, false, false, true),
-                ],
-                "い\nう",
-                ["あえ"],
-            ),
-        ] {
-            clear(&mut textarea);
-            textarea.insert_str(test.0);
-            for k in test.1 {
-                textarea.input(k);
-            }
-            textarea.cut();
-            //  textarea.paste();
-            assert_eq!(textarea.yank_text(), test.2);
-            assert_eq!(textarea.lines, test.3);
-        }
     }
 }
