@@ -1,3 +1,21 @@
+<a name="v0.3.1"></a>
+# [v0.3.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.3.1) - 04 Nov 2023
+
+- Fix the width of rendered tab character (`\t`) is wrong in some cases when hard tab is enabled by `TextArea::set_hard_tab_indent` ([#43](https://github.com/rhysd/tui-textarea/issues/43)).
+- Fix key inputs are doubled on Windows when converting from `crossterm::event::KeyEvent` into `tui_textarea::Input`. Note that the conversion from `crossterm::event::Event` into `tui_textarea::Input` does not have this issue.
+- Support converting the following type instances into `tui_textarea::Input`.
+  - `crossterm::event::KeyCode`
+  - `crossterm::event::KeyEvent`
+  - `crossterm::event::MouseEvent`
+  - `crossterm::event::MouseKind`
+  - `termwiz::input::KeyCode`
+  - `termwiz::input::KeyEvent`
+  - `termion::event::MouseButton`
+- Fix typos in API document and error message ([#40](https://github.com/rhysd/tui-textarea/issues/40), thanks [@fritzrehde](https://github.com/fritzrehde)).
+
+[Changes][v0.3.1]
+
+
 <a name="v0.3.0"></a>
 # [v0.3.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.3.0) - 24 Oct 2023
 
@@ -246,6 +264,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.3.1]: https://github.com/rhysd/tui-textarea/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/rhysd/tui-textarea/compare/v0.2.4...v0.3.0
 [v0.2.4]: https://github.com/rhysd/tui-textarea/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/rhysd/tui-textarea/compare/v0.2.2...v0.2.3

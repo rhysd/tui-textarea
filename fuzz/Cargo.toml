@@ -23,3 +23,9 @@ name = "edit"
 path = "fuzz_targets/edit.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "insert_delete"
+path = "fuzz_targets/insert_delete.rs"
+test = false
+doc = false

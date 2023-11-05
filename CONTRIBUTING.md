@@ -72,6 +72,10 @@ tail -F debug.txt
 To run fuzzing tests, [cargo-fuzz][] and Rust nightly toolchain are necessary.
 
 ```sh
+# Show list of fuzzing targets
+cargo +nightly fuzz list
+
+# Run 'edit' fuzzing test case
 cargo +nightly fuzz run edit
 ```
 

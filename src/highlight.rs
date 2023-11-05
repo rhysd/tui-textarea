@@ -187,15 +187,11 @@ impl<'a> LineHighlighter<'a> {
             o => o,
         });
 
-        // let mut boundaries = boundaries.into_iter();
         let mut style = style_begin;
         let mut start = 0;
         let mut stack = vec![];
         let mut dont_add_cursor = false;
-        //  trace!("hl boundaries: {:?}", boundaries);
         for (next_boundary, end) in boundaries {
-            //      trace!("hlb: {:?} {:?}", next_boundary, end);
-            //        trace!("xx {:?} {:?} {} {}", style, select_style, start, end);
             if start < end {
                 // add extra select space at line end to indicate
                 // that the \n will be deleted / included
@@ -226,6 +222,7 @@ impl<'a> LineHighlighter<'a> {
         Line::from(spans)
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

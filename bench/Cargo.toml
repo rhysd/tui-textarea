@@ -10,7 +10,7 @@ bench = false
 
 [dependencies]
 tui-textarea = { path = "..", features = ["no-backend", "search"] }
-ratatui = { version = "0.23.0", default-features = false }
+ratatui = { version = ">=0.23.0", default-features = false }
 
 [dev-dependencies]
 criterion = "0.5"
