@@ -814,9 +814,8 @@ impl<'a> TextArea<'a> {
     }
 
     // grabs the specified (maybe multi line string)
-    // always placed in history
     // sometimes yanked
-    // sometimes deleted from lines array
+    // sometimes deleted from lines array and placed in history
 
     fn delete_str_internal(&mut self, chars: usize, yank: bool, delete: bool) -> bool {
         if chars == 0 {
