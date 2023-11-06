@@ -1,7 +1,6 @@
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, is_raw_mode_enabled, EnterAlternateScreen,
-    LeaveAlternateScreen,
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
@@ -157,10 +156,8 @@ impl<'a> Editor<'a> {
             return error!("USAGE: cargo run --example editor FILE1 [FILE2...]");
         }
         let mut stdout = io::stdout();
-        if !is_raw_mode_enabled()? {
-            enable_raw_mode()?;
-            crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-        }
+        enable_raw_mode()?;
+        crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
         let backend = CrosstermBackend::new(stdout);
         let term = Terminal::new(backend)?;
         Ok(Self {
@@ -352,9 +349,6 @@ impl<'a> Editor<'a> {
 impl<'a> Drop for Editor<'a> {
     fn drop(&mut self) {
         self.term.show_cursor().unwrap();
-        if !is_raw_mode_enabled().unwrap() {
-            return;
-        }
         disable_raw_mode().unwrap();
         crossterm::execute!(
             self.term.backend_mut(),
