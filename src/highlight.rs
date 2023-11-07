@@ -98,6 +98,7 @@ impl DisplayTextBuilder {
 pub struct LineHighlighter<'a> {
     line: &'a str,
     spans: Vec<Span<'a>>,
+    // reminder - the usize is the start of a section, in BYTES, not chars
     boundaries: Vec<(Boundary, usize)>, // TODO: Consider smallvec
     style_begin: Style,
     cursor_at_end: bool,
@@ -150,6 +151,60 @@ impl<'a> LineHighlighter<'a> {
         self.style_begin = style;
     }
 
+    pub(crate) fn select_line(
+        &mut self,
+        row: usize,
+        line: &str,
+        start: (usize, usize),
+        end: (usize, usize),
+    ) {
+        // is this row selected?
+
+        // note that the input coordinates here are in char offsets not bytes
+        // so a lot of this code is converting from char offsets to byte offsets
+        if start.0 <= row && end.0 >= row {
+            let mut indices = line.char_indices();
+            let llen = line.len();
+            match (start.0 == row, end.0 == row) {
+                (true, true) => {
+                    // only line
+                    self.select(
+                        indices.nth(start.1).unwrap_or((llen, 'x')).0,
+                        indices.nth(end.1 - start.1).unwrap_or((llen, 'x')).0,
+                        self.select_style,
+                    );
+                }
+                (true, false) => {
+                    // a line in the start of selection
+
+                    // the +1 extends the highlight one beyond end, to show
+                    // that the newline is included
+                    // same done for middle rows below
+
+                    self.select(
+                        indices.nth(start.1).unwrap_or((llen, 'x')).0,
+                        llen + 1,
+                        self.select_style,
+                    );
+                }
+                (false, true) => {
+                    // last line
+                    if end.1 > 0 {
+                        self.select(
+                            0,
+                            indices.nth(end.1).unwrap_or((llen, 'x')).0,
+                            self.select_style,
+                        );
+                    }
+                }
+                (false, false) => {
+                    // in the middle of selection
+                    self.select(0, llen + 1, self.select_style);
+                }
+            }
+        }
+    }
+
     #[cfg(feature = "search")]
     pub fn search(&mut self, matches: impl Iterator<Item = (usize, usize)>, style: Style) {
         for (start, end) in matches {
@@ -195,7 +250,7 @@ impl<'a> LineHighlighter<'a> {
             if start < end {
                 // add extra select space at line end to indicate
                 // that the \n will be deleted / included
-                if end > line.chars().count() && style == select_style {
+                if end > line.len() && style == select_style {
                     spans.push(Span::styled(builder.build(&line[start..end - 1]), style));
                     spans.push(Span::styled(" ", style));
                     dont_add_cursor = true;

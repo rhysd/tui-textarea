@@ -1296,28 +1296,9 @@ impl<'a> TextArea<'a> {
         // any selected text to highlight?
         if self.select_start.get().is_some() {
             let (start, end, _) = self.normalize_selection();
-
-            if start.0 <= row && end.0 >= row {
-                match (start.0 == row, end.0 == row) {
-                    (true, true) => {
-                        hl.select(start.1, end.1, self.select_style);
-                    }
-                    (true, false) => {
-                        // the +1 extends the highlight one beyond, to show
-                        // that the newline is included
-                        hl.select(start.1, line.len() + 1, self.select_style);
-                    }
-                    (false, true) => {
-                        if end.1 > 0 {
-                            hl.select(0, end.1, self.select_style);
-                        }
-                    }
-                    (false, false) => {
-                        hl.select(0, line.len() + 1, self.select_style);
-                    }
-                }
-            }
+            hl.select_line(row, line, start, end);
         }
+
         hl.into_spans()
     }
 
@@ -2039,15 +2020,48 @@ impl<'a> TextArea<'a> {
 
     // public functions for select
 
-    /// sets the style used for selected text
+    /// Sets the style used for selected text
     /// the default is LightBlue
-    ///
+    ///```
+    /// use tui_textarea::TextArea;
+    /// use ratatui::style::{Style, Color};
+    /// let mut textarea = TextArea::default();
+    /// // change the selection color from the default to Red
+    /// textarea.set_selection_style(Style::default().bg(Color::Red));
+    /// assert_eq!(textarea.get_selection_style(), Style::default().bg(Color::Red));
+    /// ```
     pub fn set_selection_style(&mut self, style: Style) {
         self.select_style = style;
     }
-
-    /// copies the current selection to the yank buffer
+    /// Gets the style used for selected text
     ///
+    ///```
+    /// use tui_textarea::TextArea;
+    /// use ratatui::style::{Style, Color};
+    /// let mut textarea = TextArea::default();
+    ///
+    ///
+    /// assert_eq!(textarea.get_selection_style(), Style::default().bg(Color::LightBlue));
+    /// ```
+    pub fn get_selection_style(&mut self) -> Style {
+        self.select_style
+    }
+    /// Copies the current selection to the yank buffer
+    ///
+    ///```
+    /// use tui_textarea::{TextArea, Key, Input};
+    ///
+    ///
+    /// let mut textarea = TextArea::default();
+    /// // load some text
+    /// textarea.insert_str("Hello World");
+    /// // select the word "World" by doing a ctrl-left with the shift key down
+    /// textarea.input(Input{key:Key::Left, ctrl:true, alt:false, shift:true});
+    ///  
+    /// textarea.copy();
+    /// assert_eq!(textarea.yank_text(), "World");
+    /// assert_eq!(textarea.lines(), ["Hello World"]);
+    ///```
     pub fn copy(&mut self) {
         if self.select_start.get().is_some() {
             let (start, end, swapped) = self.normalize_selection();
@@ -2058,27 +2072,46 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    /// deletes the current selection
-    /// and places it in the yank buffer
+    /// Deletes the current selection and places it in the yank buffer
+    ///```
+    /// use tui_textarea::{TextArea, Key, Input};
+    ///
+    ///
+    /// let mut textarea = TextArea::default();
+    /// // load some text
+    /// textarea.insert_str("Hello World");
+    /// // select the word "World" by doing a ctrl-left with the shift key down
+    /// textarea.input(Input{key:Key::Left, ctrl:true, alt:false, shift:true});
+    ///
+    /// textarea.cut();
+    /// assert_eq!(textarea.yank_text(), "World");
+    /// assert_eq!(textarea.lines(), ["Hello "]);
+    ///```
+
     ///
     pub fn cut(&mut self) {
         self.delete_selection(true);
     }
 
     /// Must be called before calling textarea functions if you are
-    /// not calling [`TextArea::input`]  or [`TextArea::input_without_shortcuts`] to dispatch they keys.
-    /// It is used to detect whether or not a selection should be started or ended
+    /// not calling [`TextArea::input`]  or [`TextArea::input_without_shortcuts`] to dispatch the keys.
+    /// It is used to detect whether or not a selection should be started, continued or ended
     ///
-    /// Handled automatically when input are passed to [`TextArea::input`] or  [`TextArea::input_without_shortcuts`]
+    /// Handled automatically when inputs are passed to [`TextArea::input`] or  [`TextArea::input_without_shortcuts`]
     ///
     /// Note: it is harmless to call this function even if you have some logic paths that call [`TextArea::input`]
+    /// The state of the shift key (or whatever you want to signal start selection) should be passed in.
+    /// If you need to stop an upper case letter being treated as a selection character
+    /// then call this function with false
+    ///
+    /// Look at the modal example for a demonstration of its use
 
     pub fn should_select(&mut self, input: &Input) {
-        // Should we start selecting text, stop the current selection, or do nothing?
-        // the end is handled after the ending keystroke
         if input.key == Key::Null {
             return;
         }
+        // Should we start selecting text, stop the current selection, or do nothing?
+        // the end is handled after the ending keystroke
         self.pending_end_selection =
             Cell::new(match (self.select_start.get().is_some(), input.shift) {
                 (true, true) => {
@@ -2101,6 +2134,16 @@ impl<'a> TextArea<'a> {
             });
     }
 
+    /// used in conjunction with code that needs to use [`TextArea::should_select`]
+    /// Used to force the end selection mode
+    ///
+    /// Needed if a simple keystroke is upper case and you want to stop it being treated as a selection
+    /// Look at the modal example for a demonstration of its use - look at the 'a' and 'A' keys
+    ///
+
+    pub fn stop_selection(&mut self) {
+        self.end_selection();
+    }
     // functions for select
 
     fn should_end_selection(&self) {
@@ -2187,6 +2230,7 @@ impl<'a> TextArea<'a> {
         len += end_row - start_row;
 
         self.cursor = start;
+
         self.delete_str_internal(len, yank, delete);
     }
 }

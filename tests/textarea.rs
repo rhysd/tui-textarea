@@ -800,35 +800,28 @@ fn test_delete_str_multiple_lines() {
 }
 
 //
-//            selection tests
+// selection tests
 //
 
 use tui_textarea::{Input, Key};
 
-fn make_input(k: (Key, bool, bool, bool)) -> Input {
-    Input {
-        key: k.0,
-        ctrl: k.1,
-        alt: k.2,
-        shift: k.3,
-    }
-}
-fn input_key(textarea: &mut TextArea, k: (Key, bool, bool, bool)) {
-    textarea.input(make_input(k));
-}
-fn clear(ta: &mut TextArea) {
-    start(ta);
-    ta.delete_str(usize::MAX);
-}
+/*
 
-fn start(ta: &mut TextArea) {
-    input_key(ta, (Key::Up, true, true, false));
-    input_key(ta, (Key::Home, false, false, false));
-}
+    each test block is a tuple of
+    - text to be loaded into textarea
+    - vec of key strokes to be sent
+    - expected value in yank
+    - expected text left in textarea
 
+    the text is inserted into a new textarea
+    cursor is moved to (0,0)
+    strokes are sent
+    yank and remainder are checked
+
+
+*/
 #[test]
 fn select_copy() {
-    let mut textarea = TextArea::default();
     for test in [
         // plain ascii
         (
@@ -837,8 +830,10 @@ fn select_copy() {
                 (Key::Home, false, false, false),
                 (Key::Right, false, false, true),
                 (Key::Right, false, false, true),
+                (Key::Char('c'), true, false, false),
             ],
             "he",
+            "hello world",
         ),
         // plain ascii backwards
         (
@@ -847,8 +842,10 @@ fn select_copy() {
                 (Key::End, false, false, false),
                 (Key::Left, false, false, true),
                 (Key::Left, false, false, true),
+                (Key::Char('c'), true, false, false),
             ],
             "ld",
+            "hello world",
         ),
         // utf8
         (
@@ -856,8 +853,10 @@ fn select_copy() {
             vec![
                 (Key::Home, false, false, false),
                 (Key::Right, false, false, true),
+                (Key::Char('c'), true, false, false),
             ],
             "あ",
+            "あい",
         ),
         // multi line - all
         (
@@ -867,7 +866,9 @@ fn select_copy() {
                 (Key::Home, false, false, false),
                 (Key::Char('N'), true, true, true),
                 (Key::End, false, false, true),
+                (Key::Char('c'), true, false, false),
             ],
+            "hello\nworld",
             "hello\nworld",
         ),
         // multi line - some
@@ -880,8 +881,10 @@ fn select_copy() {
                 (Key::Char('N'), true, true, true),
                 (Key::End, false, false, true),
                 (Key::Left, false, false, true),
+                (Key::Char('c'), true, false, false),
             ],
             "ello\nworl",
+            "hello\nworld",
         ),
         // multi - line utf8
         (
@@ -891,7 +894,9 @@ fn select_copy() {
                 (Key::Home, false, false, false),
                 (Key::Char('N'), true, true, true),
                 (Key::End, false, false, true),
+                (Key::Char('c'), true, false, false),
             ],
+            "あい\nうえ",
             "あい\nうえ",
         ),
         // multi-line utf8 - some
@@ -904,22 +909,18 @@ fn select_copy() {
                 (Key::Char('N'), true, true, true),
                 (Key::End, false, false, true),
                 (Key::Left, false, false, true),
+                (Key::Char('c'), true, false, false),
             ],
             "い\nう",
+            "あい\nうえ",
         ),
     ] {
-        clear(&mut textarea);
-        textarea.insert_str(test.0);
-        for k in test.1 {
-            input_key(&mut textarea, k);
-        }
-        textarea.copy();
-        assert_eq!(textarea.yank_text(), test.2);
+        let (text, strokes, yank, remaining) = test;
+        one_select_test(text, &strokes, yank, remaining);
     }
 }
 #[test]
 fn select_cut() {
-    let mut textarea = TextArea::default();
     for test in [
         // plain ascii
         (
@@ -928,6 +929,7 @@ fn select_cut() {
                 (Key::Home, false, false, false),
                 (Key::Right, false, false, true),
                 (Key::Right, false, false, true),
+                (Key::Char('x'), true, false, false),
             ],
             "he",
             "llo world",
@@ -939,6 +941,7 @@ fn select_cut() {
                 (Key::End, false, false, false),
                 (Key::Left, false, false, true),
                 (Key::Left, false, false, true),
+                (Key::Char('x'), true, false, false),
             ],
             "ld",
             "hello wor",
@@ -949,6 +952,7 @@ fn select_cut() {
             vec![
                 (Key::Home, false, false, false),
                 (Key::Right, false, false, true),
+                (Key::Char('x'), true, false, false),
             ],
             "あ",
             "い",
@@ -961,6 +965,7 @@ fn select_cut() {
                 (Key::Home, false, false, false),
                 (Key::Char('N'), true, true, true),
                 (Key::End, false, false, true),
+                (Key::Char('x'), true, false, false),
             ],
             "hello\nworld",
             "",
@@ -975,6 +980,7 @@ fn select_cut() {
                 (Key::Char('N'), true, true, true),
                 (Key::End, false, false, true),
                 (Key::Left, false, false, true),
+                (Key::Char('x'), true, false, false),
             ],
             "ello\nworl",
             "hd",
@@ -987,6 +993,7 @@ fn select_cut() {
                 (Key::Home, false, false, false),
                 (Key::Char('N'), true, true, true),
                 (Key::End, false, false, true),
+                (Key::Char('x'), true, false, false),
             ],
             "あい\nうえ",
             "",
@@ -1001,25 +1008,19 @@ fn select_cut() {
                 (Key::Char('N'), true, true, true),
                 (Key::End, false, false, true),
                 (Key::Left, false, false, true),
+                (Key::Char('x'), true, false, false),
             ],
             "い\nう",
             "あえ",
         ),
     ] {
-        clear(&mut textarea);
-        textarea.insert_str(test.0);
-        for k in test.1 {
-            input_key(&mut textarea, k);
-        }
-        textarea.cut();
-        assert_eq!(textarea.yank_text(), test.2);
-        assert_eq!(textarea.lines().join("\n"), test.3);
+        let (text, strokes, yank, remaining) = test;
+        one_select_test(text, &strokes, yank, remaining);
     }
 }
 
 #[test]
 fn select_paste() {
-    let mut textarea = TextArea::default();
     for test in [
         // plain ascii
         (
@@ -1066,19 +1067,12 @@ fn select_paste() {
             "hello\nworld\nllo\nwo",
         ),
     ] {
-        clear(&mut textarea);
-        textarea.insert_str(test.0);
-        start(&mut textarea);
-        for k in test.1 {
-            input_key(&mut textarea, k);
-        }
-        assert_eq!(textarea.yank_text(), test.2);
-        assert_eq!(textarea.lines().join("\n"), test.3);
+        let (text, strokes, yank, remaining) = test;
+        one_select_test(text, &strokes, yank, remaining);
     }
 }
 #[test]
 fn select_all_keys() {
-    let mut textarea = TextArea::default();
     for test in [
         (
             // enter key erases selection
@@ -1149,14 +1143,41 @@ fn select_all_keys() {
             "hello\nworld\n\nhow\nare\nyou",
         ),
     ] {
-        clear(&mut textarea);
-        textarea.insert_str(test.0);
-        start(&mut textarea);
-        for k in test.1 {
-            input_key(&mut textarea, k);
-        }
-
-        assert_eq!(textarea.yank_text(), test.2);
-        assert_eq!(textarea.lines().join("\n"), test.3);
+        let (text, strokes, yank, remaining) = test;
+        one_select_test(text, &strokes, yank, remaining);
     }
+}
+fn one_select_test(
+    text: &str,
+    strokes: &Vec<(Key, bool, bool, bool)>,
+    yank: &str,
+    remaining: &str,
+) {
+    let mut ta = TextArea::default();
+    ta.insert_str(text);
+
+    // cursor home
+    ta.input(Input {
+        key: Key::Up,
+        ctrl: true,
+        alt: true,
+        shift: false,
+    });
+    ta.input(Input {
+        key: Key::Home,
+        ctrl: true,
+        alt: true,
+        shift: false,
+    });
+    for k in strokes {
+        let input = Input {
+            key: k.0,
+            ctrl: k.1,
+            alt: k.2,
+            shift: k.3,
+        };
+        ta.input(input);
+    }
+    assert_eq!(ta.yank_text(), yank);
+    assert_eq!(ta.lines().join("\n"), remaining);
 }
