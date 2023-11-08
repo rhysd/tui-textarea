@@ -1,5 +1,6 @@
 use std::cell::Cell;
 
+use crate::blocks::TextAreaBlock;
 use crate::cursor::CursorMove;
 use crate::highlight::LineHighlighter;
 use crate::history::{Edit, EditKind, History};
@@ -67,9 +68,9 @@ impl ToString for YankText {
 /// println!("Lines: {:?}", textarea.lines());
 /// ```
 #[derive(Clone, Debug)]
-pub struct TextArea<'a> {
+pub struct TextArea {
     lines: Vec<String>,
-    block: Option<Block<'a>>,
+    block: Option<crate::blocks::TextAreaBlock>,
     style: Style,
     cursor: (usize, usize), // 0-base
     tab_len: u8,
@@ -113,7 +114,7 @@ pub struct TextArea<'a> {
 /// let textarea = TextArea::from(slice.iter().copied());
 /// assert_eq!(textarea.lines(), ["hello", "world"]);
 /// ```
-impl<'a, I> From<I> for TextArea<'a>
+impl<'a, I> From<I> for TextArea
 where
     I: IntoIterator,
     I::Item: Into<String>,
@@ -132,12 +133,12 @@ where
 /// use std::path::Path;
 /// use tui_textarea::TextArea;
 ///
-/// fn read_from_file<'a>(path: impl AsRef<Path>) -> io::Result<TextArea<'a>> {
+/// fn read_from_file(path: impl AsRef<Path>) -> io::Result<TextArea> {
 ///     let file = fs::File::open(path.as_ref())?;
 ///     io::BufReader::new(file).lines().collect()
 /// }
 /// ```
-impl<'a, S: Into<String>> FromIterator<S> for TextArea<'a> {
+impl<'a, S: Into<String>> FromIterator<S> for TextArea {
     fn from_iter<I: IntoIterator<Item = S>>(iter: I) -> Self {
         iter.into()
     }
@@ -151,13 +152,13 @@ impl<'a, S: Into<String>> FromIterator<S> for TextArea<'a> {
 /// assert_eq!(textarea.lines(), [""]);
 /// assert!(textarea.is_empty());
 /// ```
-impl<'a> Default for TextArea<'a> {
+impl Default for TextArea {
     fn default() -> Self {
         Self::new(vec![String::new()])
     }
 }
 
-impl<'a> TextArea<'a> {
+impl TextArea {
     /// Create [`TextArea`] instance with given lines. If you have value other than `Vec<String>`, [`TextArea::from`]
     /// may be more useful.
     /// ```
@@ -1328,7 +1329,7 @@ impl<'a> TextArea<'a> {
     ///     // ...
     /// }
     /// ```
-    pub fn widget(&'a self) -> impl Widget + 'a {
+    pub fn widget<'a>(&'a self) -> impl Widget + 'a {
         self.should_end_selection();
         Renderer::new(self)
     }
@@ -1362,7 +1363,7 @@ impl<'a> TextArea<'a> {
     /// textarea.set_block(block);
     /// assert!(textarea.block().is_some());
     /// ```
-    pub fn set_block(&mut self, block: Block<'a>) {
+    pub fn set_block(&mut self, block: TextAreaBlock) {
         self.block = Some(block);
     }
 
@@ -1382,10 +1383,12 @@ impl<'a> TextArea<'a> {
     }
 
     /// Get the block of textarea if exists.
-    pub fn block<'s>(&'s self) -> Option<&'s Block<'a>> {
-        self.block.as_ref()
+    // pub fn block<'s>(&'s self) -> Option<&'s Block> {
+    //     self.block.as_ref()
+    // }
+    pub(crate) fn get_tui_block<'a>(&'a self) -> Option<Block<'a>> {
+        self.block.as_ref().map(|b| b.to_block())
     }
-
     /// Set the length of tab character. Setting 0 disables tab inputs.
     /// ```
     /// use tui_textarea::{TextArea, Input, Key};
@@ -1682,7 +1685,7 @@ impl<'a> TextArea<'a> {
     /// textarea.insert_char('b');
     /// assert_eq!(textarea.lines(), ["a", "b"]);
     /// ```
-    pub fn lines(&'a self) -> &'a [String] {
+    pub fn lines(&self) -> &[String] {
         &self.lines
     }
 

@@ -16,7 +16,7 @@ use std::fs;
 use std::io;
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
-use tui_textarea::{CursorMove, Input, Key, TextArea};
+use tui_textarea::{CursorMove, Input, Key, TextArea, TextAreaBlock};
 
 macro_rules! error {
     ($fmt: expr $(, $args:tt)*) => {{
@@ -24,15 +24,19 @@ macro_rules! error {
     }};
 }
 
-struct SearchBox<'a> {
-    textarea: TextArea<'a>,
+struct SearchBox {
+    textarea: TextArea,
     open: bool,
 }
 
-impl<'a> Default for SearchBox<'a> {
+impl Default for SearchBox {
     fn default() -> Self {
         let mut textarea = TextArea::default();
-        textarea.set_block(Block::default().borders(Borders::ALL).title("Search"));
+        textarea.set_block(
+            TextAreaBlock::default()
+                .borders(Borders::ALL)
+                .title("Search"),
+        );
         Self {
             textarea,
             open: false,
@@ -40,7 +44,7 @@ impl<'a> Default for SearchBox<'a> {
     }
 }
 
-impl<'a> SearchBox<'a> {
+impl SearchBox {
     fn open(&mut self) {
         self.open = true;
     }
@@ -80,24 +84,26 @@ impl<'a> SearchBox<'a> {
 
     fn set_error(&mut self, err: Option<impl Display>) {
         let b = if let Some(err) = err {
-            Block::default()
+            TextAreaBlock::default()
                 .borders(Borders::ALL)
                 .title(format!("Search: {}", err))
                 .style(Style::default().fg(Color::Red))
         } else {
-            Block::default().borders(Borders::ALL).title("Search")
+            TextAreaBlock::default()
+                .borders(Borders::ALL)
+                .title("Search")
         };
         self.textarea.set_block(b);
     }
 }
 
-struct Buffer<'a> {
-    textarea: TextArea<'a>,
+struct Buffer {
+    textarea: TextArea,
     path: PathBuf,
     modified: bool,
 }
 
-impl<'a> Buffer<'a> {
+impl Buffer {
     fn new(path: PathBuf) -> io::Result<Self> {
         let mut textarea = if let Ok(md) = path.metadata() {
             if md.is_file() {
@@ -115,6 +121,7 @@ impl<'a> Buffer<'a> {
             TextArea::default() // File does not exist
         };
         textarea.set_line_number_style(Style::default().fg(Color::DarkGray));
+        textarea.set_hard_tab_indent(true);
         Ok(Self {
             textarea,
             path,
@@ -136,15 +143,15 @@ impl<'a> Buffer<'a> {
     }
 }
 
-struct Editor<'a> {
+struct Editor {
     current: usize,
-    buffers: Vec<Buffer<'a>>,
+    buffers: Vec<Buffer>,
     term: Terminal<CrosstermBackend<io::Stdout>>,
     message: Option<Cow<'static, str>>,
-    search: SearchBox<'a>,
+    search: SearchBox,
 }
 
-impl<'a> Editor<'a> {
+impl Editor {
     fn new<I>(paths: I) -> io::Result<Self>
     where
         I: Iterator,
@@ -352,7 +359,7 @@ impl<'a> Editor<'a> {
     }
 }
 
-impl<'a> Drop for Editor<'a> {
+impl Drop for Editor {
     fn drop(&mut self) {
         self.term.show_cursor().unwrap();
         if !is_raw_mode_enabled().unwrap() {

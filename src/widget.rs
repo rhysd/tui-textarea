@@ -76,10 +76,10 @@ impl Viewport {
     }
 }
 
-pub struct Renderer<'a>(&'a TextArea<'a>);
+pub struct Renderer<'a>(&'a TextArea);
 
 impl<'a> Renderer<'a> {
-    pub fn new(textarea: &'a TextArea<'a>) -> Self {
+    pub fn new(textarea: &'a TextArea) -> Self {
         Self(textarea)
     }
 
@@ -98,7 +98,7 @@ impl<'a> Renderer<'a> {
 
 impl<'a> Widget for Renderer<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let Rect { width, height, .. } = if let Some(b) = self.0.block() {
+        let Rect { width, height, .. } = if let Some(b) = self.0.get_tui_block() {
             b.inner(area)
         } else {
             area
@@ -132,7 +132,7 @@ impl<'a> Widget for Renderer<'a> {
         let mut inner = Paragraph::new(text)
             .style(style)
             .alignment(self.0.alignment());
-        if let Some(b) = self.0.block() {
+        if let Some(b) = self.0.get_tui_block() {
             text_area = b.inner(area);
             b.clone().render(area, buf)
         }
