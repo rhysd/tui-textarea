@@ -262,6 +262,7 @@ impl<'a> Editor<'a> {
                         key: Key::Char('g' | 'n'),
                         ctrl: true,
                         alt: false,
+                        ..
                     }
                     | Input { key: Key::Down, .. } => {
                         if !textarea.search_forward(false) {
@@ -272,11 +273,13 @@ impl<'a> Editor<'a> {
                         key: Key::Char('g'),
                         ctrl: false,
                         alt: true,
+                        ..
                     }
                     | Input {
                         key: Key::Char('p'),
                         ctrl: true,
                         alt: false,
+                        ..
                     }
                     | Input { key: Key::Up, .. } => {
                         if !textarea.search_back(false) {

@@ -90,7 +90,7 @@ impl Default for Key {
 /// textarea.input(Input {
 ///     key: Key::Char('a'),
 ///     ctrl: true,
-///     alt: false,
+///     alt: false,shift:false
 /// });
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Hash)]
@@ -102,6 +102,8 @@ pub struct Input {
     pub ctrl: bool,
     /// Alt modifier key. `true` means Alt key was pressed.
     pub alt: bool,
+    // Shift key.  `true` means Shift key was pressed.
+    pub shift: bool,
 }
 
 #[cfg(test)]
@@ -110,7 +112,12 @@ mod tests {
 
     #[allow(dead_code)]
     pub(crate) fn input(key: Key, ctrl: bool, alt: bool) -> Input {
-        Input { key, ctrl, alt }
+        Input {
+            key,
+            ctrl,
+            alt,
+            shift: false,
+        }
     }
 
     #[test]

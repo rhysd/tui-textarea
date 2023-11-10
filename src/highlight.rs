@@ -10,10 +10,12 @@ use std::iter;
 use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
 
+#[derive(Debug)]
 enum Boundary {
     Cursor(Style),
     #[cfg(feature = "search")]
     Search(Style),
+    Select(Style),
     End,
 }
 
@@ -21,9 +23,10 @@ impl Boundary {
     fn cmp(&self, other: &Boundary) -> Ordering {
         fn rank(b: &Boundary) -> u8 {
             match b {
-                Boundary::Cursor(_) => 2,
+                Boundary::Cursor(_) => 3,
                 #[cfg(feature = "search")]
                 Boundary::Search(_) => 1,
+                Boundary::Select(_) => 2,
                 Boundary::End => 0,
             }
         }
@@ -36,6 +39,7 @@ impl Boundary {
             #[cfg(feature = "search")]
             Boundary::Search(s) => Some(*s),
             Boundary::End => None,
+            Boundary::Select(s) => Some(*s),
         }
     }
 }
@@ -94,16 +98,24 @@ impl DisplayTextBuilder {
 pub struct LineHighlighter<'a> {
     line: &'a str,
     spans: Vec<Span<'a>>,
+    // reminder - the usize is the start of a section, in BYTES, not chars
     boundaries: Vec<(Boundary, usize)>, // TODO: Consider smallvec
     style_begin: Style,
     cursor_at_end: bool,
     cursor_style: Style,
     tab_len: u8,
     mask: Option<char>,
+    select_style: Style,
 }
 
 impl<'a> LineHighlighter<'a> {
-    pub fn new(line: &'a str, cursor_style: Style, tab_len: u8, mask: Option<char>) -> Self {
+    pub fn new(
+        line: &'a str,
+        cursor_style: Style,
+        tab_len: u8,
+        mask: Option<char>,
+        select_style: Style,
+    ) -> Self {
         Self {
             line,
             spans: vec![],
@@ -113,6 +125,7 @@ impl<'a> LineHighlighter<'a> {
             cursor_style,
             tab_len,
             mask,
+            select_style,
         }
     }
 
@@ -120,6 +133,11 @@ impl<'a> LineHighlighter<'a> {
         let pad = spaces(lnum_len - num_digits(row + 1) + 1);
         self.spans
             .push(Span::styled(format!("{}{} ", pad, row + 1), style));
+    }
+
+    pub fn select(&mut self, start: usize, end: usize, style: Style) {
+        self.boundaries.push((Boundary::Select(style), start));
+        self.boundaries.push((Boundary::End, end));
     }
 
     pub fn cursor_line(&mut self, cursor_col: usize, style: Style) {
@@ -131,6 +149,60 @@ impl<'a> LineHighlighter<'a> {
             self.cursor_at_end = true;
         }
         self.style_begin = style;
+    }
+
+    pub(crate) fn select_line(
+        &mut self,
+        row: usize,
+        line: &str,
+        start: (usize, usize),
+        end: (usize, usize),
+    ) {
+        // is this row selected?
+
+        // note that the input coordinates here are in char offsets not bytes
+        // so a lot of this code is converting from char offsets to byte offsets
+        if start.0 <= row && end.0 >= row {
+            let mut indices = line.char_indices();
+            let llen = line.len();
+            match (start.0 == row, end.0 == row) {
+                (true, true) => {
+                    // only line
+                    self.select(
+                        indices.nth(start.1).unwrap_or((llen, 'x')).0,
+                        indices.nth(end.1 - start.1).unwrap_or((llen, 'x')).0,
+                        self.select_style,
+                    );
+                }
+                (true, false) => {
+                    // a line in the start of selection
+
+                    // the +1 extends the highlight one beyond end, to show
+                    // that the newline is included
+                    // same done for middle rows below
+
+                    self.select(
+                        indices.nth(start.1).unwrap_or((llen, 'x')).0,
+                        llen + 1,
+                        self.select_style,
+                    );
+                }
+                (false, true) => {
+                    // last line
+                    if end.1 > 0 {
+                        self.select(
+                            0,
+                            indices.nth(end.1).unwrap_or((llen, 'x')).0,
+                            self.select_style,
+                        );
+                    }
+                }
+                (false, false) => {
+                    // in the middle of selection
+                    self.select(0, llen + 1, self.select_style);
+                }
+            }
+        }
     }
 
     #[cfg(feature = "search")]
@@ -153,6 +225,7 @@ impl<'a> LineHighlighter<'a> {
             cursor_style,
             cursor_at_end,
             mask,
+            select_style,
         } = self;
         let mut builder = DisplayTextBuilder::new(tab_len, mask);
 
@@ -172,10 +245,18 @@ impl<'a> LineHighlighter<'a> {
         let mut style = style_begin;
         let mut start = 0;
         let mut stack = vec![];
-
+        let mut dont_add_cursor = false;
         for (next_boundary, end) in boundaries {
             if start < end {
-                spans.push(Span::styled(builder.build(&line[start..end]), style));
+                // add extra select space at line end to indicate
+                // that the \n will be deleted / included
+                if end > line.len() && style == select_style {
+                    spans.push(Span::styled(builder.build(&line[start..end - 1]), style));
+                    spans.push(Span::styled(" ", style));
+                    dont_add_cursor = true;
+                } else {
+                    spans.push(Span::styled(builder.build(&line[start..end]), style));
+                }
             }
 
             style = if let Some(s) = next_boundary.style() {
@@ -186,13 +267,13 @@ impl<'a> LineHighlighter<'a> {
             };
             start = end;
         }
-
-        if start != line.len() {
+        if start < line.len() {
             spans.push(Span::styled(builder.build(&line[start..]), style));
         }
-        if cursor_at_end {
+        if cursor_at_end && !dont_add_cursor {
             spans.push(Span::styled(" ", cursor_style));
         }
+
         Line::from(spans)
     }
 }
