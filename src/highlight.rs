@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     #[rustfmt::skip]
-    fn test_line_display_text() {
+    fn line_display_text() {
         assert_eq!(&build(      "",  0,      None),                  "");
         assert_eq!(&build(      "",  4,      None),                  "");
         assert_eq!(&build(      "",  8,      None),                  "");
