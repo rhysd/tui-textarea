@@ -27,6 +27,40 @@ fn test_insert_soft_tab() {
 }
 
 #[test]
+fn test_insert_hard_tab() {
+    let mut t = TextArea::default();
+    t.set_hard_tab_indent(true);
+    assert!(t.insert_tab());
+    assert_eq!(t.lines(), ["\t"]);
+
+    let mut t = TextArea::default();
+    t.set_hard_tab_indent(true);
+    t.set_tab_length(0);
+    t.insert_tab();
+    assert!(!t.insert_tab());
+    assert_eq!(t.lines(), [""]);
+}
+
+#[test]
+fn test_insert_char() {
+    let tests = [
+        (0, 'x', &["xab"][..]),
+        (1, 'x', &["axb"][..]),
+        (2, 'x', &["abx"][..]),
+        (1, 'あ', &["aあb"][..]),
+        (1, '\n', &["a", "b"][..]),
+    ];
+
+    for test in tests {
+        let (col, ch, want) = test;
+        let mut t = TextArea::from(["ab"]);
+        t.move_cursor(CursorMove::Jump(0, col));
+        t.insert_char(ch);
+        assert_eq!(t.lines(), want, "{test:?}");
+    }
+}
+
+#[test]
 fn test_insert_str_one_line() {
     for i in 0..="ab".len() {
         let mut t = TextArea::from(["ab"]);
@@ -1303,4 +1337,125 @@ fn test_undo_redo_stop_selection() {
     assert_eq!(t.lines(), [""]);
     check(&mut t, |t| t.redo());
     assert_eq!(t.lines(), ["a"]);
+}
+
+#[test]
+fn test_set_yank_paste_text() {
+    let tests = [
+        ("", &[""][..]),
+        ("abc", &["abc"][..]),
+        ("abc\ndef", &["abc", "def"][..]),
+        ("\n\n", &["", "", ""][..]),
+    ];
+
+    for test in tests {
+        let (text, want) = test;
+        let mut t = TextArea::default();
+        t.set_yank_text(text);
+        t.paste();
+        assert_eq!(t.lines(), want, "{test:?}");
+        assert_eq!(t.yank_text(), text, "{test:?}");
+    }
+}
+
+struct DeleteTester(&'static [&'static str], fn(&mut TextArea) -> bool);
+impl DeleteTester {
+    fn test(&self, before: (usize, usize), after: (usize, usize, &[&str], &str)) {
+        let Self(buf_before, op) = *self;
+        let (row, col) = before;
+
+        let mut t = TextArea::from(buf_before.iter().map(|s| s.to_string()));
+        t.move_cursor(CursorMove::Jump(row as _, col as _));
+        let modified = op(&mut t);
+
+        let (row, col, buf_after, yank) = after;
+        assert_eq!(t.lines(), buf_after);
+        assert_eq!(t.cursor(), (row, col));
+        assert_eq!(modified, buf_before != buf_after);
+        assert_eq!(t.yank_text(), yank);
+
+        if modified {
+            t.undo();
+            assert_eq!(t.lines(), buf_before);
+            t.redo();
+            assert_eq!(t.lines(), buf_after);
+        }
+    }
+}
+
+#[test]
+fn test_delete_newline() {
+    let t = DeleteTester(&["a", "b", "c"], |t| t.delete_newline());
+    t.test((0, 0), (0, 0, t.0, ""));
+    t.test((1, 0), (0, 1, &["ab", "c"], ""));
+    t.test((2, 0), (1, 1, &["a", "bc"], ""));
+}
+
+#[test]
+fn test_delete_char() {
+    let t = DeleteTester(&["ab", "c"], |t| t.delete_char());
+    t.test((0, 0), (0, 0, t.0, ""));
+    t.test((0, 1), (0, 0, &["b", "c"], ""));
+    t.test((0, 2), (0, 1, &["a", "c"], ""));
+    t.test((1, 0), (0, 2, &["abc"], ""));
+}
+
+#[test]
+fn test_delete_next_char() {
+    let t = DeleteTester(&["ab", "c"], |t| t.delete_next_char());
+    t.test((0, 0), (0, 0, &["b", "c"], ""));
+    t.test((0, 1), (0, 1, &["a", "c"], ""));
+    t.test((0, 2), (0, 2, &["abc"], ""));
+    t.test((1, 1), (1, 1, t.0, ""));
+}
+
+#[test]
+fn test_delete_line_by_end() {
+    let t = DeleteTester(&["aaa bbb", "d"], |t| t.delete_line_by_end());
+    t.test((0, 0), (0, 0, &["", "d"], "aaa bbb"));
+    t.test((0, 3), (0, 3, &["aaa", "d"], " bbb"));
+    t.test((0, 6), (0, 6, &["aaa bb", "d"], "b"));
+    t.test((0, 7), (0, 7, &["aaa bbbd"], "")); // Newline is not yanked
+    t.test((1, 1), (1, 1, t.0, ""));
+}
+
+#[test]
+fn test_delete_line_by_head() {
+    let t = DeleteTester(&["aaa bbb", "d"], |t| t.delete_line_by_head());
+    t.test((0, 0), (0, 0, t.0, ""));
+    t.test((0, 3), (0, 0, &[" bbb", "d"], "aaa"));
+    t.test((0, 7), (0, 0, &["", "d"], "aaa bbb"));
+    t.test((1, 0), (0, 7, &["aaa bbbd"], "")); // Newline is not yanked
+}
+
+#[test]
+fn test_delete_word() {
+    let t = DeleteTester(&["word  ことば 🐶", " x"], |t| t.delete_word());
+    t.test((0, 0), (0, 0, t.0, ""));
+    t.test((0, 2), (0, 0, &["rd  ことば 🐶", " x"], "wo"));
+    t.test((0, 4), (0, 0, &["  ことば 🐶", " x"], "word"));
+    t.test((0, 5), (0, 0, &[" ことば 🐶", " x"], "word "));
+    t.test((0, 6), (0, 0, &["ことば 🐶", " x"], "word  "));
+    t.test((0, 7), (0, 6, &["word  とば 🐶", " x"], "こ"));
+    t.test((0, 9), (0, 6, &["word   🐶", " x"], "ことば"));
+    t.test((0, 10), (0, 6, &["word  🐶", " x"], "ことば "));
+    t.test((0, 11), (0, 10, &["word  ことば ", " x"], "🐶"));
+    t.test((1, 0), (0, 11, &["word  ことば 🐶 x"], ""));
+    t.test((1, 1), (1, 0, &["word  ことば 🐶", "x"], " "));
+    t.test((1, 2), (1, 1, &["word  ことば 🐶", " "], "x"));
+}
+
+#[test]
+fn test_delete_next_word() {
+    let t = DeleteTester(&["word  ことば 🐶", " x"], |t| t.delete_next_word());
+    t.test((0, 0), (0, 0, &["  ことば 🐶", " x"], "word"));
+    t.test((0, 2), (0, 2, &["wo  ことば 🐶", " x"], "rd"));
+    t.test((0, 4), (0, 4, &["word 🐶", " x"], "  ことば"));
+    t.test((0, 5), (0, 5, &["word  🐶", " x"], " ことば"));
+    t.test((0, 6), (0, 6, &["word   🐶", " x"], "ことば"));
+    t.test((0, 9), (0, 9, &["word  ことば", " x"], " 🐶"));
+    t.test((0, 10), (0, 10, &["word  ことば ", " x"], "🐶"));
+    t.test((0, 11), (0, 11, &["word  ことば 🐶 x"], ""));
+    t.test((1, 0), (1, 0, &["word  ことば 🐶", ""], " x"));
+    t.test((1, 2), (1, 2, t.0, ""));
 }
