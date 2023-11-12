@@ -14,15 +14,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --features=search,termwiz,termion,arbitrary
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Run tests on Linux or macOS
+        run: |
+          cargo llvm-cov --color always --lcov --output-path lcov.info --features=search,termwiz,termion,arbitrary
+          cargo llvm-cov --color always --no-run
         if: ${{ matrix.os != 'windows-latest' }}
-      - run: cargo test --features=search,termwiz,arbitrary
+      - name: Run tests on Windows
+        run: |
+          cargo llvm-cov --color always --lcov --output-path lcov.info --features=search,termwiz,arbitrary
+          cargo llvm-cov --color always --no-run
         if: ${{ matrix.os == 'windows-latest' }}
       - run: cargo test --no-default-features --features=tuirs-crossterm,search -- --skip .rs
       - run: cargo test --no-default-features --features=tuirs-termion,search -- --skip .rs
         if: ${{ matrix.os != 'windows-latest' }}
       - run: cargo test --no-default-features --features=no-backend,search -- --skip .rs
       - run: cargo test --no-default-features --features=tuirs-no-backend,search -- --skip .rs
+      - uses: codecov/codecov-action@v3
+        with:
+          files: lcov.info
   lint:
     runs-on: ubuntu-latest
     steps:

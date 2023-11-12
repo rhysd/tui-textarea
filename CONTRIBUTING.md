@@ -38,6 +38,14 @@ Note: On Windows, remove `termion` and `tuirs-termion` features from `--features
 If you use [cargo-watch][], `cargo watch-check` and `cargo watch-test` aliases are useful to run checks/tests automatically
 on files being changed.
 
+### Code coverage
+
+Code coverage is monitored on [codecov][].
+
+https://app.codecov.io/gh/rhysd/tui-textarea
+
+When you implement some new feature, consider to add new unit tests which cover your implementation.
+
 ## Print debugging
 
 Since this crate uses stdout, `println!` is not available for debugging. Instead, stderr through [`eprintln!`][eprintln]
@@ -99,3 +107,4 @@ See [README in bench/](./bench/README.md) for more details.
 [criterion]: https://github.com/bheisler/criterion.rs
 [eprintln]: https://doc.rust-lang.org/std/macro.eprintln.html
 [dbg]: https://doc.rust-lang.org/std/macro.dbg.html
+[codecov]: https://about.codecov.io/
