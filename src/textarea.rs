@@ -30,9 +30,18 @@ impl Default for YankText {
     }
 }
 
-impl<S: Into<String>> From<S> for YankText {
-    fn from(s: S) -> Self {
-        Self::Piece(s.into())
+impl From<String> for YankText {
+    fn from(s: String) -> Self {
+        Self::Piece(s)
+    }
+}
+impl From<Vec<String>> for YankText {
+    fn from(mut c: Vec<String>) -> Self {
+        match c.len() {
+            0 => Self::default(),
+            1 => Self::Piece(c.remove(0)),
+            _ => Self::Chunk(c),
+        }
     }
 }
 
@@ -721,6 +730,11 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["a"]);
     /// ```
     pub fn insert_char(&mut self, c: char) {
+        if c == '\n' || c == '\r' {
+            self.insert_newline();
+            return;
+        }
+
         self.delete_selection(false);
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
@@ -788,7 +802,7 @@ impl<'a> TextArea<'a> {
         let line = &mut self.lines[row];
         debug_assert!(
             !s.contains('\n'),
-            "string given to insert_str must not contain newline: {:?}",
+            "string given to TextArea::insert_piece must not contain newline: {:?}",
             line,
         );
 
@@ -978,7 +992,8 @@ impl<'a> TextArea<'a> {
         }
 
         if self.hard_tab_indent {
-            return self.insert_piece("\t".to_string());
+            self.insert_char('\t');
+            return true;
         }
 
         let (row, col) = self.cursor;
@@ -2001,8 +2016,7 @@ impl<'a> TextArea<'a> {
         self.yank.to_string()
     }
 
-    /// Set a yanked text. The text can be inserted by [`TextArea::paste`]. The string passed to method must not contain
-    /// any newlines.
+    /// Set a yanked text. The text can be inserted by [`TextArea::paste`].
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -2013,7 +2027,8 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["hello, world"]);
     /// ```
     pub fn set_yank_text(&mut self, text: impl Into<String>) {
-        self.yank = text.into().into();
+        let lines: Vec<_> = text.into().split('\n').map(str::to_string).collect();
+        self.yank = lines.into();
     }
 
     /// Set a regular expression pattern for text search. Setting an empty string stops the text search.
