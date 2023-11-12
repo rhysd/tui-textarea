@@ -60,7 +60,7 @@ fn main() -> io::Result<()> {
     } else {
         TextArea::default()
     };
-    textarea.set_selection_style(Style::default().bg(Color::Red));
+
     let mut mode = Mode::Normal;
     loop {
         // Show help message and current mode in title of the block
@@ -75,41 +75,32 @@ fn main() -> io::Result<()> {
 
         term.draw(|f| f.render_widget(textarea.widget(), f.size()))?;
 
-        let input: Input = crossterm::event::read()?.into();
-
-        // since this sample doesnt use input a lot of the time
-        // it must call should_select
-
-        textarea.should_select(&input);
+        let input = crossterm::event::read()?.into();
         match mode {
             Mode::Normal => match input {
                 // Mappings in normal mode
-
-                // note that the navigation keys can be pressed with or without shift
-                // if the user is selecting text
-                // so we have to look for 'h' and 'H' etc.
                 Input {
-                    key: Key::Char('h' | 'H'),
+                    key: Key::Char('h'),
                     ..
                 } => textarea.move_cursor(CursorMove::Back),
                 Input {
-                    key: Key::Char('j' | 'J'),
+                    key: Key::Char('j'),
                     ..
                 } => textarea.move_cursor(CursorMove::Down),
                 Input {
-                    key: Key::Char('k' | 'K'),
+                    key: Key::Char('k'),
                     ..
                 } => textarea.move_cursor(CursorMove::Up),
                 Input {
-                    key: Key::Char('l' | 'L'),
+                    key: Key::Char('l'),
                     ..
                 } => textarea.move_cursor(CursorMove::Forward),
                 Input {
-                    key: Key::Char('w' | 'W'),
+                    key: Key::Char('w'),
                     ..
                 } => textarea.move_cursor(CursorMove::WordForward),
                 Input {
-                    key: Key::Char('b' | 'B'),
+                    key: Key::Char('b'),
                     ctrl: false,
                     ..
                 } => textarea.move_cursor(CursorMove::WordBack),
@@ -139,13 +130,6 @@ fn main() -> io::Result<()> {
                     ..
                 } => {
                     textarea.paste();
-                }
-                Input {
-                    key: Key::Char('y'),
-                    ctrl: false,
-                    ..
-                } => {
-                    textarea.copy();
                 }
                 Input {
                     key: Key::Char('u'),
@@ -182,8 +166,6 @@ fn main() -> io::Result<()> {
                     key: Key::Char('A'),
                     ..
                 } => {
-                    // stop selection is called to prevent 'A' being interpreted as selecting
-                    textarea.stop_selection();
                     textarea.move_cursor(CursorMove::End);
                     mode = Mode::Insert;
                 }
@@ -199,8 +181,6 @@ fn main() -> io::Result<()> {
                     key: Key::Char('O'),
                     ..
                 } => {
-                    // stop selection is called to prevent 'O' being interpreted as selecting
-                    textarea.stop_selection();
                     textarea.move_cursor(CursorMove::Head);
                     textarea.insert_newline();
                     textarea.move_cursor(CursorMove::Up);
@@ -210,7 +190,6 @@ fn main() -> io::Result<()> {
                     key: Key::Char('I'),
                     ..
                 } => {
-                    textarea.stop_selection();
                     textarea.move_cursor(CursorMove::Head);
                     mode = Mode::Insert;
                 }
@@ -248,6 +227,33 @@ fn main() -> io::Result<()> {
                     ctrl: true,
                     ..
                 } => textarea.scroll(Scrolling::PageUp),
+                Input {
+                    key: Key::Char('v'),
+                    ctrl: false,
+                    ..
+                } => textarea.start_selection(),
+                Input {
+                    key: Key::Char('V'),
+                    ctrl: false,
+                    ..
+                } => {
+                    textarea.move_cursor(CursorMove::Head);
+                    textarea.start_selection();
+                    textarea.move_cursor(CursorMove::End);
+                }
+                Input { key: Key::Esc, .. } => textarea.cancel_selection(),
+                Input {
+                    key: Key::Char('y'),
+                    ctrl: false,
+                    ..
+                } if textarea.is_selecting() => textarea.copy(),
+                Input {
+                    key: Key::Char('d'),
+                    ctrl: false,
+                    ..
+                } if textarea.is_selecting() => {
+                    textarea.cut();
+                }
                 _ => {}
             },
             Mode::Insert => match input {

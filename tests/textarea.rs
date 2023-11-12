@@ -1,3 +1,4 @@
+use std::cmp;
 use tui_textarea::{CursorMove, TextArea};
 
 #[test]
@@ -799,385 +800,507 @@ fn test_delete_str_multiple_lines() {
     }
 }
 
-//
-// selection tests
-//
-
-use tui_textarea::{Input, Key};
-
-/*
-
-    each test block is a tuple of
-    - text to be loaded into textarea
-    - vec of key strokes to be sent
-    - expected value in yank
-    - expected text left in textarea
-
-    the text is inserted into a new textarea
-    cursor is moved to (0,0)
-    strokes are sent
-    yank and remainder are checked
-
-
-*/
 #[test]
-fn select_copy() {
-    for test in [
-        // plain ascii
-        (
-            "hello world",
-            vec![
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, true),
-                (Key::Right, false, false, true),
-                (Key::Char('c'), true, false, false),
-            ],
-            "he",
-            "hello world",
-        ),
-        // plain ascii backwards
-        (
-            "hello world",
-            vec![
-                (Key::End, false, false, false),
-                (Key::Left, false, false, true),
-                (Key::Left, false, false, true),
-                (Key::Char('c'), true, false, false),
-            ],
-            "ld",
-            "hello world",
-        ),
-        // utf8
-        (
-            "あい",
-            vec![
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, true),
-                (Key::Char('c'), true, false, false),
-            ],
-            "あ",
-            "あい",
-        ),
-        // multi line - all
-        (
-            "hello\nworld",
-            vec![
-                (Key::Char('P'), true, true, false),
-                (Key::Home, false, false, false),
-                (Key::Char('N'), true, true, true),
-                (Key::End, false, false, true),
-                (Key::Char('c'), true, false, false),
-            ],
-            "hello\nworld",
-            "hello\nworld",
-        ),
-        // multi line - some
-        (
-            "hello\nworld",
-            vec![
-                (Key::Char('P'), true, true, false),
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, false),
-                (Key::Char('N'), true, true, true),
-                (Key::End, false, false, true),
-                (Key::Left, false, false, true),
-                (Key::Char('c'), true, false, false),
-            ],
-            "ello\nworl",
-            "hello\nworld",
-        ),
-        // multi - line utf8
-        (
-            "あい\nうえ",
-            vec![
-                (Key::Char('P'), true, true, false),
-                (Key::Home, false, false, false),
-                (Key::Char('N'), true, true, true),
-                (Key::End, false, false, true),
-                (Key::Char('c'), true, false, false),
-            ],
-            "あい\nうえ",
-            "あい\nうえ",
-        ),
-        // multi-line utf8 - some
-        (
-            "あい\nうえ",
-            vec![
-                (Key::Char('P'), true, true, false),
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, false),
-                (Key::Char('N'), true, true, true),
-                (Key::End, false, false, true),
-                (Key::Left, false, false, true),
-                (Key::Char('c'), true, false, false),
-            ],
-            "い\nう",
-            "あい\nうえ",
-        ),
-    ] {
-        let (text, strokes, yank, remaining) = test;
-        one_select_test(text, &strokes, yank, remaining);
-    }
-}
-#[test]
-fn select_cut() {
-    for test in [
-        // plain ascii
-        (
-            "hello world",
-            vec![
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, true),
-                (Key::Right, false, false, true),
-                (Key::Char('x'), true, false, false),
-            ],
-            "he",
-            "llo world",
-        ),
-        // plain ascii backwards
-        (
-            "hello world",
-            vec![
-                (Key::End, false, false, false),
-                (Key::Left, false, false, true),
-                (Key::Left, false, false, true),
-                (Key::Char('x'), true, false, false),
-            ],
-            "ld",
-            "hello wor",
-        ),
-        // utf8
-        (
-            "あい",
-            vec![
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, true),
-                (Key::Char('x'), true, false, false),
-            ],
-            "あ",
-            "い",
-        ),
-        // multi line - all
-        (
-            "hello\nworld",
-            vec![
-                (Key::Char('P'), true, true, false),
-                (Key::Home, false, false, false),
-                (Key::Char('N'), true, true, true),
-                (Key::End, false, false, true),
-                (Key::Char('x'), true, false, false),
-            ],
-            "hello\nworld",
-            "",
-        ),
-        // multi line - some
-        (
-            "hello\nworld",
-            vec![
-                (Key::Char('P'), true, true, false),
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, false),
-                (Key::Char('N'), true, true, true),
-                (Key::End, false, false, true),
-                (Key::Left, false, false, true),
-                (Key::Char('x'), true, false, false),
-            ],
-            "ello\nworl",
-            "hd",
-        ),
-        // multi - line utf8
-        (
-            "あい\nうえ",
-            vec![
-                (Key::Char('P'), true, true, false),
-                (Key::Home, false, false, false),
-                (Key::Char('N'), true, true, true),
-                (Key::End, false, false, true),
-                (Key::Char('x'), true, false, false),
-            ],
-            "あい\nうえ",
-            "",
-        ),
-        // multi-line utf8 - some
-        (
-            "あい\nうえ",
-            vec![
-                (Key::Char('P'), true, true, false),
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, false),
-                (Key::Char('N'), true, true, true),
-                (Key::End, false, false, true),
-                (Key::Left, false, false, true),
-                (Key::Char('x'), true, false, false),
-            ],
-            "い\nう",
-            "あえ",
-        ),
-    ] {
-        let (text, strokes, yank, remaining) = test;
-        one_select_test(text, &strokes, yank, remaining);
+fn test_copy_single_line() {
+    for i in 0..="abc".len() {
+        for j in i.."abc".len() {
+            let mut t = TextArea::from(["abc"]);
+
+            t.move_cursor(CursorMove::Jump(0, i as u16));
+            t.start_selection();
+            t.move_cursor(CursorMove::Jump(0, j as u16));
+            t.copy();
+
+            assert_eq!(t.yank_text(), &"abc"[i..j], "from {i} to {j}");
+            assert_eq!(t.lines(), ["abc"], "from {i} to {j}");
+        }
     }
 }
 
 #[test]
-fn select_paste() {
-    for test in [
-        // plain ascii
-        (
-            "hello world",
-            vec![
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, true),
-                (Key::Right, false, false, true),
-                (Key::Char('c'), true, false, false),
-                (Key::End, false, false, false),
-                (Key::Char('y'), true, false, false),
-            ],
-            "he",
-            "hello worldhe",
-        ),
-        (
-            "hello world",
-            vec![
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, true),
-                (Key::Right, false, false, true),
-                (Key::Char('c'), true, false, false),
-                (Key::End, false, false, false),
-                (Key::Left, false, false, true),
-                (Key::Left, false, false, true),
-                (Key::Char('y'), true, false, false),
-            ],
-            "he",
-            "hello worhe",
-        ),
-        (
-            "hello\nworld",
-            vec![
-                (Key::Home, false, false, false),
-                (Key::Right, false, false, false),
-                (Key::Right, false, false, false),
-                (Key::Down, false, false, true),
-                (Key::Char('c'), true, false, false),
-                (Key::End, false, false, false),
-                (Key::Enter, false, false, false),
-                (Key::Char('y'), true, false, false),
-            ],
-            "llo\nwo",
-            "hello\nworld\nllo\nwo",
-        ),
-    ] {
-        let (text, strokes, yank, remaining) = test;
-        one_select_test(text, &strokes, yank, remaining);
+fn test_cut_single_line() {
+    for i in 0.."abc".len() {
+        for j in i + 1.."abc".len() {
+            let mut t = TextArea::from(["abc"]);
+
+            t.move_cursor(CursorMove::Jump(0, i as u16));
+            t.start_selection();
+            t.move_cursor(CursorMove::Jump(0, j as u16));
+            t.cut();
+
+            assert_eq!(t.yank_text(), &"abc"[i..j], "from {i} to {j}");
+
+            let mut after = "abc".to_string();
+            after.replace_range(i..j, "");
+            assert_eq!(t.lines(), [after], "from {i} to {j}");
+            assert_eq!(t.cursor(), (0, i));
+
+            t.paste();
+            assert_eq!(t.lines(), ["abc"], "from {i} to {j}");
+        }
     }
 }
+
 #[test]
-fn select_all_keys() {
-    for test in [
+fn test_copy_cut_empty() {
+    for row in 0..=2 {
+        for col in 0..=2 {
+            let check = |f: fn(&mut TextArea<'_>)| {
+                let mut t = TextArea::from(["ab", "cd", "ef"]);
+                t.move_cursor(CursorMove::Jump(row, col));
+                t.start_selection();
+                t.move_cursor(CursorMove::Jump(row, col));
+                f(&mut t);
+                assert!(!t.is_selecting());
+                assert_eq!(t.cursor(), (row as _, col as _));
+                assert_eq!(t.lines(), ["ab", "cd", "ef"]);
+            };
+
+            check(|t| {
+                assert!(!t.cut());
+            });
+            check(|t| t.copy());
+        }
+    }
+}
+
+#[test]
+fn test_copy_cut_paste_multi_lines() {
+    #[rustfmt::skip]
+    let tests = [
         (
-            // enter key erases selection
-            "hello world",
-            vec![
-                (Key::End, false, false, true),
-                (Key::Enter, false, false, true),
-            ],
-            "",
+            // Initial text
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            // Start position of selection
+            (0, 0),
+            // End position of selection
+            (1, 0),
+            // Expected yanked text
+            "ab\n",
+            // Text buffer after cut
+            &[
+                "cd",
+                "ef",
+            ][..]
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            (1, 1),
+            "ab\nc",
+            &[
+                "d",
+                "ef",
+            ][..]
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            (1, 2),
+            "ab\ncd",
+            &[
+                "",
+                "ef",
+            ][..]
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            (2, 0),
+            "ab\ncd\n",
+            &[
+                "ef",
+            ][..]
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            (2, 1),
+            "ab\ncd\ne",
+            &[
+                "f",
+            ][..]
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 0),
+            (2, 2),
+            "ab\ncd\nef",
+            &[
+                "",
+            ][..]
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 1),
+            (1, 1),
+            "b\nc",
+            &[
+                "ad",
+                "ef",
+            ][..]
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 2),
+            (1, 1),
+            "\nc",
+            &[
+                "abd",
+                "ef",
+            ][..]
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (1, 0),
+            (2, 1),
+            "cd\ne",
+            &[
+                "ab",
+                "f",
+            ][..]
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 2),
+            (1, 0),
             "\n",
+            &[
+                "abcd",
+                "ef",
+            ][..]
         ),
         (
-            // word forward select
-            "hello world",
-            vec![
-                (Key::Char('f'), false, true, true),
-                (Key::Char('c'), true, false, false),
-            ],
-            "hello ",
-            "hello world",
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (0, 2),
+            (2, 0),
+            "\ncd\n",
+            &[
+                "abef",
+            ][..]
+        ),
+        // Multi-byte characters
+        (
+            &[
+                "あい",
+                "うえ",
+                "おか",
+            ][..],
+            (0, 0),
+            (2, 2),
+            "あい\nうえ\nおか",
+            &[
+                "",
+            ][..]
         ),
         (
-            // word back select
-            "hello world",
-            vec![
-                (Key::End, false, false, false),
-                (Key::Char('b'), false, true, true),
-                (Key::Char('c'), true, false, false),
-            ],
-            "world",
-            "hello world",
+            &[
+                "あい",
+                "うえ",
+                "おか",
+            ][..],
+            (0, 1),
+            (2, 1),
+            "い\nうえ\nお",
+            &[
+                "あか",
+            ][..]
         ),
         (
-            // para forward select
-            "hello\nworld\n\nhow\nare\nyou",
-            vec![
-                (Key::Char('n'), false, true, true),
-                (Key::Char('x'), true, false, true),
-            ],
-            "hello\nworld\n\n",
-            "how\nare\nyou",
+            &[
+                "あい",
+                "うえ",
+                "おか",
+            ][..],
+            (0, 2),
+            (2, 0),
+            "\nうえ\n",
+            &[
+                "あいおか",
+            ][..]
         ),
         (
-            // para back select
-            "hello\nworld\n\nhow\nare\nyou",
-            vec![
-                // goto end
-                (Key::Char('n'), true, true, false),
-                (Key::End, false, false, false),
-                (Key::Char('p'), false, true, true),
-                (Key::Char('x'), true, false, true),
-            ],
-            "\nare\nyou",
-            "hello\nworld\n\nhow",
+            &[
+                "あい",
+                "うえ",
+                "おか",
+            ][..],
+            (0, 2),
+            (1, 2),
+            "\nうえ",
+            &[
+                "あい",
+                "おか",
+            ][..]
         ),
         (
-            // undo
-            "hello\nworld\n\nhow\nare\nyou",
-            vec![
-                // goto end
-                (Key::Char('n'), true, true, false),
-                (Key::End, false, false, false),
-                (Key::Char('p'), false, true, true),
-                (Key::Char('x'), true, false, false),
-                (Key::Char('u'), true, false, false),
-            ],
-            "\nare\nyou",
-            "hello\nworld\n\nhow\nare\nyou",
+            &[
+                "あい",
+                "うえ",
+                "おか",
+            ][..],
+            (0, 2),
+            (1, 1),
+            "\nう",
+            &[
+                "あいえ",
+                "おか",
+            ][..]
         ),
-    ] {
-        let (text, strokes, yank, remaining) = test;
-        one_select_test(text, &strokes, yank, remaining);
+        (
+            &[
+                "あい",
+                "うえ",
+                "おか",
+            ][..],
+            (0, 2),
+            (1, 0),
+            "\n",
+            &[
+                "あいうえ",
+                "おか",
+            ][..]
+        ),
+    ];
+
+    for test in tests {
+        let (init_text, (srow, scol), (erow, ecol), yanked, after_cut) = test;
+
+        {
+            let mut t = TextArea::from(init_text.iter().map(|s| s.to_string()));
+            t.move_cursor(CursorMove::Jump(srow as _, scol as _));
+            t.start_selection();
+            t.move_cursor(CursorMove::Jump(erow as _, ecol as _));
+            t.copy();
+
+            assert_eq!(t.cursor(), (erow, ecol), "{test:?}");
+            assert_eq!(t.yank_text(), yanked, "{test:?}");
+            assert_eq!(t.lines(), init_text, "{test:?}");
+        }
+
+        {
+            let mut t = TextArea::from(init_text.iter().map(|s| s.to_string()));
+            t.move_cursor(CursorMove::Jump(srow as _, scol as _));
+            t.start_selection();
+            t.move_cursor(CursorMove::Jump(erow as _, ecol as _));
+            t.cut();
+
+            assert_eq!(t.cursor(), (srow, scol), "{test:?}");
+            assert_eq!(t.yank_text(), yanked, "{test:?}");
+            assert_eq!(t.lines(), after_cut, "{test:?}");
+
+            t.paste();
+            assert_eq!(t.lines(), init_text, "{test:?}");
+        }
+
+        // Reverse positions
+        {
+            let mut t = TextArea::from(init_text.iter().map(|s| s.to_string()));
+            t.move_cursor(CursorMove::Jump(erow as _, ecol as _));
+            t.start_selection();
+            t.move_cursor(CursorMove::Jump(srow as _, scol as _));
+            t.copy();
+
+            assert_eq!(t.cursor(), (srow, scol), "{test:?}");
+            assert_eq!(t.yank_text(), yanked, "{test:?}");
+            assert_eq!(t.lines(), init_text, "{test:?}");
+        }
+
+        {
+            let mut t = TextArea::from(init_text.iter().map(|s| s.to_string()));
+            t.move_cursor(CursorMove::Jump(erow as _, ecol as _));
+            t.start_selection();
+            t.move_cursor(CursorMove::Jump(srow as _, scol as _));
+            t.cut();
+
+            assert_eq!(t.cursor(), (srow, scol), "{test:?}");
+            assert_eq!(t.yank_text(), yanked, "{test:?}");
+            assert_eq!(t.lines(), after_cut, "{test:?}");
+
+            t.paste();
+            assert_eq!(t.lines(), init_text, "{test:?}");
+        }
     }
 }
-fn one_select_test(
-    text: &str,
-    strokes: &Vec<(Key, bool, bool, bool)>,
-    yank: &str,
-    remaining: &str,
-) {
-    let mut ta = TextArea::default();
-    ta.insert_str(text);
 
-    // cursor home
-    ta.input(Input {
-        key: Key::Up,
-        ctrl: true,
-        alt: true,
-        shift: false,
-    });
-    ta.input(Input {
-        key: Key::Home,
-        ctrl: true,
-        alt: true,
-        shift: false,
-    });
-    for k in strokes {
-        let input = Input {
-            key: k.0,
-            ctrl: k.1,
-            alt: k.2,
-            shift: k.3,
+#[test]
+fn test_delete_selection_on_delete_operations() {
+    macro_rules! test_case {
+        ($name:ident($($args:expr),*)) => {
+            (
+                stringify!($name),
+                (|t| t.$name($($args),*)) as fn(&mut TextArea) -> bool,
+            )
         };
-        ta.input(input);
     }
-    assert_eq!(ta.yank_text(), yank);
-    assert_eq!(ta.lines().join("\n"), remaining);
+
+    let tests = [
+        test_case!(delete_char()),
+        test_case!(delete_next_char()),
+        test_case!(delete_line_by_end()),
+        test_case!(delete_line_by_head()),
+        test_case!(delete_word()),
+        test_case!(delete_next_word()),
+        test_case!(delete_str(3)),
+    ];
+
+    for (n, f) in tests {
+        let mut t = TextArea::from(["ab", "cd", "ef"]);
+        t.move_cursor(CursorMove::Jump(0, 1));
+        t.start_selection();
+        t.move_cursor(CursorMove::Jump(2, 1));
+
+        let modified = f(&mut t);
+        assert!(modified, "{n}");
+        assert_eq!(t.lines(), ["af"], "{n}");
+        assert_eq!(t.cursor(), (0, 1), "{n}");
+
+        t.undo();
+        assert_eq!(t.lines(), ["ab", "cd", "ef"], "{n}");
+    }
+}
+
+#[test]
+fn test_delete_selection_on_delete_edge_cases() {
+    macro_rules! test_case {
+        ($name:ident($($args:expr),*), $pos:expr) => {
+            (
+                stringify!($name),
+                (|t| t.$name($($args),*)) as fn(&mut TextArea) -> bool,
+                $pos,
+            )
+        };
+    }
+
+    // When deleting nothing and deleting newline
+    let tests = [
+        test_case!(delete_char(), (0, 0)),
+        test_case!(delete_char(), (1, 0)),
+        test_case!(delete_next_char(), (2, 2)),
+        test_case!(delete_next_char(), (1, 2)),
+        test_case!(delete_line_by_end(), (0, 2)),
+        test_case!(delete_line_by_end(), (2, 2)),
+        test_case!(delete_line_by_head(), (0, 0)),
+        test_case!(delete_line_by_head(), (1, 0)),
+        test_case!(delete_word(), (0, 0)),
+        test_case!(delete_word(), (1, 0)),
+        test_case!(delete_next_word(), (2, 2)),
+        test_case!(delete_next_word(), (1, 2)),
+        test_case!(delete_str(0), (0, 0)),
+        test_case!(delete_str(100), (2, 2)),
+    ];
+
+    for (n, f, pos) in tests {
+        let mut t = TextArea::from(["ab", "cd", "ef"]);
+        t.move_cursor(CursorMove::Jump(1, 1));
+        t.start_selection();
+        t.move_cursor(CursorMove::Jump(pos.0 as _, pos.1 as _));
+
+        assert!(f(&mut t), "{n}, {pos:?}");
+        assert_eq!(t.cursor(), cmp::min(pos, (1, 1)), "{n}, {pos:?}");
+
+        t.undo();
+        assert_eq!(t.lines(), ["ab", "cd", "ef"], "{n}, {pos:?}");
+    }
+}
+
+#[test]
+fn test_delete_selection_before_insert() {
+    macro_rules! test_case {
+        ($name:ident($($args:expr),*), $want:expr) => {
+            (
+                stringify!($name),
+                (|t| {
+                    t.$name($($args),*);
+                }) as fn(&mut TextArea),
+                &$want as &[_],
+            )
+        };
+    }
+
+    let tests = [
+        test_case!(insert_newline(), ["a", "f"]),
+        test_case!(insert_char('x'), ["axf"]),
+        test_case!(insert_tab(), ["a   f"]), // Default tab is 4 spaces
+        test_case!(insert_str("xyz"), ["axyzf"]),
+    ];
+
+    for (n, f, after) in tests {
+        let mut t = TextArea::from(["ab", "cd", "ef"]);
+        t.move_cursor(CursorMove::Jump(0, 1));
+        t.start_selection();
+        t.move_cursor(CursorMove::Jump(2, 1));
+
+        f(&mut t);
+        assert_eq!(t.lines(), after, "{n}");
+
+        // XXX: Deleting selection and inserting text are separate undo units for now
+        t.undo();
+        t.undo();
+        assert_eq!(t.lines(), ["ab", "cd", "ef"], "{n}");
+    }
+}
+
+#[test]
+fn test_undo_redo_stop_selection() {
+    fn check(t: &mut TextArea, f: fn(&mut TextArea) -> bool) {
+        t.move_cursor(CursorMove::Jump(0, 0));
+        t.start_selection();
+        t.move_cursor(CursorMove::Jump(0, 1));
+        assert!(t.is_selecting());
+        assert!(f(t));
+        assert!(!t.is_selecting());
+    }
+
+    let mut t = TextArea::default();
+    t.insert_char('a');
+
+    check(&mut t, |t| t.undo());
+    assert_eq!(t.lines(), [""]);
+    check(&mut t, |t| t.redo());
+    assert_eq!(t.lines(), ["a"]);
 }

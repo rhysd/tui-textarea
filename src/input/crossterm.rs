@@ -79,7 +79,6 @@ impl From<MouseEvent> for Input {
         let ctrl = mouse.modifiers.contains(KeyModifiers::CONTROL);
         let alt = mouse.modifiers.contains(KeyModifiers::ALT);
         let shift = mouse.modifiers.contains(KeyModifiers::SHIFT);
-
         Self {
             key,
             ctrl,
@@ -118,27 +117,34 @@ mod tests {
         for (from, to) in [
             (
                 key_event(KeyCode::Char('a'), KeyModifiers::empty()),
-                input(Key::Char('a'), false, false),
+                input(Key::Char('a'), false, false, false),
             ),
             (
                 key_event(KeyCode::Enter, KeyModifiers::empty()),
-                input(Key::Enter, false, false),
+                input(Key::Enter, false, false, false),
             ),
             (
                 key_event(KeyCode::Left, KeyModifiers::CONTROL),
-                input(Key::Left, true, false),
+                input(Key::Left, true, false, false),
+            ),
+            (
+                key_event(KeyCode::Right, KeyModifiers::SHIFT),
+                input(Key::Right, false, false, true),
             ),
             (
                 key_event(KeyCode::Home, KeyModifiers::ALT),
-                input(Key::Home, false, true),
+                input(Key::Home, false, true, false),
             ),
             (
-                key_event(KeyCode::F(1), KeyModifiers::ALT | KeyModifiers::CONTROL),
-                input(Key::F(1), true, true),
+                key_event(
+                    KeyCode::F(1),
+                    KeyModifiers::ALT | KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+                ),
+                input(Key::F(1), true, true, true),
             ),
             (
                 key_event(KeyCode::NumLock, KeyModifiers::CONTROL),
-                input(Key::Null, true, false),
+                input(Key::Null, true, false, false),
             ),
         ] {
             assert_eq!(Input::from(from), to, "{:?} -> {:?}", from, to);
@@ -150,26 +156,30 @@ mod tests {
         for (from, to) in [
             (
                 mouse_event(MouseEventKind::ScrollDown, KeyModifiers::empty()),
-                input(Key::MouseScrollDown, false, false),
+                input(Key::MouseScrollDown, false, false, false),
             ),
             (
                 mouse_event(MouseEventKind::ScrollUp, KeyModifiers::CONTROL),
-                input(Key::MouseScrollUp, true, false),
+                input(Key::MouseScrollUp, true, false, false),
+            ),
+            (
+                mouse_event(MouseEventKind::ScrollUp, KeyModifiers::SHIFT),
+                input(Key::MouseScrollUp, false, false, true),
             ),
             (
                 mouse_event(MouseEventKind::ScrollDown, KeyModifiers::ALT),
-                input(Key::MouseScrollDown, false, true),
+                input(Key::MouseScrollDown, false, true, false),
             ),
             (
                 mouse_event(
                     MouseEventKind::ScrollUp,
                     KeyModifiers::CONTROL | KeyModifiers::ALT,
                 ),
-                input(Key::MouseScrollUp, true, true),
+                input(Key::MouseScrollUp, true, true, false),
             ),
             (
                 mouse_event(MouseEventKind::Moved, KeyModifiers::CONTROL),
-                input(Key::Null, true, false),
+                input(Key::Null, true, false, false),
             ),
         ] {
             assert_eq!(Input::from(from), to, "{:?} -> {:?}", from, to);
@@ -181,16 +191,16 @@ mod tests {
         for (from, to) in [
             (
                 Event::Key(key_event(KeyCode::Char('a'), KeyModifiers::empty())),
-                input(Key::Char('a'), false, false),
+                input(Key::Char('a'), false, false, false),
             ),
             (
                 Event::Mouse(mouse_event(
                     MouseEventKind::ScrollDown,
                     KeyModifiers::empty(),
                 )),
-                input(Key::MouseScrollDown, false, false),
+                input(Key::MouseScrollDown, false, false, false),
             ),
-            (Event::FocusGained, input(Key::Null, false, false)),
+            (Event::FocusGained, input(Key::Null, false, false, false)),
         ] {
             assert_eq!(Input::from(from.clone()), to, "{:?} -> {:?}", from, to);
         }
@@ -201,7 +211,7 @@ mod tests {
     fn ignore_key_release_event() {
         let mut from = key_event(KeyCode::Char('a'), KeyModifiers::empty());
         from.kind = KeyEventKind::Release;
-        let to = input(Key::Null, false, false);
+        let to = input(Key::Null, false, false, false);
         assert_eq!(Input::from(from), to, "{:?} -> {:?}", from, to);
     }
 }

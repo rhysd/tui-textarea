@@ -10,12 +10,11 @@ use std::iter;
 use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
 
-#[derive(Debug)]
 enum Boundary {
     Cursor(Style),
+    Select(Style),
     #[cfg(feature = "search")]
     Search(Style),
-    Select(Style),
     End,
 }
 
@@ -25,8 +24,8 @@ impl Boundary {
             match b {
                 Boundary::Cursor(_) => 3,
                 #[cfg(feature = "search")]
-                Boundary::Search(_) => 1,
-                Boundary::Select(_) => 2,
+                Boundary::Search(_) => 2,
+                Boundary::Select(_) => 1,
                 Boundary::End => 0,
             }
         }
@@ -36,10 +35,10 @@ impl Boundary {
     fn style(&self) -> Option<Style> {
         match self {
             Boundary::Cursor(s) => Some(*s),
+            Boundary::Select(s) => Some(*s),
             #[cfg(feature = "search")]
             Boundary::Search(s) => Some(*s),
             Boundary::End => None,
-            Boundary::Select(s) => Some(*s),
         }
     }
 }
@@ -98,13 +97,13 @@ impl DisplayTextBuilder {
 pub struct LineHighlighter<'a> {
     line: &'a str,
     spans: Vec<Span<'a>>,
-    // reminder - the usize is the start of a section, in BYTES, not chars
     boundaries: Vec<(Boundary, usize)>, // TODO: Consider smallvec
     style_begin: Style,
     cursor_at_end: bool,
     cursor_style: Style,
     tab_len: u8,
     mask: Option<char>,
+    select_at_end: bool,
     select_style: Style,
 }
 
@@ -125,6 +124,7 @@ impl<'a> LineHighlighter<'a> {
             cursor_style,
             tab_len,
             mask,
+            select_at_end: false,
             select_style,
         }
     }
@@ -133,11 +133,6 @@ impl<'a> LineHighlighter<'a> {
         let pad = spaces(lnum_len - num_digits(row + 1) + 1);
         self.spans
             .push(Span::styled(format!("{}{} ", pad, row + 1), style));
-    }
-
-    pub fn select(&mut self, start: usize, end: usize, style: Style) {
-        self.boundaries.push((Boundary::Select(style), start));
-        self.boundaries.push((Boundary::End, end));
     }
 
     pub fn cursor_line(&mut self, cursor_col: usize, style: Style) {
@@ -151,60 +146,6 @@ impl<'a> LineHighlighter<'a> {
         self.style_begin = style;
     }
 
-    pub(crate) fn select_line(
-        &mut self,
-        row: usize,
-        line: &str,
-        start: (usize, usize),
-        end: (usize, usize),
-    ) {
-        // is this row selected?
-
-        // note that the input coordinates here are in char offsets not bytes
-        // so a lot of this code is converting from char offsets to byte offsets
-        if start.0 <= row && end.0 >= row {
-            let mut indices = line.char_indices();
-            let llen = line.len();
-            match (start.0 == row, end.0 == row) {
-                (true, true) => {
-                    // only line
-                    self.select(
-                        indices.nth(start.1).unwrap_or((llen, 'x')).0,
-                        indices.nth(end.1 - start.1).unwrap_or((llen, 'x')).0,
-                        self.select_style,
-                    );
-                }
-                (true, false) => {
-                    // a line in the start of selection
-
-                    // the +1 extends the highlight one beyond end, to show
-                    // that the newline is included
-                    // same done for middle rows below
-
-                    self.select(
-                        indices.nth(start.1).unwrap_or((llen, 'x')).0,
-                        llen + 1,
-                        self.select_style,
-                    );
-                }
-                (false, true) => {
-                    // last line
-                    if end.1 > 0 {
-                        self.select(
-                            0,
-                            indices.nth(end.1).unwrap_or((llen, 'x')).0,
-                            self.select_style,
-                        );
-                    }
-                }
-                (false, false) => {
-                    // in the middle of selection
-                    self.select(0, llen + 1, self.select_style);
-                }
-            }
-        }
-    }
-
     #[cfg(feature = "search")]
     pub fn search(&mut self, matches: impl Iterator<Item = (usize, usize)>, style: Style) {
         for (start, end) in matches {
@@ -212,6 +153,36 @@ impl<'a> LineHighlighter<'a> {
                 self.boundaries.push((Boundary::Search(style), start));
                 self.boundaries.push((Boundary::End, end));
             }
+        }
+    }
+
+    pub fn selection(
+        &mut self,
+        row: usize,
+        start_row: usize,
+        start_off: usize,
+        end_row: usize,
+        end_off: usize,
+    ) {
+        let (start, end) = if row == start_row {
+            if start_row == end_row {
+                (start_off, end_off)
+            } else {
+                self.select_at_end = true;
+                (start_off, self.line.len())
+            }
+        } else if row == end_row {
+            (0, end_off)
+        } else if start_row < row && row < end_row {
+            self.select_at_end = true;
+            (0, self.line.len())
+        } else {
+            return;
+        };
+        if start != end {
+            self.boundaries
+                .push((Boundary::Select(self.select_style), start));
+            self.boundaries.push((Boundary::End, end));
         }
     }
 
@@ -225,14 +196,20 @@ impl<'a> LineHighlighter<'a> {
             cursor_style,
             cursor_at_end,
             mask,
+            select_at_end,
             select_style,
         } = self;
         let mut builder = DisplayTextBuilder::new(tab_len, mask);
 
         if boundaries.is_empty() {
-            spans.push(Span::styled(builder.build(line), style_begin));
+            let built = builder.build(line);
+            if !built.is_empty() {
+                spans.push(Span::styled(built, style_begin));
+            }
             if cursor_at_end {
                 spans.push(Span::styled(" ", cursor_style));
+            } else if select_at_end {
+                spans.push(Span::styled(" ", select_style));
             }
             return Line::from(spans);
         }
@@ -245,18 +222,10 @@ impl<'a> LineHighlighter<'a> {
         let mut style = style_begin;
         let mut start = 0;
         let mut stack = vec![];
-        let mut dont_add_cursor = false;
+
         for (next_boundary, end) in boundaries {
             if start < end {
-                // add extra select space at line end to indicate
-                // that the \n will be deleted / included
-                if end > line.len() && style == select_style {
-                    spans.push(Span::styled(builder.build(&line[start..end - 1]), style));
-                    spans.push(Span::styled(" ", style));
-                    dont_add_cursor = true;
-                } else {
-                    spans.push(Span::styled(builder.build(&line[start..end]), style));
-                }
+                spans.push(Span::styled(builder.build(&line[start..end]), style));
             }
 
             style = if let Some(s) = next_boundary.style() {
@@ -267,20 +236,27 @@ impl<'a> LineHighlighter<'a> {
             };
             start = end;
         }
-        if start < line.len() {
+
+        if start != line.len() {
             spans.push(Span::styled(builder.build(&line[start..]), style));
         }
-        if cursor_at_end && !dont_add_cursor {
+
+        if cursor_at_end {
             spans.push(Span::styled(" ", cursor_style));
+        } else if select_at_end {
+            spans.push(Span::styled(" ", select_style));
         }
 
         Line::from(spans)
     }
 }
 
-#[cfg(test)]
+// Tests for spans don't work with tui-rs
+#[cfg(all(test, feature = "ratatui"))]
 mod tests {
     use super::*;
+    use crate::ratatui::style::Color;
+    use std::fmt::Debug;
     use unicode_width::UnicodeWidthStr as _;
 
     fn build(text: &'static str, tab: u8, mask: Option<char>) -> Cow<'static, str> {
@@ -374,5 +350,255 @@ mod tests {
         assert_eq!(&build_with_offset(2, "あ\tあ\t", 4), "あ    あ  ");
     }
 
-    // TODO: Add tests for LineHighlighter
+    fn assert_spans<T: Debug>(lh: LineHighlighter, want: &[(&str, Style)], context: T) {
+        let line = lh.into_spans();
+        let have = line
+            .spans
+            .iter()
+            .map(|s| (s.content.as_ref(), s.style))
+            .collect::<Vec<_>>();
+        assert_eq!(&have, want, "Test case: {context:?}");
+    }
+
+    const DEFAULT: Style = Style::new();
+    const CUR: Style = Style::new().bg(Color::Red); // Cursor
+    #[allow(unused)]
+    const SEARCH: Style = Style::new().bg(Color::Green);
+    const SEL: Style = Style::new().bg(Color::Blue);
+    const LINE: Style = Style::new().bg(Color::Gray);
+    const LNUM: Style = Style::new().bg(Color::Yellow);
+
+    #[test]
+    fn into_spans_normal_line() {
+        let tests = [
+            ("", &[][..]),
+            ("abc", &[("abc", DEFAULT)][..]),
+            ("a\tb\tc", &[("a   b   c", DEFAULT)][..]),
+        ];
+        for test in tests {
+            let (line, want) = test;
+            let lh = LineHighlighter::new(line, CUR, 4, None, SEL);
+            assert_spans(lh, want, test);
+        }
+    }
+
+    #[test]
+    fn into_spans_cursor_line() {
+        let tests = [
+            ("", 0, &[(" ", CUR)][..]),
+            ("a", 0, &[("a", CUR)][..]),
+            ("a", 1, &[("a", LINE), (" ", CUR)][..]),
+            ("あいう", 0, &[("あ", CUR), ("いう", LINE)][..]),
+            ("あいう", 1, &[("あ", LINE), ("い", CUR), ("う", LINE)][..]),
+            ("あいう", 2, &[("あい", LINE), ("う", CUR)][..]),
+            ("a\tb", 1, &[("a", LINE), ("   ", CUR), ("b", LINE)][..]),
+        ];
+
+        for test in tests {
+            let (line, col, want) = test;
+            let mut lh = LineHighlighter::new(line, CUR, 4, None, SEL);
+            lh.cursor_line(col, LINE);
+            assert_spans(lh, want, test);
+        }
+    }
+
+    #[test]
+    fn into_spans_line_number() {
+        let tests = [
+            (0, 1, &[(" 1 ", LNUM)][..]),
+            (123, 3, &[(" 124 ", LNUM)][..]),
+            (123, 5, &[("   124 ", LNUM)][..]),
+        ];
+        for test in tests {
+            let (row, len, want) = test;
+            let mut lh = LineHighlighter::new("", CUR, 4, None, SEL);
+            lh.line_number(row, len, LNUM);
+            assert_spans(lh, want, test);
+        }
+    }
+
+    #[cfg(feature = "search")]
+    #[test]
+    fn into_spans_search() {
+        let tests = [
+            ("abcde", &[(0, 5)][..], &[("abcde", SEARCH)][..]),
+            (
+                "abcde",
+                &[(0, 1), (2, 3), (4, 5)][..],
+                &[
+                    ("a", SEARCH),
+                    ("b", DEFAULT),
+                    ("c", SEARCH),
+                    ("d", DEFAULT),
+                    ("e", SEARCH),
+                ][..],
+            ),
+            (
+                "abcde",
+                &[(1, 2), (3, 4)][..],
+                &[
+                    ("a", DEFAULT),
+                    ("b", SEARCH),
+                    ("c", DEFAULT),
+                    ("d", SEARCH),
+                    ("e", DEFAULT),
+                ][..],
+            ),
+            (
+                "abcde",
+                &[(0, 2), (2, 4), (4, 5)][..],
+                &[("ab", SEARCH), ("cd", SEARCH), ("e", SEARCH)][..],
+            ),
+            ("abcde", &[(1, 1)][..], &[("abcde", DEFAULT)][..]),
+            (
+                "あいうえお",
+                &[(0, 3), (6, 9), (12, 15)][..],
+                &[
+                    ("あ", SEARCH),
+                    ("い", DEFAULT),
+                    ("う", SEARCH),
+                    ("え", DEFAULT),
+                    ("お", SEARCH),
+                ][..],
+            ),
+            (
+                "\ta\tb\t",
+                &[(0, 1), (2, 3), (3, 4)][..],
+                &[
+                    ("    ", SEARCH),
+                    ("a", DEFAULT),
+                    ("   ", SEARCH),
+                    ("b", SEARCH),
+                    ("   ", DEFAULT),
+                ][..],
+            ),
+        ];
+
+        for test in tests {
+            let (line, matches, want) = test;
+            let mut lh = LineHighlighter::new(line, CUR, 4, None, SEL);
+            lh.search(matches.iter().copied(), SEARCH);
+            assert_spans(lh, want, test);
+        }
+    }
+
+    #[test]
+    fn into_spans_selection() {
+        let tests = [
+            // (line, (row, start_row, start_off, end_row, end_off), want)
+            ("abc", (0, 1, 0, 2, 0), &[("abc", DEFAULT)][..]),
+            ("abc", (1, 1, 0, 1, 1), &[("a", SEL), ("bc", DEFAULT)][..]),
+            ("abc", (1, 1, 2, 1, 3), &[("ab", DEFAULT), ("c", SEL)][..]),
+            ("abc", (1, 1, 0, 1, 3), &[("abc", SEL)][..]),
+            ("abc", (1, 1, 0, 2, 0), &[("abc", SEL), (" ", SEL)][..]),
+            (
+                "abc",
+                (1, 1, 2, 2, 0),
+                &[("ab", DEFAULT), ("c", SEL), (" ", SEL)][..],
+            ),
+            ("abc", (1, 1, 3, 2, 0), &[("abc", DEFAULT), (" ", SEL)][..]),
+            ("abc", (2, 1, 0, 3, 0), &[("abc", SEL), (" ", SEL)][..]),
+            ("abc", (2, 1, 0, 2, 0), &[("abc", DEFAULT)][..]),
+            ("abc", (2, 1, 0, 2, 2), &[("ab", SEL), ("c", DEFAULT)][..]),
+            ("abc", (2, 1, 0, 2, 3), &[("abc", SEL)][..]),
+            (
+                "ab\t",
+                (1, 1, 2, 2, 0),
+                &[("ab", DEFAULT), ("  ", SEL), (" ", SEL)][..],
+            ),
+            ("a\tb", (2, 1, 0, 3, 0), &[("a   b", SEL), (" ", SEL)][..]),
+            (
+                "a\tb",
+                (2, 1, 0, 2, 2),
+                &[("a   ", SEL), ("b", DEFAULT)][..],
+            ),
+        ];
+
+        for test in tests {
+            let (line, (row, start_row, start_off, end_row, end_off), want) = test;
+            let mut lh = LineHighlighter::new(line, CUR, 4, None, SEL);
+            lh.selection(row, start_row, start_off, end_row, end_off);
+            assert_spans(lh, want, test);
+        }
+    }
+
+    #[test]
+    fn into_spans_mixed_highlights() {
+        let tests = [
+            (
+                "cursor on selection",
+                {
+                    let mut lh = LineHighlighter::new("abcde", CUR, 4, None, SEL);
+                    lh.cursor_line(2, LINE);
+                    lh.selection(0, 0, 1, 0, 4);
+                    lh
+                },
+                &[("a", LINE), ("b", SEL), ("c", CUR), ("d", SEL), ("e", LINE)][..],
+            ),
+            #[cfg(feature = "search")]
+            (
+                "cursor + selection + search",
+                {
+                    let mut lh = LineHighlighter::new("abcdefg", CUR, 4, None, SEL);
+                    lh.cursor_line(3, LINE);
+                    lh.selection(0, 0, 2, 0, 5);
+                    lh.search([(1, 2), (5, 6)].into_iter(), SEARCH);
+                    lh
+                },
+                &[
+                    ("a", LINE),
+                    ("b", SEARCH),
+                    ("c", SEL),
+                    ("d", CUR),
+                    ("e", SEL),
+                    ("f", SEARCH),
+                    ("g", LINE),
+                ][..],
+            ),
+            (
+                "selection + cursor at end",
+                {
+                    let mut lh = LineHighlighter::new("ab", CUR, 4, None, SEL);
+                    lh.cursor_line(2, LINE);
+                    lh.selection(0, 0, 1, 2, 0);
+                    lh
+                },
+                &[("a", LINE), ("b", SEL), (" ", CUR)][..],
+            ),
+            (
+                "cursor at start of selection",
+                {
+                    let mut lh = LineHighlighter::new("abcd", CUR, 4, None, SEL);
+                    lh.cursor_line(1, LINE);
+                    lh.selection(0, 0, 1, 0, 3);
+                    lh
+                },
+                &[("a", LINE), ("b", CUR), ("c", SEL), ("d", LINE)][..],
+            ),
+            (
+                "cursor at end of selection",
+                {
+                    let mut lh = LineHighlighter::new("abcd", CUR, 4, None, SEL);
+                    lh.cursor_line(2, LINE);
+                    lh.selection(0, 0, 1, 0, 3);
+                    lh
+                },
+                &[("a", LINE), ("b", SEL), ("c", CUR), ("d", LINE)][..],
+            ),
+            (
+                "cursor covers selection",
+                {
+                    let mut lh = LineHighlighter::new("abc", CUR, 4, None, SEL);
+                    lh.cursor_line(1, LINE);
+                    lh.selection(0, 0, 1, 0, 2);
+                    lh
+                },
+                &[("a", LINE), ("b", CUR), ("c", LINE)][..],
+            ),
+        ];
+
+        for (what, lh, want) in tests {
+            assert_spans(lh, want, what);
+        }
+    }
 }

@@ -15,6 +15,7 @@ Multi-line text editor can be easily put as part of your TUI application.
 - Line number
 - Cursor line highlight
 - Search with regular expressions
+- Text selection
 - Mouse scrolling
 - Yank support. Paste text deleted with `C-k`, `C-j`, ...
 - Backend agnostic. [crossterm][], [termion][], [termwiz][], and your own backend are all supported
@@ -250,6 +251,8 @@ Default key mappings are as follows:
 | `Alt+D`, `Alt+Delete`                        | Delete one word next to cursor            |
 | `Ctrl+U`                                     | Undo                                      |
 | `Ctrl+R`                                     | Redo                                      |
+| `Ctrl+C`                                     | Copy selected text                        |
+| `Ctrl+X`                                     | Cut selected text                         |
 | `Ctrl+Y`                                     | Paste yanked text                         |
 | `Ctrl+F`, `→`                                | Move cursor forward by one character      |
 | `Ctrl+B`, `←`                                | Move cursor backward by one character     |
@@ -480,7 +483,11 @@ notify how to move the cursor.
 | `textarea.delete_next_word()`                        | Delete one word next to cursor                  |
 | `textarea.undo()`                                    | Undo                                            |
 | `textarea.redo()`                                    | Redo                                            |
+| `textarea.copy()`                                    | Copy selected text                              |
+| `textarea.cut()`                                     | Cut selected text                               |
 | `textarea.paste()`                                   | Paste yanked text                               |
+| `textarea.start_selection()`                         | Start text selection                            |
+| `textarea.cancel_selection()`                        | Cancel text selection                           |
 | `textarea.move_cursor(CursorMove::Forward)`          | Move cursor forward by one character            |
 | `textarea.move_cursor(CursorMove::Back)`             | Move cursor backward by one character           |
 | `textarea.move_cursor(CursorMove::Up)`               | Move cursor up by one line                      |

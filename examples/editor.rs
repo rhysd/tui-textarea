@@ -248,7 +248,7 @@ impl<'a> Editor<'a> {
                         Span::raw(" to save, "),
                         Span::styled("^G", Style::default().add_modifier(Modifier::BOLD)),
                         Span::raw(" to search, "),
-                        Span::styled("^X", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("^T", Style::default().add_modifier(Modifier::BOLD)),
                         Span::raw(" to switch buffer"),
                     ])
                 };
@@ -314,7 +314,7 @@ impl<'a> Editor<'a> {
                         ..
                     } => break,
                     Input {
-                        key: Key::Char('x'),
+                        key: Key::Char('t'),
                         ctrl: true,
                         ..
                     } => {

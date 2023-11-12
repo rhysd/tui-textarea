@@ -17,7 +17,6 @@ impl From<KeyEvent> for Input {
     fn from(key: KeyEvent) -> Self {
         let mut ctrl = false;
         let mut alt = false;
-        let shift = false;
         let key = match key {
             KeyEvent::Char('\n' | '\r') => Key::Enter,
             KeyEvent::Char(c) => Key::Char(c),
@@ -49,7 +48,7 @@ impl From<KeyEvent> for Input {
             key,
             ctrl,
             alt,
-            shift,
+            shift: false,
         }
     }
 }
@@ -90,14 +89,23 @@ mod tests {
     #[test]
     fn key_to_input() {
         for (from, to) in [
-            (KeyEvent::Char('a'), input(Key::Char('a'), false, false)),
-            (KeyEvent::Ctrl('a'), input(Key::Char('a'), true, false)),
-            (KeyEvent::Alt('a'), input(Key::Char('a'), false, true)),
-            (KeyEvent::Char('\n'), input(Key::Enter, false, false)),
-            (KeyEvent::Char('\r'), input(Key::Enter, false, false)),
-            (KeyEvent::F(1), input(Key::F(1), false, false)),
-            (KeyEvent::BackTab, input(Key::Tab, false, false)),
-            (KeyEvent::Null, input(Key::Null, false, false)),
+            (
+                KeyEvent::Char('a'),
+                input(Key::Char('a'), false, false, false),
+            ),
+            (
+                KeyEvent::Ctrl('a'),
+                input(Key::Char('a'), true, false, false),
+            ),
+            (
+                KeyEvent::Alt('a'),
+                input(Key::Char('a'), false, true, false),
+            ),
+            (KeyEvent::Char('\n'), input(Key::Enter, false, false, false)),
+            (KeyEvent::Char('\r'), input(Key::Enter, false, false, false)),
+            (KeyEvent::F(1), input(Key::F(1), false, false, false)),
+            (KeyEvent::BackTab, input(Key::Tab, false, false, false)),
+            (KeyEvent::Null, input(Key::Null, false, false, false)),
         ] {
             assert_eq!(Input::from(from), to, "{:?} -> {:?}", from, to);
         }
@@ -108,18 +116,24 @@ mod tests {
         for (from, to) in [
             (
                 MouseEvent::Press(MouseButton::WheelDown, 1, 1),
-                input(Key::MouseScrollDown, false, false),
+                input(Key::MouseScrollDown, false, false, false),
             ),
             (
                 MouseEvent::Press(MouseButton::WheelUp, 1, 1),
-                input(Key::MouseScrollUp, false, false),
+                input(Key::MouseScrollUp, false, false, false),
             ),
             (
                 MouseEvent::Press(MouseButton::Left, 1, 1),
-                input(Key::Null, false, false),
+                input(Key::Null, false, false, false),
             ),
-            (MouseEvent::Release(1, 1), input(Key::Null, false, false)),
-            (MouseEvent::Hold(1, 1), input(Key::Null, false, false)),
+            (
+                MouseEvent::Release(1, 1),
+                input(Key::Null, false, false, false),
+            ),
+            (
+                MouseEvent::Hold(1, 1),
+                input(Key::Null, false, false, false),
+            ),
         ] {
             assert_eq!(Input::from(from), to, "{:?} -> {:?}", from, to);
         }
@@ -130,13 +144,16 @@ mod tests {
         for (from, to) in [
             (
                 Event::Key(KeyEvent::Char('a')),
-                input(Key::Char('a'), false, false),
+                input(Key::Char('a'), false, false, false),
             ),
             (
                 Event::Mouse(MouseEvent::Press(MouseButton::WheelDown, 1, 1)),
-                input(Key::MouseScrollDown, false, false),
+                input(Key::MouseScrollDown, false, false, false),
             ),
-            (Event::Unsupported(vec![]), input(Key::Null, false, false)),
+            (
+                Event::Unsupported(vec![]),
+                input(Key::Null, false, false, false),
+            ),
         ] {
             assert_eq!(Input::from(from.clone()), to, "{:?} -> {:?}", from, to);
         }

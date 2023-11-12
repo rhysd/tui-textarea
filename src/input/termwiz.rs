@@ -47,6 +47,7 @@ impl From<KeyEvent> for Input {
         let ctrl = modifiers.contains(Modifiers::CTRL);
         let alt = modifiers.contains(Modifiers::ALT);
         let shift = modifiers.contains(Modifiers::SHIFT);
+
         Self {
             key,
             ctrl,
@@ -83,6 +84,7 @@ impl From<MouseEvent> for Input {
         let ctrl = modifiers.contains(Modifiers::CTRL);
         let alt = modifiers.contains(Modifiers::ALT);
         let shift = modifiers.contains(Modifiers::SHIFT);
+
         Self {
             key,
             ctrl,
@@ -105,6 +107,7 @@ impl From<PixelMouseEvent> for Input {
         let ctrl = modifiers.contains(Modifiers::CTRL);
         let alt = modifiers.contains(Modifiers::ALT);
         let shift = modifiers.contains(Modifiers::SHIFT);
+
         Self {
             key,
             ctrl,
@@ -146,27 +149,34 @@ mod tests {
         for (from, to) in [
             (
                 key_event(KeyCode::Char('a'), Modifiers::empty()),
-                input(Key::Char('a'), false, false),
+                input(Key::Char('a'), false, false, false),
             ),
             (
                 key_event(KeyCode::Enter, Modifiers::empty()),
-                input(Key::Enter, false, false),
+                input(Key::Enter, false, false, false),
             ),
             (
                 key_event(KeyCode::LeftArrow, Modifiers::CTRL),
-                input(Key::Left, true, false),
+                input(Key::Left, true, false, false),
+            ),
+            (
+                key_event(KeyCode::RightArrow, Modifiers::SHIFT),
+                input(Key::Right, false, false, true),
             ),
             (
                 key_event(KeyCode::Home, Modifiers::ALT),
-                input(Key::Home, false, true),
+                input(Key::Home, false, true, false),
             ),
             (
-                key_event(KeyCode::Function(1), Modifiers::ALT | Modifiers::CTRL),
-                input(Key::F(1), true, true),
+                key_event(
+                    KeyCode::Function(1),
+                    Modifiers::ALT | Modifiers::CTRL | Modifiers::SHIFT,
+                ),
+                input(Key::F(1), true, true, true),
             ),
             (
                 key_event(KeyCode::NumLock, Modifiers::CTRL),
-                input(Key::Null, true, false),
+                input(Key::Null, true, false, false),
             ),
         ] {
             assert_eq!(Input::from(from.clone()), to, "{:?} -> {:?}", from, to);
@@ -178,30 +188,37 @@ mod tests {
         for (from, to) in [
             (
                 mouse_event(MouseButtons::VERT_WHEEL, Modifiers::empty()),
-                input(Key::MouseScrollDown, false, false),
+                input(Key::MouseScrollDown, false, false, false),
             ),
             (
                 mouse_event(
                     MouseButtons::VERT_WHEEL | MouseButtons::WHEEL_POSITIVE,
                     Modifiers::empty(),
                 ),
-                input(Key::MouseScrollUp, false, false),
+                input(Key::MouseScrollUp, false, false, false),
             ),
             (
                 mouse_event(MouseButtons::VERT_WHEEL, Modifiers::CTRL),
-                input(Key::MouseScrollDown, true, false),
+                input(Key::MouseScrollDown, true, false, false),
+            ),
+            (
+                mouse_event(MouseButtons::VERT_WHEEL, Modifiers::SHIFT),
+                input(Key::MouseScrollDown, false, false, true),
             ),
             (
                 mouse_event(MouseButtons::VERT_WHEEL, Modifiers::ALT),
-                input(Key::MouseScrollDown, false, true),
+                input(Key::MouseScrollDown, false, true, false),
             ),
             (
-                mouse_event(MouseButtons::VERT_WHEEL, Modifiers::CTRL | Modifiers::ALT),
-                input(Key::MouseScrollDown, true, true),
+                mouse_event(
+                    MouseButtons::VERT_WHEEL,
+                    Modifiers::CTRL | Modifiers::ALT | Modifiers::SHIFT,
+                ),
+                input(Key::MouseScrollDown, true, true, true),
             ),
             (
                 mouse_event(MouseButtons::LEFT, Modifiers::empty()),
-                input(Key::Null, false, false),
+                input(Key::Null, false, false, false),
             ),
         ] {
             assert_eq!(Input::from(from.clone()), to, "{:?} -> {:?}", from, to);
@@ -216,22 +233,22 @@ mod tests {
         for (from, to) in [
             (
                 InputEvent::Key(key_event(KeyCode::Char('a'), Modifiers::empty())),
-                input(Key::Char('a'), false, false),
+                input(Key::Char('a'), false, false, false),
             ),
             (
                 InputEvent::Mouse(mouse_event(MouseButtons::VERT_WHEEL, Modifiers::empty())),
-                input(Key::MouseScrollDown, false, false),
+                input(Key::MouseScrollDown, false, false, false),
             ),
             (
                 InputEvent::PixelMouse(pixel_mouse_event(
                     MouseButtons::VERT_WHEEL,
                     Modifiers::empty(),
                 )),
-                input(Key::MouseScrollDown, false, false),
+                input(Key::MouseScrollDown, false, false, false),
             ),
             (
                 InputEvent::Paste("x".into()),
-                input(Key::Null, false, false),
+                input(Key::Null, false, false, false),
             ),
         ] {
             assert_eq!(Input::from(from.clone()), to, "{:?} -> {:?}", from, to);

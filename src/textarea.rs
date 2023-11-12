@@ -1,5 +1,3 @@
-use std::cell::Cell;
-
 use crate::cursor::CursorMove;
 use crate::highlight::LineHighlighter;
 use crate::history::{Edit, EditKind, History};
@@ -15,6 +13,7 @@ use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
+use std::cmp::Ordering;
 #[cfg(feature = "tuirs")]
 use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
@@ -46,6 +45,18 @@ impl ToString for YankText {
     }
 }
 
+struct Pos {
+    row: usize,
+    col: usize,
+    offset: usize,
+}
+
+impl Pos {
+    fn new(row: usize, col: usize, offset: usize) -> Self {
+        Self { row, col, offset }
+    }
+}
+
 /// A type to manage state of textarea.
 ///
 /// [`TextArea::default`] creates an empty textarea. [`TextArea::new`] creates a textarea with given text lines.
@@ -57,7 +68,7 @@ impl ToString for YankText {
 /// let mut textarea = TextArea::default();
 ///
 /// // Input 'a'
-/// let input = Input { key: Key::Char('a'), ctrl: false, alt: false , shift:false};
+/// let input = Input { key: Key::Char('a'), ctrl: false, alt: false, shift: false };
 /// textarea.input(input);
 ///
 /// // Get widget to render.
@@ -86,10 +97,7 @@ pub struct TextArea<'a> {
     pub(crate) placeholder: String,
     pub(crate) placeholder_style: Style,
     mask: Option<char>,
-    // these are Cells so that should_end_selection can be called
-    // in a non mutable function call - ie self.widget()
-    select_start: Cell<Option<(usize, usize)>>,
-    pending_end_selection: Cell<bool>,
+    selection_start: Option<(usize, usize)>,
     select_style: Style,
 }
 
@@ -191,9 +199,8 @@ impl<'a> TextArea<'a> {
             placeholder: String::new(),
             placeholder_style: Style::default().fg(Color::DarkGray),
             mask: None,
-            select_start: Default::default(),
+            selection_start: None,
             select_style: Style::default().bg(Color::LightBlue),
-            pending_end_selection: Cell::new(false),
         }
     }
 
@@ -229,13 +236,12 @@ impl<'a> TextArea<'a> {
     /// }
     ///
     /// // Handle backend-agnostic key input
-    /// let input = Input { key: Key::Char('a'), ctrl: false, alt: false };
+    /// let input = Input { key: Key::Char('a'), ctrl: false, alt: false, shift: false };
     /// let modified = textarea.input(input);
     /// assert!(modified);
     /// ```
     pub fn input(&mut self, input: impl Into<Input>) -> bool {
         let input = input.into();
-        self.should_select(&input);
         let modified = match input {
             Input {
                 key: Key::Char('m'),
@@ -337,197 +343,205 @@ impl<'a> TextArea<'a> {
                 ..
             } => self.delete_next_word(),
             Input {
-                key: Key::Char('n' | 'N'),
+                key: Key::Char('n'),
                 ctrl: true,
                 alt: false,
-                ..
+                shift,
             }
             | Input {
                 key: Key::Down,
                 ctrl: false,
                 alt: false,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::Down);
+                self.move_cursor_with_shift(CursorMove::Down, shift);
                 false
             }
             Input {
-                key: Key::Char('p' | 'P'),
+                key: Key::Char('p'),
                 ctrl: true,
                 alt: false,
-                ..
+                shift,
             }
             | Input {
                 key: Key::Up,
                 ctrl: false,
                 alt: false,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::Up);
+                self.move_cursor_with_shift(CursorMove::Up, shift);
                 false
             }
             Input {
-                key: Key::Char('f' | 'F'),
+                key: Key::Char('f'),
                 ctrl: true,
                 alt: false,
-                ..
+                shift,
             }
             | Input {
                 key: Key::Right,
                 ctrl: false,
                 alt: false,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::Forward);
+                self.move_cursor_with_shift(CursorMove::Forward, shift);
                 false
             }
             Input {
-                key: Key::Char('b' | 'B'),
+                key: Key::Char('b'),
                 ctrl: true,
                 alt: false,
-                ..
+                shift,
             }
             | Input {
                 key: Key::Left,
                 ctrl: false,
                 alt: false,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::Back);
+                self.move_cursor_with_shift(CursorMove::Back, shift);
                 false
             }
             Input {
-                key: Key::Char('a' | 'A'),
+                key: Key::Char('a'),
                 ctrl: true,
                 alt: false,
+                shift,
+            }
+            | Input {
+                key: Key::Home,
+                shift,
                 ..
             }
-            | Input { key: Key::Home, .. }
             | Input {
-                key: Key::Left | Key::Char('b' | 'B'),
+                key: Key::Left | Key::Char('b'),
                 ctrl: true,
                 alt: true,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::Head);
+                self.move_cursor_with_shift(CursorMove::Head, shift);
                 false
             }
             Input {
                 key: Key::Char('e'),
                 ctrl: true,
                 alt: false,
+                shift,
+            }
+            | Input {
+                key: Key::End,
+                shift,
                 ..
             }
-            | Input { key: Key::End, .. }
             | Input {
-                key: Key::Right | Key::Char('f' | 'F'),
+                key: Key::Right | Key::Char('f'),
                 ctrl: true,
                 alt: true,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::End);
+                self.move_cursor_with_shift(CursorMove::End, shift);
                 false
             }
             Input {
                 key: Key::Char('<'),
                 ctrl: false,
                 alt: true,
-                ..
+                shift,
             }
             | Input {
-                key: Key::Up | Key::Char('p' | 'P'),
+                key: Key::Up | Key::Char('p'),
                 ctrl: true,
                 alt: true,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::Top);
+                self.move_cursor_with_shift(CursorMove::Top, shift);
                 false
             }
             Input {
                 key: Key::Char('>'),
                 ctrl: false,
                 alt: true,
-                ..
+                shift,
             }
             | Input {
-                key: Key::Down | Key::Char('n' | 'N'),
+                key: Key::Down | Key::Char('n'),
                 ctrl: true,
                 alt: true,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::Bottom);
+                self.move_cursor_with_shift(CursorMove::Bottom, shift);
                 false
             }
             Input {
-                key: Key::Char('f' | 'F'),
+                key: Key::Char('f'),
                 ctrl: false,
                 alt: true,
-                ..
+                shift,
             }
             | Input {
                 key: Key::Right,
                 ctrl: true,
                 alt: false,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::WordForward);
+                self.move_cursor_with_shift(CursorMove::WordForward, shift);
                 false
             }
             Input {
-                key: Key::Char('b' | 'B'),
+                key: Key::Char('b'),
                 ctrl: false,
                 alt: true,
-                ..
+                shift,
             }
             | Input {
                 key: Key::Left,
                 ctrl: true,
                 alt: false,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::WordBack);
+                self.move_cursor_with_shift(CursorMove::WordBack, shift);
                 false
             }
             Input {
                 key: Key::Char(']'),
                 ctrl: false,
                 alt: true,
-                ..
+                shift,
             }
             | Input {
-                key: Key::Char('n' | 'N'),
+                key: Key::Char('n'),
                 ctrl: false,
                 alt: true,
-                ..
+                shift,
             }
             | Input {
                 key: Key::Down,
                 ctrl: true,
                 alt: false,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::ParagraphForward);
+                self.move_cursor_with_shift(CursorMove::ParagraphForward, shift);
                 false
             }
             Input {
                 key: Key::Char('['),
                 ctrl: false,
                 alt: true,
-                ..
+                shift,
             }
             | Input {
-                key: Key::Char('p' | 'P'),
+                key: Key::Char('p'),
                 ctrl: false,
                 alt: true,
-                ..
+                shift,
             }
             | Input {
                 key: Key::Up,
                 ctrl: true,
                 alt: false,
-                ..
+                shift,
             } => {
-                self.move_cursor(CursorMove::ParagraphBack);
+                self.move_cursor_with_shift(CursorMove::ParagraphBack, shift);
                 false
             }
             Input {
@@ -549,6 +563,12 @@ impl<'a> TextArea<'a> {
                 ..
             } => self.paste(),
             Input {
+                key: Key::Char('x'),
+                ctrl: true,
+                alt: false,
+                ..
+            } => self.cut(),
+            Input {
                 key: Key::Char('c'),
                 ctrl: true,
                 alt: false,
@@ -558,54 +578,52 @@ impl<'a> TextArea<'a> {
                 false
             }
             Input {
-                key: Key::Char('x'),
+                key: Key::Char('v'),
                 ctrl: true,
                 alt: false,
-                ..
-            } => {
-                self.cut();
-                false
-            }
-            Input {
-                key: Key::Char('v' | 'V'),
-                ctrl: true,
-                alt: false,
-                ..
+                shift,
             }
             | Input {
-                key: Key::PageDown, ..
+                key: Key::PageDown,
+                shift,
+                ..
             } => {
-                self.scroll(Scrolling::PageDown);
+                self.scroll_with_shift(Scrolling::PageDown, shift);
                 false
             }
             Input {
-                key: Key::Char('v' | 'V'),
+                key: Key::Char('v'),
                 ctrl: false,
                 alt: true,
-                ..
+                shift,
             }
             | Input {
-                key: Key::PageUp, ..
+                key: Key::PageUp,
+                shift,
+                ..
             } => {
-                self.scroll(Scrolling::PageUp);
+                self.scroll_with_shift(Scrolling::PageUp, shift);
                 false
             }
             Input {
                 key: Key::MouseScrollDown,
+                shift,
                 ..
             } => {
-                self.scroll((1, 0));
+                self.scroll_with_shift((1, 0).into(), shift);
                 false
             }
             Input {
                 key: Key::MouseScrollUp,
+                shift,
                 ..
             } => {
-                self.scroll((-1, 0));
+                self.scroll_with_shift((-1, 0).into(), shift);
                 false
             }
             _ => false,
         };
+
         // Check invariants
         debug_assert!(!self.lines.is_empty(), "no line after {:?}", input);
         let (r, c) = self.cursor;
@@ -624,7 +642,7 @@ impl<'a> TextArea<'a> {
             self.lines[r],
             input,
         );
-        self.should_end_selection();
+
         modified
     }
 
@@ -641,9 +659,7 @@ impl<'a> TextArea<'a> {
     /// This method is useful when you want to define your own key mappings and don't want default key mappings.
     /// See 'Define your own key mappings' section in [the module document](./index.html).
     pub fn input_without_shortcuts(&mut self, input: impl Into<Input>) -> bool {
-        let input = input.into();
-        self.should_select(&input);
-        let modified = match input {
+        match input.into() {
             Input {
                 key: Key::Char(c),
                 ctrl: false,
@@ -687,9 +703,7 @@ impl<'a> TextArea<'a> {
                 false
             }
             _ => false,
-        };
-        self.should_end_selection();
-        modified
+        }
     }
 
     fn push_history(&mut self, kind: EditKind, cursor_before: (usize, usize)) {
@@ -708,7 +722,6 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn insert_char(&mut self, c: char) {
         self.delete_selection(false);
-
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
         let i = line
@@ -734,10 +747,10 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["hello, world", "goodbye, world"]);
     /// ```
     pub fn insert_str<S: AsRef<str>>(&mut self, s: S) -> bool {
-        self.end_selection();
+        let modified = self.delete_selection(false);
         let mut lines: Vec<_> = s.as_ref().lines().map(ToString::to_string).collect();
         match lines.len() {
-            0 => false,
+            0 => modified,
             1 => self.insert_piece(lines.remove(0)),
             _ => self.insert_chunk(lines),
         }
@@ -791,6 +804,54 @@ impl<'a> TextArea<'a> {
         true
     }
 
+    fn delete_offset_range(
+        &mut self,
+        start_row: usize,
+        start_col: usize,
+        start_offset: usize,
+        end_row: usize,
+        end_offset: usize,
+        should_yank: bool,
+    ) {
+        let cursor_before = self.cursor;
+        self.cursor = (start_row, start_col);
+
+        if start_row == end_row {
+            let removed = self.lines[start_row]
+                .drain(start_offset..end_offset)
+                .as_str()
+                .to_string();
+            if should_yank {
+                self.yank = removed.clone().into();
+            }
+            self.push_history(EditKind::DeleteStr(removed, start_offset), cursor_before);
+            return;
+        }
+
+        let mut deleted = vec![self.lines[start_row]
+            .drain(start_offset..)
+            .as_str()
+            .to_string()];
+        deleted.extend(self.lines.drain(start_row + 1..end_row));
+        if start_row + 1 < self.lines.len() {
+            let mut last_line = self.lines.remove(start_row + 1);
+            self.lines[start_row].push_str(&last_line[end_offset..]);
+            last_line.truncate(end_offset);
+            deleted.push(last_line);
+        }
+
+        if should_yank {
+            self.yank = YankText::Chunk(deleted.clone());
+        }
+
+        let edit = if deleted.len() == 1 {
+            EditKind::DeleteStr(deleted.remove(0), start_offset)
+        } else {
+            EditKind::DeleteChunk(deleted, start_row, start_offset)
+        };
+        self.push_history(edit, cursor_before);
+    }
+
     /// Delete a string from the current cursor position. The `chars` parameter means number of characters, not a byte
     /// length of the string. Newlines at the end of lines are counted in the number. This method returns if some text
     /// was deleted or not.
@@ -810,19 +871,14 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["🐱", "🐮"]);
     /// ```
     pub fn delete_str(&mut self, chars: usize) -> bool {
-        self.delete_str_internal(chars, true, true)
-    }
-
-    // grabs the specified (maybe multi line string)
-    // sometimes yanked
-    // sometimes deleted from lines array and placed in history
-
-    fn delete_str_internal(&mut self, chars: usize, yank: bool, delete: bool) -> bool {
+        if self.delete_selection(false) {
+            return true;
+        }
         if chars == 0 {
             return false;
         }
 
-        let (row, col) = self.cursor;
+        let (start_row, start_col) = self.cursor;
 
         let mut remaining = chars;
         let mut find_end = move |line: &str| {
@@ -840,34 +896,26 @@ impl<'a> TextArea<'a> {
             }
         };
 
-        let line = &self.lines[row];
-        let first_start = {
+        let line = &self.lines[start_row];
+        let start_offset = {
             line.char_indices()
-                .nth(col)
+                .nth(start_col)
                 .map(|(i, _)| i)
                 .unwrap_or(line.len())
         };
 
         // First line
-        if let Some(offset) = find_end(&line[first_start..]) {
-            let removed = if delete {
-                self.lines[row]
-                    .drain(first_start..first_start + offset)
-                    .as_str()
-                    .to_string()
-            } else {
-                self.lines[row][first_start..first_start + offset].to_string()
-            };
-            if yank {
-                self.yank = removed.clone().into();
-            };
-            if delete {
-                self.push_history(EditKind::DeleteStr(removed, first_start), self.cursor);
-            }
+        if let Some(offset) = find_end(&line[start_offset..]) {
+            let removed = self.lines[start_row]
+                .drain(start_offset..start_offset + offset)
+                .as_str()
+                .to_string();
+            self.yank = removed.clone().into();
+            self.push_history(EditKind::DeleteStr(removed, start_offset), self.cursor);
             return true;
-        };
+        }
 
-        let mut r = row + 1;
+        let mut r = start_row + 1;
         let mut i = 0;
 
         while r < self.lines.len() {
@@ -879,42 +927,7 @@ impl<'a> TextArea<'a> {
             r += 1;
         }
 
-        let mut deleted = if delete {
-            vec![self.lines[row].drain(first_start..).as_str().to_string()]
-        } else {
-            vec![self.lines[row][first_start..].to_string()]
-        };
-
-        if delete {
-            deleted.extend(self.lines.drain(row + 1..r));
-        } else {
-            deleted.extend(self.lines[row + 1..r].iter().map(|s| s.to_string()));
-        }
-
-        if row + 1 < self.lines.len() {
-            let mut last_line = if delete {
-                let ll = self.lines.remove(row + 1);
-                self.lines[row].push_str(&ll[i..]);
-                ll
-            } else {
-                self.lines[row + 1].clone()
-            };
-            last_line.truncate(i);
-            deleted.push(last_line);
-        }
-
-        if yank {
-            self.yank = YankText::Chunk(deleted.clone());
-        };
-        if delete {
-            let edit = if deleted.len() == 1 {
-                EditKind::DeleteStr(deleted.remove(0), first_start)
-            } else {
-                EditKind::DeleteChunk(deleted, row, first_start)
-            };
-            self.push_history(edit, self.cursor);
-        }
-
+        self.delete_offset_range(start_row, start_col, start_offset, r, i, true);
         true
     }
 
@@ -959,8 +972,9 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["hi      "]);
     /// ```
     pub fn insert_tab(&mut self) -> bool {
+        let modified = self.delete_selection(false);
         if self.tab_len == 0 {
-            return false;
+            return modified;
         }
 
         if self.hard_tab_indent {
@@ -989,6 +1003,7 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn insert_newline(&mut self) {
         self.delete_selection(false);
+
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
         let idx = line
@@ -1005,7 +1020,7 @@ impl<'a> TextArea<'a> {
     }
 
     /// Delete a newline from **head** of current cursor line. This method returns if a newline was deleted or not in
-    /// the textarea.
+    /// the textarea. When some text is selected, it is deleted instead.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -1016,6 +1031,10 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["helloworld"]);
     /// ```
     pub fn delete_newline(&mut self) -> bool {
+        if self.delete_selection(false) {
+            return true;
+        }
+
         let (row, col) = self.cursor;
         if row == 0 {
             return false;
@@ -1032,7 +1051,8 @@ impl<'a> TextArea<'a> {
     }
 
     /// Delete one character before cursor. When the cursor is at head of line, the newline before the cursor will be
-    /// removed. This method returns if some text was deleted or not in the textarea.
+    /// removed. This method returns if some text was deleted or not in the textarea. When some text is selected, it is
+    /// deleted instead.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -1043,9 +1063,10 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["bc"]);
     /// ```
     pub fn delete_char(&mut self) -> bool {
-        if self.select_start.get().is_some() {
-            return self.delete_selection(false);
+        if self.delete_selection(false) {
+            return true;
         }
+
         let (row, col) = self.cursor;
         if col == 0 {
             return self.delete_newline();
@@ -1074,14 +1095,16 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["ac"]);
     /// ```
     pub fn delete_next_char(&mut self) -> bool {
-        if self.select_start.get().is_some() {
-            return self.delete_selection(false);
+        if self.delete_selection(false) {
+            return true;
         }
+
         let before = self.cursor;
-        self.move_cursor(CursorMove::Forward);
+        self.move_cursor_with_shift(CursorMove::Forward, false);
         if before == self.cursor {
             return false; // Cursor didn't move, meant no character at next of cursor.
         }
+
         self.delete_char()
     }
 
@@ -1100,6 +1123,9 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["ab"]);
     /// ```
     pub fn delete_line_by_end(&mut self) -> bool {
+        if self.delete_selection(false) {
+            return true;
+        }
         if self.delete_piece(self.cursor.1, usize::MAX) {
             return true;
         }
@@ -1121,6 +1147,9 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["cde"]);
     /// ```
     pub fn delete_line_by_head(&mut self) -> bool {
+        if self.delete_selection(false) {
+            return true;
+        }
         if self.delete_piece(0, self.cursor.1) {
             return true;
         }
@@ -1146,6 +1175,9 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["aaa "]);
     /// ```
     pub fn delete_word(&mut self) -> bool {
+        if self.delete_selection(false) {
+            return true;
+        }
         let (r, c) = self.cursor;
         if let Some(col) = find_word_start_backward(&self.lines[r], c) {
             self.delete_piece(col, c - col)
@@ -1173,6 +1205,9 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), [" ccc"]);
     /// ```
     pub fn delete_next_word(&mut self) -> bool {
+        if self.delete_selection(false) {
+            return true;
+        }
         let (r, c) = self.cursor;
         let line = &self.lines[r];
         if let Some(col) = find_word_end_forward(line, c) {
@@ -1204,11 +1239,183 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), [" bbb cccaaa"]);
     /// ```
     pub fn paste(&mut self) -> bool {
-        self.delete_selection(false);
         match self.yank.clone() {
             YankText::Piece(s) => self.insert_piece(s),
             YankText::Chunk(c) => self.insert_chunk(c),
         }
+    }
+
+    /// Start text selection at the cursor position. If text selection is already ongoing, the start position is reset.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["aaa bbb ccc"]);
+    ///
+    /// textarea.start_selection();
+    /// textarea.move_cursor(CursorMove::WordForward);
+    /// textarea.copy();
+    /// assert_eq!(textarea.yank_text(), "aaa ");
+    /// ```
+    pub fn start_selection(&mut self) {
+        self.selection_start = Some(self.cursor);
+    }
+
+    /// Stop the current text selection. This method does nothing if text selection is not ongoing.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["aaa bbb ccc"]);
+    ///
+    /// textarea.start_selection();
+    /// textarea.move_cursor(CursorMove::WordForward);
+    ///
+    /// // Cancel the ongoing text selection
+    /// textarea.cancel_selection();
+    ///
+    /// // As the result, this `copy` call does nothing
+    /// textarea.copy();
+    /// assert_eq!(textarea.yank_text(), "");
+    /// ```
+    pub fn cancel_selection(&mut self) {
+        self.selection_start = None;
+    }
+
+    /// Return if text selection is ongoing or not.
+    /// ```
+    /// use tui_textarea::{TextArea};
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// assert!(!textarea.is_selecting());
+    /// textarea.start_selection();
+    /// assert!(textarea.is_selecting());
+    /// textarea.cancel_selection();
+    /// assert!(!textarea.is_selecting());
+    /// ```
+    pub fn is_selecting(&self) -> bool {
+        self.selection_start.is_some()
+    }
+
+    fn line_offset(&self, row: usize, col: usize) -> usize {
+        let line = self
+            .lines
+            .get(row)
+            .unwrap_or(&self.lines[self.lines.len() - 1]);
+        line.char_indices()
+            .nth(col)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len())
+    }
+
+    /// Set the style used for text selection. The default style is light blue.
+    /// ```
+    /// use tui_textarea::TextArea;
+    /// use ratatui::style::{Style, Color};
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// // Change the selection color from the default to Red
+    /// textarea.set_selection_style(Style::default().bg(Color::Red));
+    /// assert_eq!(textarea.selection_style(), Style::default().bg(Color::Red));
+    /// ```
+    pub fn set_selection_style(&mut self, style: Style) {
+        self.select_style = style;
+    }
+
+    /// Get the style used for text selection.
+    /// ```
+    /// use tui_textarea::TextArea;
+    /// use ratatui::style::{Style, Color};
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// assert_eq!(textarea.selection_style(), Style::default().bg(Color::LightBlue));
+    /// ```
+    pub fn selection_style(&mut self) -> Style {
+        self.select_style
+    }
+
+    fn selection_range(&self) -> Option<(Pos, Pos)> {
+        let (sr, sc) = self.selection_start?;
+        let (er, ec) = self.cursor;
+        let (so, eo) = (self.line_offset(sr, sc), self.line_offset(er, ec));
+        let s = Pos::new(sr, sc, so);
+        let e = Pos::new(er, ec, eo);
+        match (sr, so).cmp(&(er, eo)) {
+            Ordering::Less => Some((s, e)),
+            Ordering::Equal => None,
+            Ordering::Greater => Some((e, s)),
+        }
+    }
+
+    fn take_selection_range(&mut self) -> Option<(Pos, Pos)> {
+        let range = self.selection_range();
+        self.cancel_selection();
+        range
+    }
+
+    /// Copy the selection text to the yank buffer. When nothing is selected, this method does nothing.
+    /// To get the yanked text, use [`TextArea::yank_text`].
+    /// ```
+    /// use tui_textarea::{TextArea, Key, Input, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["Hello World"]);
+    ///
+    /// // Start text selection at 'W'
+    /// textarea.move_cursor(CursorMove::WordForward);
+    /// textarea.start_selection();
+    ///
+    /// // Select the word "World" and copy the selected text
+    /// textarea.move_cursor(CursorMove::End);
+    /// textarea.copy();
+    ///
+    /// assert_eq!(textarea.yank_text(), "World");
+    /// assert_eq!(textarea.lines(), ["Hello World"]); // Text does not change
+    /// ```
+    pub fn copy(&mut self) {
+        if let Some((start, end)) = self.take_selection_range() {
+            if start.row == end.row {
+                self.yank = self.lines[start.row][start.offset..end.offset]
+                    .to_string()
+                    .into();
+                return;
+            }
+            let mut chunk = vec![self.lines[start.row][start.offset..].to_string()];
+            chunk.extend(self.lines[start.row + 1..end.row].iter().cloned());
+            chunk.push(self.lines[end.row][..end.offset].to_string());
+            self.yank = YankText::Chunk(chunk);
+        }
+    }
+
+    /// Cut the selected text and place it in the yank buffer. This method returns whether the text was modified.
+    /// The cursor will move to the start position of the text selection.
+    /// To get the yanked text, use [`TextArea::yank_text`].
+    /// ```
+    /// use tui_textarea::{TextArea, Key, Input, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["Hello World"]);
+    ///
+    /// // Start text selection at 'W'
+    /// textarea.move_cursor(CursorMove::WordForward);
+    /// textarea.start_selection();
+    ///
+    /// // Select the word "World" and copy the selected text
+    /// textarea.move_cursor(CursorMove::End);
+    /// textarea.cut();
+    ///
+    /// assert_eq!(textarea.yank_text(), "World");
+    /// assert_eq!(textarea.lines(), ["Hello "]);
+    /// ```
+    pub fn cut(&mut self) -> bool {
+        self.delete_selection(true)
+    }
+
+    fn delete_selection(&mut self, should_yank: bool) -> bool {
+        if let Some((s, e)) = self.take_selection_range() {
+            self.delete_offset_range(s.row, s.col, s.offset, e.row, e.offset, should_yank);
+            return true;
+        }
+        false
     }
 
     /// Move the cursor to the position specified by the [`CursorMove`] parameter. For each kind of cursor moves, see
@@ -1222,9 +1429,20 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.cursor(), (0, 1));
     /// textarea.move_cursor(CursorMove::Down);
     /// assert_eq!(textarea.cursor(), (1, 1));
-
+    /// ```
     pub fn move_cursor(&mut self, m: CursorMove) {
+        self.move_cursor_with_shift(m, self.selection_start.is_some());
+    }
+
+    fn move_cursor_with_shift(&mut self, m: CursorMove, shift: bool) {
         if let Some(cursor) = m.next_cursor(self.cursor, &self.lines, &self.viewport) {
+            if shift {
+                if self.selection_start.is_none() {
+                    self.start_selection();
+                }
+            } else {
+                self.cancel_selection();
+            }
             self.cursor = cursor;
         }
     }
@@ -1242,6 +1460,7 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn undo(&mut self) -> bool {
         if let Some(cursor) = self.history.undo(&mut self.lines) {
+            self.cancel_selection();
             self.cursor = cursor;
             true
         } else {
@@ -1264,6 +1483,7 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn redo(&mut self) -> bool {
         if let Some(cursor) = self.history.redo(&mut self.lines) {
+            self.cancel_selection();
             self.cursor = cursor;
             true
         } else {
@@ -1293,10 +1513,8 @@ impl<'a> TextArea<'a> {
             hl.search(matches, self.search.style);
         }
 
-        // any selected text to highlight?
-        if self.select_start.get().is_some() {
-            let (start, end, _) = self.normalize_selection();
-            hl.select_line(row, line, start, end);
+        if let Some((start, end)) = self.selection_range() {
+            hl.selection(row, start.row, start.offset, end.row, end.offset);
         }
 
         hl.into_spans()
@@ -1329,7 +1547,6 @@ impl<'a> TextArea<'a> {
     /// }
     /// ```
     pub fn widget(&'a self) -> impl Widget + 'a {
-        self.should_end_selection();
         Renderer::new(self)
     }
 
@@ -1391,7 +1608,7 @@ impl<'a> TextArea<'a> {
     /// use tui_textarea::{TextArea, Input, Key};
     ///
     /// let mut textarea = TextArea::default();
-    /// let tab_input = Input { key: Key::Tab, ctrl: false, alt:false,  shift: false };
+    /// let tab_input = Input { key: Key::Tab, ctrl: false, alt: false, shift: false };
     ///
     /// textarea.set_tab_length(8);
     /// textarea.input(tab_input.clone());
@@ -1766,14 +1983,19 @@ impl<'a> TextArea<'a> {
 
     /// Get the yanked text. Text is automatically yanked when deleting strings by [`TextArea::delete_line_by_head`],
     /// [`TextArea::delete_line_by_end`], [`TextArea::delete_word`], [`TextArea::delete_next_word`],
-    /// [`TextArea::delete_str`].
+    /// [`TextArea::delete_str`], [`TextArea::copy`], and [`TextArea::cut`]. When multiple lines were yanked, they are
+    /// joined with `\n`.
     /// ```
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::from(["abc"]);
-    ///
     /// textarea.delete_next_word();
     /// assert_eq!(textarea.yank_text(), "abc");
+    ///
+    /// // Multiple lines are joined with \n
+    /// let mut textarea = TextArea::from(["abc", "def"]);
+    /// textarea.delete_str(5);
+    /// assert_eq!(textarea.yank_text(), "abc\nd");
     /// ```
     pub fn yank_text(&self) -> String {
         self.yank.to_string()
@@ -2014,229 +2236,20 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.cursor(), (12, 0));
     /// ```
     pub fn scroll(&mut self, scrolling: impl Into<Scrolling>) {
-        scrolling.into().scroll(&mut self.viewport);
-        self.move_cursor(CursorMove::InViewport);
+        self.scroll_with_shift(scrolling.into(), self.selection_start.is_some());
     }
 
-    // public functions for select
-
-    /// Sets the style used for selected text
-    /// the default is LightBlue
-    ///```
-    /// use tui_textarea::TextArea;
-    /// use ratatui::style::{Style, Color};
-    /// let mut textarea = TextArea::default();
-    /// // change the selection color from the default to Red
-    /// textarea.set_selection_style(Style::default().bg(Color::Red));
-    /// assert_eq!(textarea.get_selection_style(), Style::default().bg(Color::Red));
-    /// ```
-    pub fn set_selection_style(&mut self, style: Style) {
-        self.select_style = style;
-    }
-    /// Gets the style used for selected text
-    ///
-    ///```
-    /// use tui_textarea::TextArea;
-    /// use ratatui::style::{Style, Color};
-    /// let mut textarea = TextArea::default();
-    ///
-    ///
-    /// assert_eq!(textarea.get_selection_style(), Style::default().bg(Color::LightBlue));
-    /// ```
-    pub fn get_selection_style(&mut self) -> Style {
-        self.select_style
-    }
-    /// Copies the current selection to the yank buffer
-    ///
-    ///```
-    /// use tui_textarea::{TextArea, Key, Input};
-    ///
-    ///
-    /// let mut textarea = TextArea::default();
-    /// // load some text
-    /// textarea.insert_str("Hello World");
-    /// // select the word "World" by doing a ctrl-left with the shift key down
-    /// textarea.input(Input{key:Key::Left, ctrl:true, alt:false, shift:true});
-    ///  
-    /// textarea.copy();
-    /// assert_eq!(textarea.yank_text(), "World");
-    /// assert_eq!(textarea.lines(), ["Hello World"]);
-    ///```
-    pub fn copy(&mut self) {
-        if self.select_start.get().is_some() {
-            let (start, end, swapped) = self.normalize_selection();
-
-            self.cursor = start;
-            self.delete_range(start, end, true, false);
-            self.cursor = if swapped { start } else { end };
+    fn scroll_with_shift(&mut self, scrolling: Scrolling, shift: bool) {
+        if shift && self.selection_start.is_none() {
+            self.selection_start = Some(self.cursor);
         }
-    }
-
-    /// Deletes the current selection and places it in the yank buffer
-    ///```
-    /// use tui_textarea::{TextArea, Key, Input};
-    ///
-    ///
-    /// let mut textarea = TextArea::default();
-    /// // load some text
-    /// textarea.insert_str("Hello World");
-    /// // select the word "World" by doing a ctrl-left with the shift key down
-    /// textarea.input(Input{key:Key::Left, ctrl:true, alt:false, shift:true});
-    ///
-    /// textarea.cut();
-    /// assert_eq!(textarea.yank_text(), "World");
-    /// assert_eq!(textarea.lines(), ["Hello "]);
-    ///```
-
-    ///
-    pub fn cut(&mut self) {
-        self.delete_selection(true);
-    }
-
-    /// Must be called before calling textarea functions if you are
-    /// not calling [`TextArea::input`]  or [`TextArea::input_without_shortcuts`] to dispatch the keys.
-    /// It is used to detect whether or not a selection should be started, continued or ended
-    ///
-    /// Handled automatically when inputs are passed to [`TextArea::input`] or  [`TextArea::input_without_shortcuts`]
-    ///
-    /// Note: it is harmless to call this function even if you have some logic paths that call [`TextArea::input`]
-    /// The state of the shift key (or whatever you want to signal start selection) should be passed in.
-    /// If you need to stop an upper case letter being treated as a selection character
-    /// then call this function with false
-    ///
-    /// Look at the modal example for a demonstration of its use
-
-    pub fn should_select(&mut self, input: &Input) {
-        if input.key == Key::Null {
-            return;
-        }
-        // Should we start selecting text, stop the current selection, or do nothing?
-        // the end is handled after the ending keystroke
-        self.pending_end_selection =
-            Cell::new(match (self.select_start.get().is_some(), input.shift) {
-                (true, true) => {
-                    // continue select
-                    false
-                }
-                (true, false) => {
-                    // end select
-                    true
-                }
-                (false, true) => {
-                    // start select
-                    self.start_selection();
-                    false
-                }
-                (false, false) => {
-                    // ignore
-                    false
-                }
-            });
-    }
-
-    /// used in conjunction with code that needs to use [`TextArea::should_select`]
-    /// Used to force the end selection mode
-    ///
-    /// Needed if a simple keystroke is upper case and you want to stop it being treated as a selection
-    /// Look at the modal example for a demonstration of its use - look at the 'a' and 'A' keys
-    ///
-
-    pub fn stop_selection(&mut self) {
-        self.end_selection();
-    }
-    // functions for select
-
-    fn should_end_selection(&self) {
-        // Should we end the current selection?
-        if self.pending_end_selection.take() {
-            self.end_selection();
-        }
-    }
-
-    fn start_selection(&mut self) {
-        self.select_start = Cell::new(Some(self.cursor));
-    }
-
-    fn end_selection(&self) {
-        self.select_start.set(Default::default());
-    }
-
-    fn normalize_selection(&self) -> ((usize, usize), (usize, usize), bool) {
-        // selection can be from right to left or left to right
-        // rest of the code always wants the leftmost part first
-        // bool indicates if swap was done
-        let start = self.select_start.get().unwrap();
-        let end = self.cursor;
-        if start.0 > end.0 || (start.0 == end.0 && start.1 > end.1) {
-            (end, start, true)
-        } else {
-            (start, end, false)
-        }
-    }
-
-    // delete the currect selection, sometimes yank it
-
-    fn delete_selection(&mut self, yank: bool) -> bool {
-        let deleted = match self.select_start.get() {
-            Some(_) => {
-                let (start, end, _) = self.normalize_selection();
-                if start != end {
-                    self.delete_range(start, end, yank, true);
-                    true
-                } else {
-                    false
-                }
-            }
-            None => false,
-        };
-
-        self.select_start = Default::default();
-        deleted
-    }
-
-    fn line_length(&self, row: usize) -> usize {
-        self.lines[row].chars().count()
-    }
-
-    // erase a range of text, start and end must be normalized
-    // erased text may be put in history and yank buffer (by delete_str)
-    // the end range column is not included
-
-    fn delete_range(
-        &mut self,
-        start: (usize, usize),
-        end: (usize, usize),
-        yank: bool,
-        delete: bool,
-    ) {
-        // calculate length of range
-        let (start_row, start_col) = start;
-        let (end_row, end_col) = end;
-        let mut col = start_col;
-        let mut len = 0;
-
-        // need +1 because the row range is inclusive
-        for r in start_row..end_row + 1 {
-            // we only take some of the first line
-            len += self.line_length(r) - col;
-            // but maybe all of subsequent lines
-            col = 0;
-        }
-
-        // we didnt take the whole last line
-        // so subtract the bit we didnt take
-        len -= self.line_length(end_row) - end_col;
-        // plus add the number of linefeeds
-        len += end_row - start_row;
-
-        self.cursor = start;
-
-        self.delete_str_internal(len, yank, delete);
+        scrolling.scroll(&mut self.viewport);
+        self.move_cursor_with_shift(CursorMove::InViewport, shift);
     }
 }
+
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     // Seaparate tests for tui-rs support
