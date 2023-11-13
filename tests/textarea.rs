@@ -1,28 +1,57 @@
 use std::cmp;
+use std::fmt::Debug;
 use tui_textarea::{CursorMove, TextArea};
+
+fn assert_undo_redo<T: Debug>(
+    before_pos: (usize, usize),
+    before_buf: &[&str],
+    after_buf: &[&str],
+    t: &mut TextArea<'_>,
+    context: T,
+) {
+    let after_pos = t.cursor();
+    let modified = before_buf != after_buf;
+    assert_eq!(t.cursor(), after_pos, "pos before undo: {context:?}");
+    assert_eq!(t.undo(), modified, "undo modification: {context:?}");
+    assert_eq!(t.lines(), before_buf, "buf after undo: {context:?}");
+    assert_eq!(t.cursor(), before_pos, "pos after undo: {context:?}");
+    assert_eq!(t.redo(), modified, "redo modification: {context:?}");
+    assert_eq!(t.lines(), after_buf, "buf after redo: {context:?}");
+    assert_eq!(t.cursor(), after_pos, "pos after redo: {context:?}");
+}
+
+fn assert_no_undo_redo<T: Debug>(t: &mut TextArea<'_>, context: T) {
+    let pos = t.cursor();
+    let buf: Vec<_> = t.lines().to_vec();
+    assert!(!t.undo(), "undo modification: {context:?}");
+    assert_eq!(t.lines(), &buf, "buf after undo: {context:?}");
+    assert_eq!(t.cursor(), pos, "pos after undo: {context:?}");
+    assert!(!t.redo(), "redo modification: {context:?}");
+    assert_eq!(t.lines(), &buf, "buf after redo: {context:?}");
+    assert_eq!(t.cursor(), pos, "pos after redo: {context:?}");
+}
 
 #[test]
 fn test_insert_soft_tab() {
     for test in [
-        ("", 0, "    "),
-        ("a", 1, "a   "),
-        ("abcd", 4, "abcd    "),
-        ("a", 0, "    a"),
-        ("ab", 1, "a   b"),
-        ("abcdefgh", 4, "abcd    efgh"),
-        ("あ", 1, "あ  "),
-        ("🐶", 1, "🐶  "),
-        ("あ", 0, "    あ"),
-        ("あい", 1, "あ  い"),
+        ("", 0, "    ", 4),
+        ("a", 1, "a   ", 3),
+        ("abcd", 4, "abcd    ", 4),
+        ("a", 0, "    a", 4),
+        ("ab", 1, "a   b", 3),
+        ("abcdefgh", 4, "abcd    efgh", 4),
+        ("あ", 1, "あ  ", 2),
+        ("🐶", 1, "🐶  ", 2),
+        ("あ", 0, "    あ", 4),
+        ("あい", 1, "あ  い", 2),
     ] {
-        let (input, col, expected) = test;
+        let (input, col, expected, width) = test;
         let mut t = TextArea::from([input.to_string()]);
         t.move_cursor(CursorMove::Jump(0, col));
-        assert!(t.insert_tab(), "{:?}", test);
-        let lines = t.into_lines();
-        assert_eq!(lines.len(), 1, "{:?}, {:?}", lines, test);
-        let line = &lines[0];
-        assert_eq!(line, expected, "{:?}", test);
+        assert!(t.insert_tab(), "{test:?}");
+        assert_eq!(t.lines(), [expected], "{test:?}");
+        assert_eq!(t.cursor(), (0, col as usize + width), "{test:?}");
+        assert_undo_redo((0, col as _), &[input], &[expected], &mut t, test);
     }
 }
 
@@ -31,7 +60,8 @@ fn test_insert_hard_tab() {
     let mut t = TextArea::default();
     t.set_hard_tab_indent(true);
     assert!(t.insert_tab());
-    assert_eq!(t.lines(), ["\t"]);
+    assert_eq!(t.cursor(), (0, 1));
+    assert_undo_redo((0, 0), &[""], &["\t"], &mut t, "");
 
     let mut t = TextArea::default();
     t.set_hard_tab_indent(true);
@@ -39,6 +69,7 @@ fn test_insert_hard_tab() {
     t.insert_tab();
     assert!(!t.insert_tab());
     assert_eq!(t.lines(), [""]);
+    assert_eq!(t.cursor(), (0, 0));
 }
 
 #[test]
@@ -57,6 +88,13 @@ fn test_insert_char() {
         t.move_cursor(CursorMove::Jump(0, col));
         t.insert_char(ch);
         assert_eq!(t.lines(), want, "{test:?}");
+        let pos = if ch == '\n' {
+            (1, 0)
+        } else {
+            (0, col as usize + 1)
+        };
+        assert_eq!(t.cursor(), pos, "{test:?}");
+        assert_undo_redo((0, col as _), &["ab"], want, &mut t, test);
     }
 }
 
@@ -65,17 +103,20 @@ fn test_insert_str_one_line() {
     for i in 0..="ab".len() {
         let mut t = TextArea::from(["ab"]);
         t.move_cursor(CursorMove::Jump(0, i as u16));
-        assert!(t.insert_str("x"), "{}", i);
-        let have = &t.lines()[0];
+        assert!(t.insert_str("x"), "{i}");
 
         let mut want = "ab".to_string();
         want.insert(i, 'x');
-        assert_eq!(&want, have, "{}", i);
+        let want = want.as_str();
+        assert_eq!(t.lines(), [want], "{i}");
+        assert_eq!(t.cursor(), (0, i + 1));
+        assert_undo_redo((0, i), &["ab"], &[want], &mut t, i);
     }
 
     let mut t = TextArea::default();
     assert!(t.insert_str("x"));
-    assert_eq!(t.lines(), ["x"]);
+    assert_eq!(t.cursor(), (0, 1));
+    assert_undo_redo((0, 0), &[""], &["x"], &mut t, "");
 }
 
 #[test]
@@ -83,6 +124,8 @@ fn test_insert_str_empty_line() {
     let mut t = TextArea::from(["ab"]);
     assert!(!t.insert_str(""));
     assert_eq!(t.lines(), ["ab"]);
+    assert_eq!(t.cursor(), (0, 0));
+    assert_no_undo_redo(&mut t, "");
 }
 
 #[test]
@@ -503,16 +546,13 @@ fn test_insert_str_multiple_lines() {
 
         let mut t = TextArea::from(before.iter().map(|s| s.to_string()));
         let (row, col) = before_pos;
-        t.move_cursor(CursorMove::Jump(row, col));
+        t.move_cursor(CursorMove::Jump(row as _, col as _));
 
-        assert!(t.insert_str(input), "{:?}", test);
-        assert_eq!(t.cursor(), after_pos, "{:?}", test);
-        assert_eq!(t.lines(), expected, "{:?}", test);
+        assert!(t.insert_str(input), "{test:?}");
+        assert_eq!(t.cursor(), after_pos, "{test:?}");
+        assert_eq!(t.lines(), expected, "{test:?}");
 
-        assert!(t.undo(), "undo: {:?}", test);
-        assert_eq!(t.lines(), before, "content after undo: {:?}", test);
-        let before_pos = (row as _, col as _);
-        assert_eq!(t.cursor(), before_pos, "cursor after undo: {:?}", test);
+        assert_undo_redo(before_pos, before, expected, &mut t, test);
     }
 }
 
@@ -520,10 +560,12 @@ fn test_insert_str_multiple_lines() {
 fn test_delete_str_nothing() {
     for i in 0..="ab".len() {
         let mut t = TextArea::from(["ab"]);
-        assert!(!t.delete_str(0), "{}", i);
+        assert!(!t.delete_str(0), "{i}");
+        assert_eq!(t.cursor(), (0, 0));
     }
     let mut t = TextArea::default();
     assert!(!t.delete_str(0));
+    assert_eq!(t.cursor(), (0, 0));
 }
 
 #[test]
@@ -532,12 +574,16 @@ fn test_delete_str_within_line() {
         for j in 1..="abc".len() - i {
             let mut t = TextArea::from(["abc"]);
             t.move_cursor(CursorMove::Jump(0, i as _));
-            assert!(t.delete_str(j), "at {}, size={}", i, j);
-            let have = &t.lines()[0];
+            assert!(t.delete_str(j), "at {i}, size={j}");
 
             let mut want = "abc".to_string();
             want.drain(i..i + j);
-            assert_eq!(&want, have, "at {}, size={}", i, j);
+            let want = want.as_str();
+            assert_eq!(t.lines(), [want], "at {i}, size={j}");
+            assert_eq!(t.cursor(), (0, i));
+
+            // delete_str deletes string as if moving cursor at the end of the deleted string
+            assert_undo_redo((0, i + j), &["abc"], &[want], &mut t, (i, j));
         }
     }
 }
@@ -823,13 +869,17 @@ fn test_delete_str_multiple_lines() {
         let mut t = TextArea::from(before.iter().map(|s| s.to_string()));
         t.move_cursor(CursorMove::Jump(row as _, col as _));
 
-        assert!(t.delete_str(chars), "did not modified: {:?}", test);
-        assert_eq!(t.cursor(), (row, col), "cursor position: {:?}", test);
-        assert_eq!(t.lines(), after, "text buffer content: {:?}", test);
-        assert_eq!(t.yank_text(), deleted, "yanked text: {:?}", test);
+        assert!(t.delete_str(chars), "{test:?}");
+        assert_eq!(t.cursor(), (row, col), "{test:?}");
+        assert_eq!(t.lines(), after, "{test:?}");
+        assert_eq!(t.yank_text(), deleted, "{test:?}");
 
-        assert!(t.undo(), "undo: {:?}", test);
-        assert_eq!(t.lines(), before, "content after undo: {:?}", test);
+        let pos = t.cursor();
+        assert!(t.undo(), "{test:?}");
+        assert_eq!(t.lines(), before, "{test:?}");
+        assert!(t.redo(), "{test:?}");
+        assert_eq!(t.lines(), after, "{test:?}");
+        assert_eq!(t.cursor(), pos, "{test:?}");
     }
 }
 
@@ -846,6 +896,8 @@ fn test_copy_single_line() {
 
             assert_eq!(t.yank_text(), &"abc"[i..j], "from {i} to {j}");
             assert_eq!(t.lines(), ["abc"], "from {i} to {j}");
+
+            assert_no_undo_redo(&mut t, (i, j));
         }
     }
 }
@@ -865,11 +917,14 @@ fn test_cut_single_line() {
 
             let mut after = "abc".to_string();
             after.replace_range(i..j, "");
+            let after = after.as_str();
             assert_eq!(t.lines(), [after], "from {i} to {j}");
             assert_eq!(t.cursor(), (0, i));
+            assert_undo_redo((0, j), &["abc"], &[after], &mut t, (i, j));
 
             t.paste();
             assert_eq!(t.lines(), ["abc"], "from {i} to {j}");
+            assert_undo_redo((0, i), &[after], &["abc"], &mut t, (i, j));
         }
     }
 }
@@ -887,6 +942,7 @@ fn test_copy_cut_empty() {
                 assert!(!t.is_selecting());
                 assert_eq!(t.cursor(), (row as _, col as _));
                 assert_eq!(t.lines(), ["ab", "cd", "ef"]);
+                assert_no_undo_redo(&mut t, "");
             };
 
             check(|t| {
@@ -1153,6 +1209,7 @@ fn test_copy_cut_paste_multi_lines() {
             assert_eq!(t.cursor(), (erow, ecol), "{test:?}");
             assert_eq!(t.yank_text(), yanked, "{test:?}");
             assert_eq!(t.lines(), init_text, "{test:?}");
+            assert_no_undo_redo(&mut t, test);
         }
 
         {
@@ -1165,9 +1222,11 @@ fn test_copy_cut_paste_multi_lines() {
             assert_eq!(t.cursor(), (srow, scol), "{test:?}");
             assert_eq!(t.yank_text(), yanked, "{test:?}");
             assert_eq!(t.lines(), after_cut, "{test:?}");
+            assert_undo_redo((erow, ecol), init_text, after_cut, &mut t, test);
 
             t.paste();
             assert_eq!(t.lines(), init_text, "{test:?}");
+            assert_undo_redo((srow, scol), after_cut, init_text, &mut t, test);
         }
 
         // Reverse positions
@@ -1181,6 +1240,7 @@ fn test_copy_cut_paste_multi_lines() {
             assert_eq!(t.cursor(), (srow, scol), "{test:?}");
             assert_eq!(t.yank_text(), yanked, "{test:?}");
             assert_eq!(t.lines(), init_text, "{test:?}");
+            assert_no_undo_redo(&mut t, test);
         }
 
         {
@@ -1193,9 +1253,11 @@ fn test_copy_cut_paste_multi_lines() {
             assert_eq!(t.cursor(), (srow, scol), "{test:?}");
             assert_eq!(t.yank_text(), yanked, "{test:?}");
             assert_eq!(t.lines(), after_cut, "{test:?}");
+            assert_undo_redo((erow, ecol), init_text, after_cut, &mut t, test);
 
             t.paste();
             assert_eq!(t.lines(), init_text, "{test:?}");
+            assert_undo_redo((srow, scol), after_cut, init_text, &mut t, test);
         }
     }
 }
@@ -1232,8 +1294,7 @@ fn test_delete_selection_on_delete_operations() {
         assert_eq!(t.lines(), ["af"], "{n}");
         assert_eq!(t.cursor(), (0, 1), "{n}");
 
-        t.undo();
-        assert_eq!(t.lines(), ["ab", "cd", "ef"], "{n}");
+        assert_undo_redo((2, 1), &["ab", "cd", "ef"], &["af"], &mut t, n);
     }
 }
 
@@ -1341,19 +1402,21 @@ fn test_undo_redo_stop_selection() {
 #[test]
 fn test_set_yank_paste_text() {
     let tests = [
-        ("", &[""][..]),
-        ("abc", &["abc"][..]),
-        ("abc\ndef", &["abc", "def"][..]),
-        ("\n\n", &["", "", ""][..]),
+        ("", &[""][..], (0, 0)),
+        ("abc", &["abc"][..], (0, 3)),
+        ("abc\ndef", &["abc", "def"][..], (1, 3)),
+        ("\n\n", &["", "", ""][..], (2, 0)),
     ];
 
     for test in tests {
-        let (text, want) = test;
+        let (text, want, pos) = test;
         let mut t = TextArea::default();
         t.set_yank_text(text);
         t.paste();
         assert_eq!(t.lines(), want, "{test:?}");
         assert_eq!(t.yank_text(), text, "{test:?}");
+        assert_eq!(t.cursor(), pos, "{test:?}");
+        assert_undo_redo((0, 0), &[""], want, &mut t, test);
     }
 }
 
@@ -1378,6 +1441,8 @@ impl DeleteTester {
             assert_eq!(t.lines(), buf_before);
             t.redo();
             assert_eq!(t.lines(), buf_after);
+        } else {
+            assert_no_undo_redo(&mut t, "");
         }
     }
 }
