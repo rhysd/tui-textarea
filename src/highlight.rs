@@ -158,22 +158,22 @@ impl<'a> LineHighlighter<'a> {
 
     pub fn selection(
         &mut self,
-        row: usize,
+        current_row: usize,
         start_row: usize,
         start_off: usize,
         end_row: usize,
         end_off: usize,
     ) {
-        let (start, end) = if row == start_row {
+        let (start, end) = if current_row == start_row {
             if start_row == end_row {
                 (start_off, end_off)
             } else {
                 self.select_at_end = true;
                 (start_off, self.line.len())
             }
-        } else if row == end_row {
+        } else if current_row == end_row {
             (0, end_off)
-        } else if start_row < row && row < end_row {
+        } else if start_row < current_row && current_row < end_row {
             self.select_at_end = true;
             (0, self.line.len())
         } else {

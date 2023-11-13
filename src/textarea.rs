@@ -8,7 +8,7 @@ use crate::ratatui::widgets::{Block, Widget};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
-use crate::util::spaces;
+use crate::util::{spaces, Pos};
 use crate::widget::{Renderer, Viewport};
 use crate::word::{find_word_end_forward, find_word_start_backward};
 #[cfg(feature = "ratatui")]
@@ -51,18 +51,6 @@ impl ToString for YankText {
             Self::Piece(s) => s.clone(),
             Self::Chunk(ss) => ss.join("\n"),
         }
-    }
-}
-
-struct Pos {
-    row: usize,
-    col: usize,
-    offset: usize,
-}
-
-impl Pos {
-    fn new(row: usize, col: usize, offset: usize) -> Self {
-        Self { row, col, offset }
     }
 }
 
@@ -715,8 +703,10 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    fn push_history(&mut self, kind: EditKind, cursor_before: (usize, usize)) {
-        let edit = Edit::new(kind, cursor_before, self.cursor);
+    fn push_history(&mut self, kind: EditKind, before: Pos, after_offset: usize) {
+        let (row, col) = self.cursor;
+        let after = Pos::new(row, col, after_offset);
+        let edit = Edit::new(kind, before, after);
         self.history.push(edit);
     }
 
@@ -745,7 +735,11 @@ impl<'a> TextArea<'a> {
             .unwrap_or(line.len());
         line.insert(i, c);
         self.cursor.1 += 1;
-        self.push_history(EditKind::InsertChar(c, i), (row, col));
+        self.push_history(
+            EditKind::InsertChar(c),
+            Pos::new(row, col, i),
+            i + c.len_utf8(),
+        );
     }
 
     /// Insert a string at current cursor position. This method returns if some text was inserted or not in the textarea.
@@ -780,16 +774,20 @@ impl<'a> TextArea<'a> {
             .nth(col)
             .map(|(i, _)| i)
             .unwrap_or(line.len());
+        let before = Pos::new(row, col, i);
 
-        self.cursor = (
+        let (row, col) = (
             row + chunk.len() - 1,
             chunk[chunk.len() - 1].chars().count(),
         );
+        self.cursor = (row, col);
 
-        let edit = EditKind::InsertChunk(chunk, row, i);
-        edit.apply(row, &mut self.lines);
+        let end_offset = chunk.last().unwrap().len();
 
-        self.push_history(edit, (row, col));
+        let edit = EditKind::InsertChunk(chunk);
+        edit.apply(&mut self.lines, &before, &Pos::new(row, col, end_offset));
+
+        self.push_history(edit, before, end_offset);
         true
     }
 
@@ -812,45 +810,37 @@ impl<'a> TextArea<'a> {
             .map(|(i, _)| i)
             .unwrap_or(line.len());
         line.insert_str(i, &s);
+        let end_offset = i + s.len();
 
         self.cursor.1 += s.chars().count();
-        self.push_history(EditKind::InsertStr(s, i), (row, col));
+        self.push_history(EditKind::InsertStr(s), Pos::new(row, col, i), end_offset);
         true
     }
 
-    fn delete_offset_range(
-        &mut self,
-        start_row: usize,
-        start_col: usize,
-        start_offset: usize,
-        end_row: usize,
-        end_offset: usize,
-        should_yank: bool,
-    ) {
-        let cursor_before = self.cursor;
-        self.cursor = (start_row, start_col);
+    fn delete_range(&mut self, start: Pos, end: Pos, should_yank: bool) {
+        self.cursor = (start.row, start.col);
 
-        if start_row == end_row {
-            let removed = self.lines[start_row]
-                .drain(start_offset..end_offset)
+        if start.row == end.row {
+            let removed = self.lines[start.row]
+                .drain(start.offset..end.offset)
                 .as_str()
                 .to_string();
             if should_yank {
                 self.yank = removed.clone().into();
             }
-            self.push_history(EditKind::DeleteStr(removed, start_offset), cursor_before);
+            self.push_history(EditKind::DeleteStr(removed), end, start.offset);
             return;
         }
 
-        let mut deleted = vec![self.lines[start_row]
-            .drain(start_offset..)
+        let mut deleted = vec![self.lines[start.row]
+            .drain(start.offset..)
             .as_str()
             .to_string()];
-        deleted.extend(self.lines.drain(start_row + 1..end_row));
-        if start_row + 1 < self.lines.len() {
-            let mut last_line = self.lines.remove(start_row + 1);
-            self.lines[start_row].push_str(&last_line[end_offset..]);
-            last_line.truncate(end_offset);
+        deleted.extend(self.lines.drain(start.row + 1..end.row));
+        if start.row + 1 < self.lines.len() {
+            let mut last_line = self.lines.remove(start.row + 1);
+            self.lines[start.row].push_str(&last_line[end.offset..]);
+            last_line.truncate(end.offset);
             deleted.push(last_line);
         }
 
@@ -859,11 +849,11 @@ impl<'a> TextArea<'a> {
         }
 
         let edit = if deleted.len() == 1 {
-            EditKind::DeleteStr(deleted.remove(0), start_offset)
+            EditKind::DeleteStr(deleted.remove(0))
         } else {
-            EditKind::DeleteChunk(deleted, start_row, start_offset)
+            EditKind::DeleteChunk(deleted)
         };
-        self.push_history(edit, cursor_before);
+        self.push_history(edit, end, start.offset);
     }
 
     /// Delete a string from the current cursor position. The `chars` parameter means number of characters, not a byte
@@ -896,14 +886,16 @@ impl<'a> TextArea<'a> {
 
         let mut remaining = chars;
         let mut find_end = move |line: &str| {
+            let mut col = 0usize;
             for (i, _) in line.char_indices() {
                 if remaining == 0 {
-                    return Some(i);
+                    return Some((i, col));
                 }
+                col += 1;
                 remaining -= 1;
             }
             if remaining == 0 {
-                Some(line.len())
+                Some((line.len(), col))
             } else {
                 remaining -= 1;
                 None
@@ -919,29 +911,39 @@ impl<'a> TextArea<'a> {
         };
 
         // First line
-        if let Some(offset) = find_end(&line[start_offset..]) {
+        if let Some((offset_delta, col_delta)) = find_end(&line[start_offset..]) {
+            let end_offset = start_offset + offset_delta;
+            let end_col = start_col + col_delta;
             let removed = self.lines[start_row]
-                .drain(start_offset..start_offset + offset)
+                .drain(start_offset..end_offset)
                 .as_str()
                 .to_string();
             self.yank = removed.clone().into();
-            self.push_history(EditKind::DeleteStr(removed, start_offset), self.cursor);
+            self.push_history(
+                EditKind::DeleteStr(removed),
+                Pos::new(start_row, end_col, end_offset),
+                start_offset,
+            );
             return true;
         }
 
         let mut r = start_row + 1;
-        let mut i = 0;
+        let mut offset = 0;
+        let mut col = 0;
 
         while r < self.lines.len() {
             let line = &self.lines[r];
-            if let Some(offset) = find_end(line) {
-                i = offset;
+            if let Some((o, c)) = find_end(line) {
+                offset = o;
+                col = c;
                 break;
             }
             r += 1;
         }
 
-        self.delete_offset_range(start_row, start_col, start_offset, r, i, true);
+        let start = Pos::new(start_row, start_col, start_offset);
+        let end = Pos::new(r, col, offset);
+        self.delete_range(start, end, true);
         true
     }
 
@@ -950,20 +952,31 @@ impl<'a> TextArea<'a> {
             return false;
         }
 
-        let cursor_before = self.cursor;
-        let row = cursor_before.0;
+        #[inline]
+        fn bytes_and_chars(claimed: usize, s: &str) -> (usize, usize) {
+            // Note: `claimed` may be larger than characters in `s` (e.g. usize::MAX)
+            let mut last_col = 0;
+            for (col, (bytes, _)) in s.char_indices().enumerate() {
+                if col == claimed {
+                    return (bytes, claimed);
+                }
+                last_col = col;
+            }
+            (s.len(), last_col + 1)
+        }
+
+        let (row, _) = self.cursor;
         let line = &mut self.lines[row];
         if let Some((i, _)) = line.char_indices().nth(col) {
-            let bytes = line[i..]
-                .char_indices()
-                .nth(chars)
-                .map(|(i, _)| i)
-                .unwrap_or_else(|| line[i..].len());
-            let removed = line[i..i + bytes].to_string();
-            line.replace_range(i..i + bytes, "");
+            let (bytes, chars) = bytes_and_chars(chars, &line[i..]);
+            let removed = line.drain(i..i + bytes).as_str().to_string();
 
             self.cursor = (row, col);
-            self.push_history(EditKind::DeleteStr(removed.clone(), i), cursor_before);
+            self.push_history(
+                EditKind::DeleteStr(removed.clone()),
+                Pos::new(row, col + chars, i + bytes),
+                i,
+            );
             self.yank = removed.into();
             true
         } else {
@@ -1021,17 +1034,17 @@ impl<'a> TextArea<'a> {
 
         let (row, col) = self.cursor;
         let line = &mut self.lines[row];
-        let idx = line
+        let offset = line
             .char_indices()
             .nth(col)
             .map(|(i, _)| i)
             .unwrap_or(line.len());
-        let next_line = line[idx..].to_string();
-        line.truncate(idx);
+        let next_line = line[offset..].to_string();
+        line.truncate(offset);
 
         self.lines.insert(row + 1, next_line);
         self.cursor = (row + 1, 0);
-        self.push_history(EditKind::InsertNewline(idx), (row, col));
+        self.push_history(EditKind::InsertNewline, Pos::new(row, col, offset), 0);
     }
 
     /// Delete a newline from **head** of current cursor line. This method returns if a newline was deleted or not in
@@ -1050,7 +1063,7 @@ impl<'a> TextArea<'a> {
             return true;
         }
 
-        let (row, col) = self.cursor;
+        let (row, _) = self.cursor;
         if row == 0 {
             return false;
         }
@@ -1061,7 +1074,7 @@ impl<'a> TextArea<'a> {
 
         self.cursor = (row - 1, prev_line.chars().count());
         prev_line.push_str(&line);
-        self.push_history(EditKind::DeleteNewline(prev_line_end), (row, col));
+        self.push_history(EditKind::DeleteNewline, Pos::new(row, 0, 0), prev_line_end);
         true
     }
 
@@ -1088,10 +1101,14 @@ impl<'a> TextArea<'a> {
         }
 
         let line = &mut self.lines[row];
-        if let Some((i, c)) = line.char_indices().nth(col - 1) {
-            line.remove(i);
+        if let Some((offset, c)) = line.char_indices().nth(col - 1) {
+            line.remove(offset);
             self.cursor.1 -= 1;
-            self.push_history(EditKind::DeleteChar(c, i), (row, col));
+            self.push_history(
+                EditKind::DeleteChar(c),
+                Pos::new(row, col, offset + c.len_utf8()),
+                offset,
+            );
             true
         } else {
             false
@@ -1427,7 +1444,7 @@ impl<'a> TextArea<'a> {
 
     fn delete_selection(&mut self, should_yank: bool) -> bool {
         if let Some((s, e)) = self.take_selection_range() {
-            self.delete_offset_range(s.row, s.col, s.offset, e.row, e.offset, should_yank);
+            self.delete_range(s, e, should_yank);
             return true;
         }
         false

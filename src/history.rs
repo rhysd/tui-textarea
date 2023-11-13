@@ -1,69 +1,75 @@
+use crate::util::Pos;
 use std::collections::VecDeque;
 
 #[derive(Clone, Debug)]
 pub enum EditKind {
-    InsertChar(char, usize),
-    DeleteChar(char, usize),
-    InsertNewline(usize),
-    DeleteNewline(usize),
-    InsertStr(String, usize),
-    DeleteStr(String, usize),
-    InsertChunk(Vec<String>, usize, usize),
-    DeleteChunk(Vec<String>, usize, usize),
+    InsertChar(char),
+    DeleteChar(char),
+    InsertNewline,
+    DeleteNewline,
+    InsertStr(String),
+    DeleteStr(String),
+    InsertChunk(Vec<String>),
+    DeleteChunk(Vec<String>),
 }
 
 impl EditKind {
-    pub(crate) fn apply(&self, row: usize, lines: &mut Vec<String>) {
+    pub(crate) fn apply(&self, lines: &mut Vec<String>, before: &Pos, after: &Pos) {
         match self {
-            EditKind::InsertChar(c, i) => {
-                lines[row].insert(*i, *c);
+            EditKind::InsertChar(c) => {
+                lines[before.row].insert(before.offset, *c);
             }
-            EditKind::DeleteChar(_, i) => {
-                lines[row].remove(*i);
+            EditKind::DeleteChar(_) => {
+                lines[before.row].remove(after.offset);
             }
-            EditKind::InsertNewline(i) => {
-                let line = &mut lines[row];
-                let next_line = line[*i..].to_string();
-                line.truncate(*i);
-                lines.insert(row + 1, next_line);
+            EditKind::InsertNewline => {
+                let line = &mut lines[before.row];
+                let next_line = line[before.offset..].to_string();
+                line.truncate(before.offset);
+                lines.insert(before.row + 1, next_line);
             }
-            EditKind::DeleteNewline(_) => {
-                if row > 0 {
-                    let line = lines.remove(row);
-                    lines[row - 1].push_str(&line);
-                }
+            EditKind::DeleteNewline => {
+                debug_assert!(before.row > 0, "invalid pos: {:?}", before);
+                let line = lines.remove(before.row);
+                lines[before.row - 1].push_str(&line);
             }
-            EditKind::InsertStr(s, i) => {
-                lines[row].insert_str(*i, s.as_str());
+            EditKind::InsertStr(s) => {
+                lines[before.row].insert_str(before.offset, s.as_str());
             }
-            EditKind::DeleteStr(s, i) => {
-                let end = *i + s.len();
-                lines[row].replace_range(*i..end, "");
+            EditKind::DeleteStr(s) => {
+                lines[after.row].drain(after.offset..after.offset + s.len());
             }
-            EditKind::InsertChunk(c, row, i) => {
+            EditKind::InsertChunk(c) => {
                 debug_assert!(c.len() > 1, "Chunk size must be > 1: {:?}", c);
-                let row = *row;
 
                 // Handle first line of chunk
-                let first_line = &mut lines[row];
-                let mut last_line = first_line.drain(*i..).as_str().to_string();
+                let first_line = &mut lines[before.row];
+                let mut last_line = first_line.drain(before.offset..).as_str().to_string();
                 first_line.push_str(&c[0]);
 
                 // Handle last line of chunk
+                let next_row = before.row + 1;
                 last_line.insert_str(0, c.last().unwrap());
-                lines.insert(row + 1, last_line);
+                lines.insert(next_row, last_line);
 
-                // Handle last line of chunk
-                lines.splice(row + 1..row + 1, c[1..c.len() - 1].iter().cloned());
+                // Handle middle lines of chunk
+                lines.splice(next_row..next_row, c[1..c.len() - 1].iter().cloned());
             }
-            EditKind::DeleteChunk(c, row, i) => {
+            EditKind::DeleteChunk(c) => {
                 debug_assert!(c.len() > 1, "Chunk size must be > 1: {:?}", c);
-                let row = *row;
 
-                lines[row].truncate(*i);
-                let mut last_line = lines.drain(row + 1..row + c.len()).last().unwrap();
+                // Remove middle lines of chunk
+                let mut last_line = lines
+                    .drain(after.row + 1..after.row + c.len())
+                    .last()
+                    .unwrap();
+                // Remove last line of chunk
                 last_line.drain(..c[c.len() - 1].len());
-                lines[row].push_str(&last_line);
+
+                // Remove first line of chunk and concat remaining
+                let first_line = &mut lines[after.row];
+                first_line.truncate(after.offset);
+                first_line.push_str(&last_line);
             }
         }
     }
@@ -71,14 +77,14 @@ impl EditKind {
     fn invert(&self) -> Self {
         use EditKind::*;
         match self.clone() {
-            InsertChar(c, i) => DeleteChar(c, i),
-            DeleteChar(c, i) => InsertChar(c, i),
-            InsertNewline(i) => DeleteNewline(i),
-            DeleteNewline(i) => InsertNewline(i),
-            InsertStr(s, i) => DeleteStr(s, i),
-            DeleteStr(s, i) => InsertStr(s, i),
-            InsertChunk(c, r, i) => DeleteChunk(c, r, i),
-            DeleteChunk(c, r, i) => InsertChunk(c, r, i),
+            InsertChar(c) => DeleteChar(c),
+            DeleteChar(c) => InsertChar(c),
+            InsertNewline => DeleteNewline,
+            DeleteNewline => InsertNewline,
+            InsertStr(s) => DeleteStr(s),
+            DeleteStr(s) => InsertStr(s),
+            InsertChunk(c) => DeleteChunk(c),
+            DeleteChunk(c) => InsertChunk(c),
         }
     }
 }
@@ -86,39 +92,33 @@ impl EditKind {
 #[derive(Clone, Debug)]
 pub struct Edit {
     kind: EditKind,
-    cursor_before: (usize, usize),
-    cursor_after: (usize, usize),
+    before: Pos,
+    after: Pos,
 }
 
 impl Edit {
-    pub fn new(
-        kind: EditKind,
-        cursor_before: (usize, usize),
-        cursor_after: (usize, usize),
-    ) -> Self {
+    pub fn new(kind: EditKind, before: Pos, after: Pos) -> Self {
         Self {
             kind,
-            cursor_before,
-            cursor_after,
+            before,
+            after,
         }
     }
 
     pub fn redo(&self, lines: &mut Vec<String>) {
-        let (row, _) = self.cursor_before;
-        self.kind.apply(row, lines);
+        self.kind.apply(lines, &self.before, &self.after);
     }
 
     pub fn undo(&self, lines: &mut Vec<String>) {
-        let (row, _) = self.cursor_after;
-        self.kind.invert().apply(row, lines); // Undo is redo of inverted edit
+        self.kind.invert().apply(lines, &self.after, &self.before); // Undo is redo of inverted edit
     }
 
     pub fn cursor_before(&self) -> (usize, usize) {
-        self.cursor_before
+        (self.before.row, self.before.col)
     }
 
     pub fn cursor_after(&self) -> (usize, usize) {
-        self.cursor_after
+        (self.after.row, self.after.col)
     }
 }
 
@@ -185,7 +185,6 @@ mod tests {
     #[test]
     fn insert_delete_chunk() {
         #[rustfmt::skip]
-        #[allow(clippy::identity_op)]
         let tests = [
             // Positions
             (
@@ -195,7 +194,7 @@ mod tests {
                     "cd",
                     "ef",
                 ][..],
-                // (row, offset) position before edit
+                // (row, col) position before edit
                 (0, 0),
                 // Chunk to be inserted
                 &[
@@ -551,7 +550,7 @@ mod tests {
                     "🐮🐰",
                     "🐧🐭",
                 ][..],
-                (0, 4 * 2),
+                (0, 2),
                 &[
                     "🐷", "🐼", "🐴",
                 ][..],
@@ -587,7 +586,7 @@ mod tests {
                     "🐮🐰",
                     "🐧🐭",
                 ][..],
-                (1, 4 * 1),
+                (1, 1),
                 &[
                     "🐷", "🐼", "🐴",
                 ][..],
@@ -605,7 +604,7 @@ mod tests {
                     "🐮🐰",
                     "🐧🐭",
                 ][..],
-                (2, 4 * 2),
+                (2, 2),
                 &[
                     "🐷", "🐼", "🐴",
                 ][..],
@@ -619,26 +618,33 @@ mod tests {
             ),
         ];
 
-        for (before, pos, input, expected) in tests {
-            let (row, offset) = pos;
+        for test in tests {
+            let (before, pos, input, expected) = test;
+            let (row, col) = pos;
+            let before_pos = {
+                let offset = before[row]
+                    .char_indices()
+                    .map(|(i, _)| i)
+                    .nth(col)
+                    .unwrap_or(before[row].len());
+                Pos::new(row, col, offset)
+            };
             let mut lines: Vec<_> = before.iter().map(|s| s.to_string()).collect();
             let chunk: Vec<_> = input.iter().map(|s| s.to_string()).collect();
+            let after_pos = {
+                let row = row + input.len() - 1;
+                let last = input.last().unwrap();
+                let col = last.chars().count();
+                Pos::new(row, col, last.len())
+            };
 
-            let edit = EditKind::InsertChunk(chunk.clone(), row, offset);
-            edit.apply(row, &mut lines);
-            assert_eq!(
-                &lines, expected,
-                "{:?} at {:?} with {:?}",
-                before, pos, input,
-            );
+            let edit = EditKind::InsertChunk(chunk.clone());
+            edit.apply(&mut lines, &before_pos, &after_pos);
+            assert_eq!(&lines, expected, "{test:?}");
 
-            let edit = EditKind::DeleteChunk(chunk, row, offset);
-            edit.apply(row, &mut lines);
-            assert_eq!(
-                &lines, &before,
-                "{:?} at {:?} with {:?}",
-                before, pos, input,
-            );
+            let edit = EditKind::DeleteChunk(chunk);
+            edit.apply(&mut lines, &after_pos, &before_pos);
+            assert_eq!(&lines, &before, "{test:?}");
         }
     }
 }

@@ -55,7 +55,11 @@ fn test_input_all_combinations_sanity() {
 
     for input in inputs {
         t.input(input.clone());
+        t.undo();
+        t.redo();
         t.input_without_shortcuts(input);
+        t.undo();
+        t.redo();
     }
 }
 

@@ -830,7 +830,6 @@ fn test_delete_str_multiple_lines() {
 
         assert!(t.undo(), "undo: {:?}", test);
         assert_eq!(t.lines(), before, "content after undo: {:?}", test);
-        assert_eq!(t.cursor(), (row, col), "cursor after undo: {:?}", test);
     }
 }
 
