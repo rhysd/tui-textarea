@@ -489,6 +489,7 @@ notify how to move the cursor.
 | `textarea.paste()`                                   | Paste yanked text                               |
 | `textarea.start_selection()`                         | Start text selection                            |
 | `textarea.cancel_selection()`                        | Cancel text selection                           |
+| `textarea.select_all()`                              | Select entire text                              |
 | `textarea.move_cursor(CursorMove::Forward)`          | Move cursor forward by one character            |
 | `textarea.move_cursor(CursorMove::Back)`             | Move cursor backward by one character           |
 | `textarea.move_cursor(CursorMove::Up)`               | Move cursor up by one line                      |

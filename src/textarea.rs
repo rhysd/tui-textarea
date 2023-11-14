@@ -1312,6 +1312,26 @@ impl<'a> TextArea<'a> {
         self.selection_start = None;
     }
 
+    /// Select the entire text. Cursor moves to the end of the text buffer. When text selection is already ongoing,
+    /// it is canceled.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["aaa", "bbb", "ccc"]);
+    ///
+    /// textarea.select_all();
+    ///
+    /// // Cut the entire text;
+    /// textarea.cut();
+    ///
+    /// assert_eq!(textarea.lines(), [""]); // Buffer is now empty
+    /// assert_eq!(textarea.yank_text(), "aaa\nbbb\nccc");
+    /// ```
+    pub fn select_all(&mut self) {
+        self.move_cursor(CursorMove::Jump(u16::MAX, u16::MAX));
+        self.selection_start = Some((0, 0));
+    }
+
     /// Return if text selection is ongoing or not.
     /// ```
     /// use tui_textarea::{TextArea};

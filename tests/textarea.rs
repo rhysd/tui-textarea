@@ -1420,6 +1420,18 @@ fn test_set_yank_paste_text() {
     }
 }
 
+#[test]
+fn test_select_all() {
+    let mut t = TextArea::from(["aaa", "bbb", "ccc"]);
+    t.select_all();
+    assert!(t.is_selecting());
+    assert_eq!(t.cursor(), (2, 3));
+    t.cut();
+    assert_eq!(t.lines(), [""]);
+    assert_eq!(t.yank_text(), "aaa\nbbb\nccc");
+    assert_undo_redo((2, 3), &["aaa", "bbb", "ccc"], &[""], &mut t, "");
+}
+
 struct DeleteTester(&'static [&'static str], fn(&mut TextArea) -> bool);
 impl DeleteTester {
     fn test(&self, before: (usize, usize), after: (usize, usize, &[&str], &str)) {
