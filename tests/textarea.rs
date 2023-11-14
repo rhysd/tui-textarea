@@ -1432,6 +1432,27 @@ fn test_select_all() {
     assert_undo_redo((2, 3), &["aaa", "bbb", "ccc"], &[""], &mut t, "");
 }
 
+#[test]
+fn test_paste_while_selection() {
+    let mut t = TextArea::from(["ab", "cd"]);
+    t.move_cursor(CursorMove::Jump(0, 1));
+    t.start_selection();
+    t.move_cursor(CursorMove::Jump(1, 1));
+    t.set_yank_text("x\ny");
+    assert!(t.paste());
+    assert_eq!(t.lines(), ["ax", "yd"]);
+    assert_eq!(t.cursor(), (1, 1));
+    assert!(!t.is_selecting());
+
+    let mut t = TextArea::from(["ab", "cd"]);
+    t.select_all();
+    t.set_yank_text("xy\nzw");
+    assert!(t.paste());
+    assert_eq!(t.lines(), ["xy", "zw"]);
+    assert_eq!(t.cursor(), (1, 2));
+    assert!(!t.is_selecting());
+}
+
 struct DeleteTester(&'static [&'static str], fn(&mut TextArea) -> bool);
 impl DeleteTester {
     fn test(&self, before: (usize, usize), after: (usize, usize, &[&str], &str)) {

@@ -1276,6 +1276,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), [" bbb cccaaa"]);
     /// ```
     pub fn paste(&mut self) -> bool {
+        self.delete_selection(false);
         match self.yank.clone() {
             YankText::Piece(s) => self.insert_piece(s),
             YankText::Chunk(c) => self.insert_chunk(c),
