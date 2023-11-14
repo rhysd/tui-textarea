@@ -24,6 +24,51 @@ enum YankText {
     Chunk(Vec<String>),
 }
 
+#[derive(Debug, Clone)]
+enum VimMode {
+    Normal(PreviousInput),
+    Insert,
+    Visual,
+    Command,
+    Replace,
+}
+
+
+#[derive(Debug, Clone)]
+struct PreviousInput {
+    operator: Option<char>,
+    times: Option<u32>,
+}
+
+impl PreviousInput {
+    fn is_number(&self) -> bool {
+        self.times.is_some()
+    }
+
+    fn reset(&mut self) {
+        self.operator = None;
+        self.times = None;
+    }
+
+    fn update(&mut self, input: &char) {
+        self.operator = Some(input.to_owned());
+    }
+
+    fn commit(&mut self) {
+        match self.operator {
+            Some(value) if value.is_ascii_digit() && value != '0' && self.times.is_none() => {
+                self.times = Some(value as u32);
+            }
+            Some(value) if value.is_ascii_digit() && self.times.is_some() => {
+                *self.times.as_mut().unwrap() = self.times.unwrap() * 10 + value as u32;
+            }
+            _ => {
+                self.times = None;
+            }
+        }
+    }
+}
+
 impl Default for YankText {
     fn default() -> Self {
         Self::Piece(String::new())
@@ -96,6 +141,8 @@ pub struct TextArea<'a> {
     mask: Option<char>,
     selection_start: Option<(usize, usize)>,
     select_style: Style,
+    //#[cfg(feature = "vim")]
+    mode: VimMode,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -198,6 +245,7 @@ impl<'a> TextArea<'a> {
             mask: None,
             selection_start: None,
             select_style: Style::default().bg(Color::LightBlue),
+            mode: VimMode::Normal(PreviousInput{ operator: None, times: None }),
         }
     }
 
@@ -705,6 +753,323 @@ impl<'a> TextArea<'a> {
                 false
             }
             _ => false,
+        }
+    }
+
+    //#[cfg(feature = "vim")]
+    pub fn input_with_vim_shortcuts(&mut self, input: impl Into<Input>) -> bool {
+        match self.mode {
+            VimMode::Normal( previours_input ) => {
+                match input.into() {
+                    // Mappings in normal mode
+                    Input {
+                        key: Key::Char('h'),
+                        ..
+                    } => {
+                        if previours_input.is_number() {
+                            for i in 0..previours_input.times.unwrap() {
+                                self.move_cursor(CursorMove::Back);
+                            }
+                        }
+                        self.move_cursor(CursorMove::Back);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('j'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::Down);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('k'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::Up);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('l'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::Forward);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('w'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::WordForward);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('b'),
+                        ctrl: false,
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::WordBack);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('^'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::Head);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('$'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::End);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('D'),
+                        ..
+                    } => {
+                        self.delete_line_by_end();
+                        true
+                    }
+                    Input {
+                        key: Key::Char('C'),
+                        ..
+                    } => {
+                        self.delete_line_by_end();
+                        self.mode = VimMode::Insert;
+                        true
+                    }
+                    Input {
+                        key: Key::Char('p'),
+                        ..
+                    } => {
+                        self.paste();
+                        true
+                    }
+                    Input {
+                        key: Key::Char('u'),
+                        ctrl: false,
+                        ..
+                    } => {
+                        self.undo();
+                        true
+                    }
+                    Input {
+                        key: Key::Char('r'),
+                        ctrl: true,
+                        ..
+                    } => {
+                        self.redo();
+                        true
+                    }
+                    Input {
+                        key: Key::Char('x'),
+                        ..
+                    } => {
+                        self.delete_next_char();
+                        true
+                    }
+                    Input {
+                        key: Key::Char('i'),
+                        ..
+                    } => {
+                        self.mode = VimMode::Insert;
+                        false
+                    }
+                    Input {
+                        key: Key::Char('a'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::Forward);
+                        self.mode = VimMode::Insert;
+                        false
+                    }
+                    Input {
+                        key: Key::Char('A'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::End);
+                        self.mode = VimMode::Insert;
+                        false
+                    }
+                    Input {
+                        key: Key::Char('o'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::End);
+                        self.insert_newline();
+                        self.mode = VimMode::Insert;
+                        true
+                    }
+                    Input {
+                        key: Key::Char('O'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::Head);
+                        self.insert_newline();
+                        self.move_cursor(CursorMove::Up);
+                        self.mode = VimMode::Insert;
+                        true
+                    }
+                    Input {
+                        key: Key::Char('I'),
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::Head);
+                        self.mode = VimMode::Insert;
+                        false
+                    }
+                    Input {
+                        key: Key::Char('q'),
+                        ..
+                    } => {
+                        // Quit?
+                        false
+                    }
+                    Input {
+                        key: Key::Char('e'),
+                        ctrl: true,
+                        ..
+                    } => {
+                        self.scroll((1, 0));
+                        false
+                    }
+                    Input {
+                        key: Key::Char('y'),
+                        ctrl: true,
+                        ..
+                    } => {
+                        self.scroll((-1, 0));
+                        false
+                    }
+                    Input {
+                        key: Key::Char('d'),
+                        ctrl: true,
+                        ..
+                    } => {
+                        self.scroll(Scrolling::HalfPageDown);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('u'),
+                        ctrl: true,
+                        ..
+                    } => {
+                        self.scroll(Scrolling::HalfPageUp);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('f'),
+                        ctrl: true,
+                        ..
+                    } => {
+                        self.scroll(Scrolling::PageDown);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('b'),
+                        ctrl: true,
+                        ..
+                    } => {
+                        self.scroll(Scrolling::PageUp);
+                        false
+                    }
+                    Input {
+                        key: Key::Char('v'),
+                        ctrl: false,
+                        ..
+                    } => {
+                        self.start_selection();
+                        self.mode = VimMode::Visual;
+                        false
+                    }
+                    Input {
+                        key: Key::Char('V'),
+                        ctrl: false,
+                        ..
+                    } => {
+                        self.move_cursor(CursorMove::Head);
+                        self.start_selection();
+                        self.move_cursor(CursorMove::End);
+                        self.mode = VimMode::Visual;
+                        false
+                    }
+                    _ => false,
+                }
+            }
+            VimMode::Insert => match input.into() {
+                Input {
+                    key: Key::Char(c),
+                    ctrl: false,
+                    alt: false,
+                    ..
+                } => {
+                    self.insert_char(c);
+                    true
+                }
+                Input {
+                    key: Key::Tab,
+                    ctrl: false,
+                    alt: false,
+                    ..
+                } => self.insert_tab(),
+                Input {
+                    key: Key::Backspace,
+                    ..
+                } => self.delete_char(),
+                Input {
+                    key: Key::Delete, ..
+                } => self.delete_next_char(),
+                Input {
+                    key: Key::Enter, ..
+                } => {
+                    self.insert_newline();
+                    true
+                }
+                Input {
+                    key: Key::MouseScrollDown,
+                    ..
+                } => {
+                    self.scroll((1, 0));
+                    false
+                }
+                Input {
+                    key: Key::MouseScrollUp,
+                    ..
+                } => {
+                    self.scroll((-1, 0));
+                    false
+                }
+                _ => false,
+            },
+            VimMode::Visual => match input.into() {
+                Input { key: Key::Esc, .. } => {
+                    self.cancel_selection();
+                    self.mode = VimMode::Normal(PreviousInput { operator: None });
+                    false
+                }
+                Input {
+                    key: Key::Char('y'),
+                    ctrl: false,
+                    ..
+                } => {
+                    self.copy();
+                    self.mode = VimMode::Normal(PreviousInput { operator: None });
+                    false
+                }
+                Input {
+                    key: Key::Char('d'),
+                    ctrl: false,
+                    ..
+                } => {
+                    self.cut();
+                    self.mode = VimMode::Normal(PreviousInput { operator: None });
+                    true
+                }
+                _ => false,
+            },
+            VimMode::Command => true,
+            VimMode::Replace => true,
         }
     }
 
