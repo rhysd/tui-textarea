@@ -47,6 +47,9 @@ fn test_input_all_combinations_sanity() {
         Esc,
         MouseScrollDown,
         MouseScrollUp,
+        Copy,
+        Cut,
+        Paste,
     ] {
         push_all_modifiers_combination(&mut inputs, k);
     }

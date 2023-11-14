@@ -45,6 +45,12 @@ pub enum Key {
     PageDown,
     /// Escape key
     Esc,
+    /// Copy key. This key is supported by termwiz only
+    Copy,
+    /// Cut key. This key is supported by termwiz only
+    Cut,
+    /// Paste key. This key is supported by termwiz only
+    Paste,
     /// Virtual key to scroll down by mouse
     MouseScrollDown,
     /// Virtual key to scroll up by mouse

@@ -252,9 +252,9 @@ Default key mappings are as follows:
 | `Alt+D`, `Alt+Delete`                        | Delete one word next to cursor            |
 | `Ctrl+U`                                     | Undo                                      |
 | `Ctrl+R`                                     | Redo                                      |
-| `Ctrl+C`                                     | Copy selected text                        |
-| `Ctrl+X`                                     | Cut selected text                         |
-| `Ctrl+Y`                                     | Paste yanked text                         |
+| `Ctrl+C`, `Copy`                             | Copy selected text                        |
+| `Ctrl+X`, `Cut`                              | Cut selected text                         |
+| `Ctrl+Y`, `Paste`                            | Paste yanked text                         |
 | `Ctrl+F`, `→`                                | Move cursor forward by one character      |
 | `Ctrl+B`, `←`                                | Move cursor backward by one character     |
 | `Ctrl+P`, `↑`                                | Move cursor up by one line                |

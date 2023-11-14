@@ -558,19 +558,24 @@ impl<'a> TextArea<'a> {
                 ctrl: true,
                 alt: false,
                 ..
+            }
+            | Input {
+                key: Key::Paste, ..
             } => self.paste(),
             Input {
                 key: Key::Char('x'),
                 ctrl: true,
                 alt: false,
                 ..
-            } => self.cut(),
+            }
+            | Input { key: Key::Cut, .. } => self.cut(),
             Input {
                 key: Key::Char('c'),
                 ctrl: true,
                 alt: false,
                 ..
-            } => {
+            }
+            | Input { key: Key::Copy, .. } => {
                 self.copy();
                 false
             }

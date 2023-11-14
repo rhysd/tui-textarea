@@ -34,6 +34,9 @@ impl From<KeyCode> for Key {
             KeyCode::DownArrow => Key::Down,
             KeyCode::Delete => Key::Delete,
             KeyCode::Function(x) => Key::F(x),
+            KeyCode::Copy => Key::Copy,
+            KeyCode::Cut => Key::Cut,
+            KeyCode::Paste => Key::Paste,
             _ => Key::Null,
         }
     }
