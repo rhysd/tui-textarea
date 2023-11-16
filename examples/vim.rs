@@ -13,9 +13,11 @@ use std::io;
 use std::io::BufRead;
 use tui_textarea::{CursorMove, Input, Key, Scrolling, TextArea};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Mode {
     Normal,
     Insert,
+    Visual,
 }
 
 impl Mode {
@@ -23,6 +25,7 @@ impl Mode {
         match self {
             Self::Normal => "type q to quit, type i to enter insert mode",
             Self::Insert => "type Esc to back to normal mode",
+            Self::Visual => "type y to yank, type d to delete, type Esc to back to normal mode",
         }
     }
 
@@ -30,6 +33,7 @@ impl Mode {
         match self {
             Self::Normal => Color::Reset,
             Self::Insert => Color::LightBlue,
+            Self::Visual => Color::LightYellow,
         }
     }
 }
@@ -39,6 +43,7 @@ impl fmt::Display for Mode {
         match self {
             Self::Normal => write!(f, "NORMAL"),
             Self::Insert => write!(f, "INSERT"),
+            Self::Visual => write!(f, "VISUAL"),
         }
     }
 }
@@ -63,7 +68,7 @@ impl PendingState {
         }
     }
 
-    fn transition(self, input: &Input) -> Option<Self> {
+    fn transition(self, input: &Input, mode: Mode) -> Option<Self> {
         match input {
             Input { key: Key::Null, .. } => None,
             Input {
@@ -75,17 +80,17 @@ impl PendingState {
                 key: Key::Char('d'),
                 ctrl: false,
                 ..
-            } if self != Self::D => Some(Self::D),
+            } if self != Self::D && mode == Mode::Normal => Some(Self::D),
             Input {
                 key: Key::Char('y'),
                 ctrl: false,
                 ..
-            } if self != Self::Y => Some(Self::Y),
+            } if self != Self::Y && mode == Mode::Normal => Some(Self::Y),
             Input {
                 key: Key::Char('c'),
                 ctrl: false,
                 ..
-            } if self != Self::C => Some(Self::C),
+            } if self != Self::C && mode == Mode::Normal => Some(Self::C),
             _ => Some(Self::None),
         }
     }
@@ -127,65 +132,93 @@ fn main() -> io::Result<()> {
 
         let input = crossterm::event::read()?.into();
 
-        if pending.operator().is_some() && !textarea.is_selecting() {
+        if pending.operator().is_some() && mode != Mode::Visual {
             textarea.start_selection();
         }
-        let next_pending = pending.transition(&input); // Calculate next state before moving `input`
+        // Calculate next pending key state before moving `input`
+        let next_pending = pending.transition(&input, mode);
 
-        match mode {
-            Mode::Normal => match input {
+        mode = match mode {
+            Mode::Normal | Mode::Visual => match input {
                 // Mappings in normal mode
                 Input {
                     key: Key::Char('h'),
                     ..
-                } => textarea.move_cursor(CursorMove::Back),
+                } => {
+                    textarea.move_cursor(CursorMove::Back);
+                    mode
+                }
                 Input {
                     key: Key::Char('j'),
                     ..
-                } => textarea.move_cursor(CursorMove::Down),
+                } => {
+                    textarea.move_cursor(CursorMove::Down);
+                    mode
+                }
                 Input {
                     key: Key::Char('k'),
                     ..
-                } => textarea.move_cursor(CursorMove::Up),
+                } => {
+                    textarea.move_cursor(CursorMove::Up);
+                    mode
+                }
                 Input {
                     key: Key::Char('l'),
                     ..
-                } => textarea.move_cursor(CursorMove::Forward),
+                } => {
+                    textarea.move_cursor(CursorMove::Forward);
+                    mode
+                }
                 Input {
                     key: Key::Char('w'),
                     ..
-                } => textarea.move_cursor(CursorMove::WordForward),
+                } => {
+                    textarea.move_cursor(CursorMove::WordForward);
+                    mode
+                }
                 Input {
                     key: Key::Char('b'),
                     ctrl: false,
                     ..
-                } => textarea.move_cursor(CursorMove::WordBack),
+                } => {
+                    textarea.move_cursor(CursorMove::WordBack);
+                    mode
+                }
                 Input {
                     key: Key::Char('^'),
                     ..
-                } => textarea.move_cursor(CursorMove::Head),
+                } => {
+                    textarea.move_cursor(CursorMove::Head);
+                    mode
+                }
                 Input {
                     key: Key::Char('$'),
                     ..
-                } => textarea.move_cursor(CursorMove::End),
+                } => {
+                    textarea.move_cursor(CursorMove::End);
+                    mode
+                }
                 Input {
                     key: Key::Char('D'),
                     ..
                 } => {
                     textarea.delete_line_by_end();
+                    Mode::Normal
                 }
                 Input {
                     key: Key::Char('C'),
                     ..
                 } => {
                     textarea.delete_line_by_end();
-                    mode = Mode::Insert;
+                    textarea.cancel_selection();
+                    Mode::Insert
                 }
                 Input {
                     key: Key::Char('p'),
                     ..
                 } => {
                     textarea.paste();
+                    Mode::Normal
                 }
                 Input {
                     key: Key::Char('u'),
@@ -193,6 +226,7 @@ fn main() -> io::Result<()> {
                     ..
                 } => {
                     textarea.undo();
+                    Mode::Normal
                 }
                 Input {
                     key: Key::Char('r'),
@@ -200,30 +234,37 @@ fn main() -> io::Result<()> {
                     ..
                 } => {
                     textarea.redo();
+                    Mode::Normal
                 }
                 Input {
                     key: Key::Char('x'),
                     ..
                 } => {
                     textarea.delete_next_char();
+                    Mode::Normal
                 }
                 Input {
                     key: Key::Char('i'),
                     ..
-                } => mode = Mode::Insert,
+                } => {
+                    textarea.cancel_selection();
+                    Mode::Insert
+                }
                 Input {
                     key: Key::Char('a'),
                     ..
                 } => {
+                    textarea.cancel_selection();
                     textarea.move_cursor(CursorMove::Forward);
-                    mode = Mode::Insert;
+                    Mode::Insert
                 }
                 Input {
                     key: Key::Char('A'),
                     ..
                 } => {
+                    textarea.cancel_selection();
                     textarea.move_cursor(CursorMove::End);
-                    mode = Mode::Insert;
+                    Mode::Insert
                 }
                 Input {
                     key: Key::Char('o'),
@@ -231,7 +272,7 @@ fn main() -> io::Result<()> {
                 } => {
                     textarea.move_cursor(CursorMove::End);
                     textarea.insert_newline();
-                    mode = Mode::Insert;
+                    Mode::Insert
                 }
                 Input {
                     key: Key::Char('O'),
@@ -240,14 +281,15 @@ fn main() -> io::Result<()> {
                     textarea.move_cursor(CursorMove::Head);
                     textarea.insert_newline();
                     textarea.move_cursor(CursorMove::Up);
-                    mode = Mode::Insert;
+                    Mode::Insert
                 }
                 Input {
                     key: Key::Char('I'),
                     ..
                 } => {
+                    textarea.cancel_selection();
                     textarea.move_cursor(CursorMove::Head);
-                    mode = Mode::Insert;
+                    Mode::Insert
                 }
                 Input {
                     key: Key::Char('q'),
@@ -257,53 +299,84 @@ fn main() -> io::Result<()> {
                     key: Key::Char('e'),
                     ctrl: true,
                     ..
-                } => textarea.scroll((1, 0)),
+                } => {
+                    textarea.scroll((1, 0));
+                    mode
+                }
                 Input {
                     key: Key::Char('y'),
                     ctrl: true,
                     ..
-                } => textarea.scroll((-1, 0)),
+                } => {
+                    textarea.scroll((-1, 0));
+                    mode
+                }
                 Input {
                     key: Key::Char('d'),
                     ctrl: true,
                     ..
-                } => textarea.scroll(Scrolling::HalfPageDown),
+                } => {
+                    textarea.scroll(Scrolling::HalfPageDown);
+                    mode
+                }
                 Input {
                     key: Key::Char('u'),
                     ctrl: true,
                     ..
-                } => textarea.scroll(Scrolling::HalfPageUp),
+                } => {
+                    textarea.scroll(Scrolling::HalfPageUp);
+                    mode
+                }
                 Input {
                     key: Key::Char('f'),
                     ctrl: true,
                     ..
-                } => textarea.scroll(Scrolling::PageDown),
+                } => {
+                    textarea.scroll(Scrolling::PageDown);
+                    mode
+                }
                 Input {
                     key: Key::Char('b'),
                     ctrl: true,
                     ..
-                } => textarea.scroll(Scrolling::PageUp),
+                } => {
+                    textarea.scroll(Scrolling::PageUp);
+                    mode
+                }
                 Input {
                     key: Key::Char('v'),
                     ctrl: false,
                     ..
-                } => textarea.start_selection(),
+                } if mode == Mode::Normal => {
+                    textarea.start_selection();
+                    Mode::Visual
+                }
                 Input {
                     key: Key::Char('V'),
                     ctrl: false,
                     ..
-                } => {
+                } if mode == Mode::Normal => {
                     textarea.move_cursor(CursorMove::Head);
                     textarea.start_selection();
                     textarea.move_cursor(CursorMove::End);
+                    Mode::Visual
                 }
-                Input { key: Key::Esc, .. } => textarea.cancel_selection(),
+                Input { key: Key::Esc, .. }
+                | Input {
+                    key: Key::Char('v'),
+                    ctrl: false,
+                    ..
+                } if mode == Mode::Visual => {
+                    textarea.cancel_selection();
+                    Mode::Normal
+                }
                 Input {
                     key: Key::Char('g'),
                     ctrl: false,
                     ..
                 } if pending == PendingState::G => {
                     textarea.move_cursor(CursorMove::Top);
+                    mode
                 }
                 Input {
                     key: Key::Char('G'),
@@ -311,6 +384,7 @@ fn main() -> io::Result<()> {
                     ..
                 } => {
                     textarea.move_cursor(CursorMove::Bottom);
+                    mode
                 }
                 Input {
                     key: Key::Char(c),
@@ -325,28 +399,33 @@ fn main() -> io::Result<()> {
                     if cursor == textarea.cursor() {
                         textarea.move_cursor(CursorMove::End); // At the last line, move to end of the line instead
                     }
+                    mode
                 }
                 Input {
                     key: Key::Char('y'),
                     ctrl: false,
                     ..
-                } if textarea.is_selecting() => textarea.copy(),
+                } if mode == Mode::Visual => {
+                    textarea.copy();
+                    Mode::Normal
+                }
                 Input {
                     key: Key::Char('d'),
                     ctrl: false,
                     ..
-                } if textarea.is_selecting() => {
+                } if mode == Mode::Visual => {
                     textarea.cut();
+                    Mode::Normal
                 }
                 Input {
                     key: Key::Char('c'),
                     ctrl: false,
                     ..
-                } if textarea.is_selecting() => {
+                } if mode == Mode::Visual => {
                     textarea.cut();
-                    mode = Mode::Insert;
+                    Mode::Insert
                 }
-                _ => {}
+                _ => mode,
             },
             Mode::Insert => match input {
                 Input { key: Key::Esc, .. }
@@ -355,26 +434,31 @@ fn main() -> io::Result<()> {
                     ctrl: true,
                     ..
                 } => {
-                    mode = Mode::Normal; // Back to normal mode with Esc or Ctrl+C
+                    Mode::Normal // Back to normal mode with Esc or Ctrl+C
                 }
                 input => {
                     textarea.input(input); // Use default key mappings in insert mode
+                    mode
                 }
             },
-        }
+        };
 
         if let Some(next_pending) = next_pending {
-            match pending {
+            mode = match pending {
                 PendingState::D => {
                     textarea.cut();
+                    Mode::Normal
                 }
-                PendingState::Y => textarea.copy(),
+                PendingState::Y => {
+                    textarea.copy();
+                    Mode::Normal
+                }
                 PendingState::C => {
                     textarea.cut();
-                    mode = Mode::Insert;
+                    Mode::Insert
                 }
-                _ => {}
-            }
+                _ => mode,
+            };
             pending = next_pending;
         }
     }
