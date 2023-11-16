@@ -43,6 +43,54 @@ impl fmt::Display for Mode {
     }
 }
 
+// State machine to handle pending key inputs
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PendingState {
+    None,
+    G,
+    D, // 'Delete' operator
+    Y, // 'Yank' operator
+    C, // 'Change' operator
+}
+
+impl PendingState {
+    fn operator(&self) -> Option<char> {
+        match self {
+            Self::D => Some('d'),
+            Self::Y => Some('y'),
+            Self::C => Some('c'),
+            _ => None,
+        }
+    }
+
+    fn transition(self, input: &Input) -> Option<Self> {
+        match input {
+            Input { key: Key::Null, .. } => None,
+            Input {
+                key: Key::Char('g'),
+                ctrl: false,
+                ..
+            } if self != Self::G => Some(Self::G),
+            Input {
+                key: Key::Char('d'),
+                ctrl: false,
+                ..
+            } if self != Self::D => Some(Self::D),
+            Input {
+                key: Key::Char('y'),
+                ctrl: false,
+                ..
+            } if self != Self::Y => Some(Self::Y),
+            Input {
+                key: Key::Char('c'),
+                ctrl: false,
+                ..
+            } if self != Self::C => Some(Self::C),
+            _ => Some(Self::None),
+        }
+    }
+}
+
 fn main() -> io::Result<()> {
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
@@ -62,6 +110,8 @@ fn main() -> io::Result<()> {
     };
 
     let mut mode = Mode::Normal;
+    let mut pending = PendingState::None;
+
     loop {
         // Show help message and current mode in title of the block
         let title = format!("{} MODE ({})", mode, mode.help_message());
@@ -76,6 +126,12 @@ fn main() -> io::Result<()> {
         term.draw(|f| f.render_widget(textarea.widget(), f.size()))?;
 
         let input = crossterm::event::read()?.into();
+
+        if pending.operator().is_some() && !textarea.is_selecting() {
+            textarea.start_selection();
+        }
+        let next_pending = pending.transition(&input); // Calculate next state before moving `input`
+
         match mode {
             Mode::Normal => match input {
                 // Mappings in normal mode
@@ -243,6 +299,34 @@ fn main() -> io::Result<()> {
                 }
                 Input { key: Key::Esc, .. } => textarea.cancel_selection(),
                 Input {
+                    key: Key::Char('g'),
+                    ctrl: false,
+                    ..
+                } if pending == PendingState::G => {
+                    textarea.move_cursor(CursorMove::Top);
+                }
+                Input {
+                    key: Key::Char('G'),
+                    ctrl: false,
+                    ..
+                } => {
+                    textarea.move_cursor(CursorMove::Bottom);
+                }
+                Input {
+                    key: Key::Char(c),
+                    ctrl: false,
+                    ..
+                } if pending.operator() == Some(c) => {
+                    // Handle yy, dd, cc. (This is not strictly the same behavior as Vim)
+                    textarea.move_cursor(CursorMove::Head);
+                    textarea.start_selection();
+                    let cursor = textarea.cursor();
+                    textarea.move_cursor(CursorMove::Down);
+                    if cursor == textarea.cursor() {
+                        textarea.move_cursor(CursorMove::End); // At the last line, move to end of the line instead
+                    }
+                }
+                Input {
                     key: Key::Char('y'),
                     ctrl: false,
                     ..
@@ -253,6 +337,14 @@ fn main() -> io::Result<()> {
                     ..
                 } if textarea.is_selecting() => {
                     textarea.cut();
+                }
+                Input {
+                    key: Key::Char('c'),
+                    ctrl: false,
+                    ..
+                } if textarea.is_selecting() => {
+                    textarea.cut();
+                    mode = Mode::Insert;
                 }
                 _ => {}
             },
@@ -269,6 +361,21 @@ fn main() -> io::Result<()> {
                     textarea.input(input); // Use default key mappings in insert mode
                 }
             },
+        }
+
+        if let Some(next_pending) = next_pending {
+            match pending {
+                PendingState::D => {
+                    textarea.cut();
+                }
+                PendingState::Y => textarea.copy(),
+                PendingState::C => {
+                    textarea.cut();
+                    mode = Mode::Insert;
+                }
+                _ => {}
+            }
+            pending = next_pending;
         }
     }
 
