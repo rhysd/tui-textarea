@@ -77,13 +77,13 @@ cargo run --example variable
 
 Simple textarea with variable height following the number of lines.
 
-### [`modal`](./examples/modal.rs)
+### [`vim`](./examples/vim.rs)
 
 ```sh
-cargo run --example modal
+cargo run --example vim
 ```
 
-Simple modal text editor like `vi`.
+Vim-like modal text editor.
 
 ### [`popup_placeholder`](./examples/popup_placeholder.rs)
 
@@ -513,49 +513,9 @@ notify how to move the cursor.
 | `textarea.scroll(Scrolling::HalfPageUp)`             | Scroll up the viewport by half-page             |
 | `textarea.scroll((row, col))`                        | Scroll down the viewport to (row, col) position |
 
-To define your own key mappings, simply call the above methods in your code instead of `TextArea::input()` method. The
-following example defines modal key mappings like Vim.
+To define your own key mappings, simply call the above methods in your code instead of `TextArea::input()` method.
 
-```rust,ignore
-use crossterm::event::{Event, read};
-use tui_textarea::{Input, Key, CursorMove, Scrolling};
-
-let mut textarea = ...;
-
-enum Mode {
-    Normal,
-    Insert,
-}
-
-let mut mode = Mode::Normal;
-
-// Event loop
-loop {
-    // ...
-
-    match mode {
-        Mode::Normal => match read()?.into() {
-            Input { key: Key::Char('h'), .. } => textarea.move_cursor(CursorMove::Back),
-            Input { key: Key::Char('j'), .. } => textarea.move_cursor(CursorMove::Down),
-            Input { key: Key::Char('k'), .. } => textarea.move_cursor(CursorMove::Up),
-            Input { key: Key::Char('l'), .. } => textarea.move_cursor(CursorMove::Forward),
-            Input { key: Key::Char('i'), .. } => mode = Mode::Insert, // Enter insert mode
-            // ...Add more mappings
-            _ => {},
-        },
-        Mode::Insert => match read()?.into() {
-            Input { key: Key::Esc, .. } => {
-                mode = Mode::Normal; // Back to normal mode with Esc or Ctrl+C
-            }
-            input => {
-                textarea.input(input); // Use default key mappings in insert mode
-            }
-        },
-    }
-}
-```
-
-See [`modal` example](./examples/modal.rs) for working example. It implements more Vim-like key mappings.
+See the [`vim` example](./examples/vim.rs) for working example. It implements more Vim-like key modal mappings.
 
 If you don't want to use default key mappings, `TextArea::input_without_shortcuts()` method can be used instead of
 `TextArea::input()`. The method only handles very basic operations such as inserting/deleting single characters, tabs,
