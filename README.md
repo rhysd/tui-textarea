@@ -83,7 +83,7 @@ Simple textarea with variable height following the number of lines.
 cargo run --example vim
 ```
 
-Vim-like modal text editor.
+Vim-like modal text editor. Vim emulation is implemented as a state machine.
 
 ### [`popup_placeholder`](./examples/popup_placeholder.rs)
 
