@@ -85,6 +85,8 @@ cargo run --example vim
 
 Vim-like modal text editor. Vim emulation is implemented as a state machine.
 
+<img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/vim.gif" width=590 height=156 alt="Vim emulation example">
+
 ### [`popup_placeholder`](./examples/popup_placeholder.rs)
 
 ```sh
