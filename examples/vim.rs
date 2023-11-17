@@ -18,6 +18,7 @@ enum Mode {
     Normal,
     Insert,
     Visual,
+    Operator(char),
 }
 
 impl Mode {
@@ -26,6 +27,7 @@ impl Mode {
             Self::Normal => "type q to quit, type i to enter insert mode",
             Self::Insert => "type Esc to back to normal mode",
             Self::Visual => "type y to yank, type d to delete, type Esc to back to normal mode",
+            Self::Operator(_) => "move cursor to apply operator",
         }
     }
 
@@ -34,6 +36,7 @@ impl Mode {
             Self::Normal => Color::Reset,
             Self::Insert => Color::LightBlue,
             Self::Visual => Color::LightYellow,
+            Self::Operator(_) => Color::LightGreen,
         }
     }
 }
@@ -44,54 +47,7 @@ impl fmt::Display for Mode {
             Self::Normal => write!(f, "NORMAL"),
             Self::Insert => write!(f, "INSERT"),
             Self::Visual => write!(f, "VISUAL"),
-        }
-    }
-}
-
-// State machine to handle pending key inputs
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PendingState {
-    None,
-    G,
-    D, // 'Delete' operator
-    Y, // 'Yank' operator
-    C, // 'Change' operator
-}
-
-impl PendingState {
-    fn operator(&self) -> Option<char> {
-        match self {
-            Self::D => Some('d'),
-            Self::Y => Some('y'),
-            Self::C => Some('c'),
-            _ => None,
-        }
-    }
-
-    fn transition(self, input: &Input, mode: Mode) -> Option<Self> {
-        match input {
-            Input { key: Key::Null, .. } => None,
-            Input {
-                key: Key::Char('g'),
-                ctrl: false,
-                ..
-            } if self != Self::G => Some(Self::G),
-            Input {
-                key: Key::Char('d'),
-                ctrl: false,
-                ..
-            } if self != Self::D && mode == Mode::Normal => Some(Self::D),
-            Input {
-                key: Key::Char('y'),
-                ctrl: false,
-                ..
-            } if self != Self::Y && mode == Mode::Normal => Some(Self::Y),
-            Input {
-                key: Key::Char('c'),
-                ctrl: false,
-                ..
-            } if self != Self::C && mode == Mode::Normal => Some(Self::C),
-            _ => Some(Self::None),
+            Self::Operator(c) => write!(f, "OPERATOR({})", c),
         }
     }
 }
@@ -115,7 +71,7 @@ fn main() -> io::Result<()> {
     };
 
     let mut mode = Mode::Normal;
-    let mut pending = PendingState::None;
+    let mut pending = Input::default();
 
     loop {
         // Show help message and current mode in title of the block
@@ -130,16 +86,20 @@ fn main() -> io::Result<()> {
 
         term.draw(|f| f.render_widget(textarea.widget(), f.size()))?;
 
-        let input = crossterm::event::read()?.into();
-
-        if pending.operator().is_some() && mode != Mode::Visual {
-            textarea.start_selection();
+        let input: Input = crossterm::event::read()?.into();
+        if input.key == Key::Null {
+            continue;
         }
-        // Calculate next pending key state before moving `input`
-        let next_pending = pending.transition(&input, mode);
+
+        let operator = if let Mode::Operator(op) = mode {
+            textarea.start_selection();
+            Some(op)
+        } else {
+            None
+        };
 
         mode = match mode {
-            Mode::Normal | Mode::Visual => match input {
+            Mode::Normal | Mode::Visual | Mode::Operator(_) => match input {
                 // Mappings in normal mode
                 Input {
                     key: Key::Char('h'),
@@ -374,8 +334,17 @@ fn main() -> io::Result<()> {
                     key: Key::Char('g'),
                     ctrl: false,
                     ..
-                } if pending == PendingState::G => {
+                } if matches!(
+                    pending,
+                    Input {
+                        key: Key::Char('g'),
+                        ctrl: false,
+                        ..
+                    }
+                ) =>
+                {
                     textarea.move_cursor(CursorMove::Top);
+                    pending = Input::default();
                     mode
                 }
                 Input {
@@ -390,7 +359,7 @@ fn main() -> io::Result<()> {
                     key: Key::Char(c),
                     ctrl: false,
                     ..
-                } if pending.operator() == Some(c) => {
+                } if operator == Some(c) => {
                     // Handle yy, dd, cc. (This is not strictly the same behavior as Vim)
                     textarea.move_cursor(CursorMove::Head);
                     textarea.start_selection();
@@ -401,6 +370,11 @@ fn main() -> io::Result<()> {
                     }
                     mode
                 }
+                Input {
+                    key: Key::Char(op @ ('y' | 'd' | 'c')),
+                    ctrl: false,
+                    ..
+                } if mode == Mode::Normal => Mode::Operator(op),
                 Input {
                     key: Key::Char('y'),
                     ctrl: false,
@@ -425,7 +399,10 @@ fn main() -> io::Result<()> {
                     textarea.cut();
                     Mode::Insert
                 }
-                _ => mode,
+                input => {
+                    pending = input;
+                    mode
+                }
             },
             Mode::Insert => match input {
                 Input { key: Key::Esc, .. }
@@ -443,23 +420,24 @@ fn main() -> io::Result<()> {
             },
         };
 
-        if let Some(next_pending) = next_pending {
-            mode = match pending {
-                PendingState::D => {
-                    textarea.cut();
-                    Mode::Normal
+        if let Some(op) = operator {
+            if mode != Mode::Normal && mode != Mode::Visual {
+                mode = match op {
+                    'y' => {
+                        textarea.copy();
+                        Mode::Normal
+                    }
+                    'd' => {
+                        textarea.cut();
+                        Mode::Normal
+                    }
+                    'c' => {
+                        textarea.cut();
+                        Mode::Insert
+                    }
+                    _ => mode,
                 }
-                PendingState::Y => {
-                    textarea.copy();
-                    Mode::Normal
-                }
-                PendingState::C => {
-                    textarea.cut();
-                    Mode::Insert
-                }
-                _ => mode,
-            };
-            pending = next_pending;
+            }
         }
     }
 
