@@ -22,22 +22,25 @@ enum Mode {
 }
 
 impl Mode {
-    fn help_message(&self) -> &'static str {
-        match self {
+    fn block<'a>(&self) -> Block<'a> {
+        let help = match self {
             Self::Normal => "type q to quit, type i to enter insert mode",
             Self::Insert => "type Esc to back to normal mode",
             Self::Visual => "type y to yank, type d to delete, type Esc to back to normal mode",
             Self::Operator(_) => "move cursor to apply operator",
-        }
+        };
+        let title = format!("{} MODE ({})", self, help);
+        Block::default().borders(Borders::ALL).title(title)
     }
 
-    fn cursor_color(&self) -> Color {
-        match self {
+    fn cursor_style(&self) -> Style {
+        let color = match self {
             Self::Normal => Color::Reset,
             Self::Insert => Color::LightBlue,
             Self::Visual => Color::LightYellow,
             Self::Operator(_) => Color::LightGreen,
-        }
+        };
+        Style::default().fg(color).add_modifier(Modifier::REVERSED)
     }
 }
 
@@ -52,18 +55,18 @@ impl fmt::Display for Mode {
     }
 }
 
-// State of Vim emulation
-struct Vim {
-    mode: Mode,
-    pending: Input, // Pending input to handle a sequence with two keys like gg
-}
-
 // How the Vim emulation state transitions
 enum Transition {
     Nop,
     Mode(Mode),
     Pending(Input),
     Quit,
+}
+
+// State of Vim emulation
+struct Vim {
+    mode: Mode,
+    pending: Input, // Pending input to handle a sequence with two keys like gg
 }
 
 impl Vim {
@@ -81,7 +84,7 @@ impl Vim {
         }
     }
 
-    fn input(&self, input: Input, textarea: &mut TextArea<'_>) -> Transition {
+    fn transition(&self, input: Input, textarea: &mut TextArea<'_>) -> Transition {
         if input.key == Key::Null {
             return Transition::Nop;
         }
@@ -396,23 +399,20 @@ fn main() -> io::Result<()> {
         TextArea::default()
     };
 
+    textarea.set_block(Mode::Normal.block());
+    textarea.set_cursor_style(Mode::Normal.cursor_style());
     let mut vim = Vim::new(Mode::Normal);
+
     loop {
-        // Show help message and current mode in title of the block
-        let title = format!("{} MODE ({})", vim.mode, vim.mode.help_message());
-        let block = Block::default().borders(Borders::ALL).title(title);
-        textarea.set_block(block);
-
-        // Change the cursor color looking at current mode
-        let color = vim.mode.cursor_color();
-        let style = Style::default().fg(color).add_modifier(Modifier::REVERSED);
-        textarea.set_cursor_style(style);
-
         term.draw(|f| f.render_widget(textarea.widget(), f.size()))?;
 
-        vim = match vim.input(crossterm::event::read()?.into(), &mut textarea) {
-            Transition::Nop => vim,
-            Transition::Mode(mode) => Vim::new(mode),
+        vim = match vim.transition(crossterm::event::read()?.into(), &mut textarea) {
+            Transition::Mode(mode) if vim.mode != mode => {
+                textarea.set_block(mode.block());
+                textarea.set_cursor_style(mode.cursor_style());
+                Vim::new(mode)
+            }
+            Transition::Nop | Transition::Mode(_) => vim,
             Transition::Pending(input) => vim.with_pending(input),
             Transition::Quit => break,
         }
