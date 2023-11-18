@@ -2042,7 +2042,7 @@ impl<'a> TextArea<'a> {
     /// Get the yanked text. Text is automatically yanked when deleting strings by [`TextArea::delete_line_by_head`],
     /// [`TextArea::delete_line_by_end`], [`TextArea::delete_word`], [`TextArea::delete_next_word`],
     /// [`TextArea::delete_str`], [`TextArea::copy`], and [`TextArea::cut`]. When multiple lines were yanked, they are
-    /// joined with `\n`.
+    /// always joined with `\n`.
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -2059,18 +2059,24 @@ impl<'a> TextArea<'a> {
         self.yank.to_string()
     }
 
-    /// Set a yanked text. The text can be inserted by [`TextArea::paste`].
+    /// Set a yanked text. The text can be inserted by [`TextArea::paste`]. `\n` and `\r\n` are recognized as newline
+    /// but `\r` isn't.
     /// ```
     /// use tui_textarea::TextArea;
     ///
     /// let mut textarea = TextArea::default();
     ///
-    /// textarea.set_yank_text("hello, world");
+    /// textarea.set_yank_text("hello\nworld");
     /// textarea.paste();
-    /// assert_eq!(textarea.lines(), ["hello, world"]);
+    /// assert_eq!(textarea.lines(), ["hello", "world"]);
     /// ```
     pub fn set_yank_text(&mut self, text: impl Into<String>) {
-        let lines: Vec<_> = text.into().split('\n').map(str::to_string).collect();
+        // `str::lines` is not available since it strips a newline at end
+        let lines: Vec<_> = text
+            .into()
+            .split('\n')
+            .map(|s| s.strip_suffix('\r').unwrap_or(s).to_string())
+            .collect();
         self.yank = lines.into();
     }
 

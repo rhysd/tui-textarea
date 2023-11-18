@@ -1421,6 +1421,24 @@ fn test_set_yank_paste_text() {
 }
 
 #[test]
+fn test_set_yank_crlf() {
+    let tests = [
+        ("\r\n", &["", ""][..], "\n"),
+        ("\r\n\r\n", &["", "", ""][..], "\n\n"),
+        ("a\r\nb", &["a", "b"][..], "a\nb"),
+        ("a\r\nb\r\n", &["a", "b", ""][..], "a\nb\n"),
+    ];
+    for test in tests {
+        let (pasted, lines, yanked) = test;
+        let mut t = TextArea::default();
+        t.set_yank_text(pasted);
+        t.paste();
+        assert_eq!(t.lines(), lines, "{test:?}");
+        assert_eq!(t.yank_text(), yanked, "{test:?}");
+    }
+}
+
+#[test]
 fn test_select_all() {
     let mut t = TextArea::from(["aaa", "bbb", "ccc"]);
     t.select_all();
