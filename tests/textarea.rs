@@ -301,6 +301,24 @@ fn test_insert_str_multiple_lines() {
                 "ef",
             ][..],
         ),
+        // Newline at end of line
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (1, 1),
+            "x\ny\n",
+            (3, 0),
+            &[
+                "ab",
+                "cx",
+                "y",
+                "d",
+                "ef",
+            ][..],
+        ),
         // Empty lines
         (
             &[
@@ -376,8 +394,9 @@ fn test_insert_str_multiple_lines() {
             ][..],
             (0, 0),
             "\n\n\n",
-            (2, 0),
+            (3, 0),
             &[
+                "",
                 "",
                 "",
                 "ab",
@@ -393,9 +412,10 @@ fn test_insert_str_multiple_lines() {
             ][..],
             (1, 0),
             "\n\n\n",
-            (3, 0),
+            (4, 0),
             &[
                 "ab",
+                "",
                 "",
                 "",
                 "cd",
@@ -410,10 +430,11 @@ fn test_insert_str_multiple_lines() {
             ][..],
             (1, 1),
             "\n\n\n",
-            (3, 0),
+            (4, 0),
             &[
                 "ab",
                 "c",
+                "",
                 "",
                 "d",
                 "ef",
@@ -427,10 +448,11 @@ fn test_insert_str_multiple_lines() {
             ][..],
             (1, 2),
             "\n\n\n",
-            (3, 0),
+            (4, 0),
             &[
                 "ab",
                 "cd",
+                "",
                 "",
                 "",
                 "ef",
@@ -444,11 +466,12 @@ fn test_insert_str_multiple_lines() {
             ][..],
             (2, 2),
             "\n\n\n",
-            (4, 0),
+            (5, 0),
             &[
                 "ab",
                 "cd",
                 "ef",
+                "",
                 "",
                 "",
             ][..],
@@ -539,6 +562,41 @@ fn test_insert_str_multiple_lines() {
                 "🐴",
             ][..],
         ),
+        // Handle \r\n as newlines
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (1, 1),
+            "x\r\ny\r\nz",
+            (3, 1),
+            &[
+                "ab",
+                "cx",
+                "y",
+                "zd",
+                "ef",
+            ][..],
+        ),
+        (
+            &[
+                "ab",
+                "cd",
+                "ef",
+            ][..],
+            (1, 1),
+            "x\ny\r\nz",
+            (3, 1),
+            &[
+                "ab",
+                "cx",
+                "y",
+                "zd",
+                "ef",
+            ][..],
+        ),
     ];
 
     for test in tests {
@@ -549,8 +607,8 @@ fn test_insert_str_multiple_lines() {
         t.move_cursor(CursorMove::Jump(row as _, col as _));
 
         assert!(t.insert_str(input), "{test:?}");
-        assert_eq!(t.cursor(), after_pos, "{test:?}");
         assert_eq!(t.lines(), expected, "{test:?}");
+        assert_eq!(t.cursor(), after_pos, "{test:?}");
 
         assert_undo_redo(before_pos, before, expected, &mut t, test);
     }

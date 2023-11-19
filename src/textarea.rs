@@ -748,6 +748,7 @@ impl<'a> TextArea<'a> {
     }
 
     /// Insert a string at current cursor position. This method returns if some text was inserted or not in the textarea.
+    /// Both `\n` and `\r\n` are recognized as newlines but `\r` isn't.
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -761,7 +762,11 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn insert_str<S: AsRef<str>>(&mut self, s: S) -> bool {
         let modified = self.delete_selection(false);
-        let mut lines: Vec<_> = s.as_ref().lines().map(ToString::to_string).collect();
+        let mut lines: Vec<_> = s
+            .as_ref()
+            .split('\n')
+            .map(|s| s.strip_suffix('\r').unwrap_or(s).to_string())
+            .collect();
         match lines.len() {
             0 => modified,
             1 => self.insert_piece(lines.remove(0)),
