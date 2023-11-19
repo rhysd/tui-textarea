@@ -131,16 +131,19 @@ where
 /// Collect line texts from iterator as [`TextArea`]. It is useful when creating a textarea with text read from a file.
 /// [`Iterator::collect`] handles errors which may happen on reading each lines. The following example reads text from
 /// a file efficiently line-by-line.
-/// ```no_run
+/// ```
 /// use std::fs;
 /// use std::io::{self, BufRead};
 /// use std::path::Path;
 /// use tui_textarea::TextArea;
 ///
 /// fn read_from_file<'a>(path: impl AsRef<Path>) -> io::Result<TextArea<'a>> {
-///     let file = fs::File::open(path.as_ref())?;
+///     let file = fs::File::open(path)?;
 ///     io::BufReader::new(file).lines().collect()
 /// }
+///
+/// let textarea = read_from_file("README.md").unwrap();
+/// assert!(!textarea.is_empty());
 /// ```
 impl<'a, S: Into<String>> FromIterator<S> for TextArea<'a> {
     fn from_iter<I: IntoIterator<Item = S>>(iter: I) -> Self {
