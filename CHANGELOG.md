@@ -1,3 +1,42 @@
+<a name="v0.4.0"></a>
+# [v0.4.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.4.0) - 19 Nov 2023
+
+This release introduces text selection feature. The internal implementation was largely refactored to handle multi-line text for this feature. As the side effect, several APIs now can handle a multi-line string (string contains newlines) correctly.
+
+- Text selection has been implemented. ([#6](https://github.com/rhysd/tui-textarea/issues/6), [#45](https://github.com/rhysd/tui-textarea/issues/45), thanks [@pm100](https://github.com/pm100) for the first implementation)
+  ![text selection example](https://github.com/rhysd/tui-textarea/assets/823277/2ad4e4ba-3628-44c2-b61c-f0b270d09e27)
+  - Default key shortcuts now support text selection. When moving the cursor with pressing a shift key, a textarea starts to select the text under the cursor. The selected text can be copied/cut by the following key shortcuts. Modifying some text while text selection deletes the selected text. Doing undo/redo cancels the ongoing text selection.
+    | Mappings         | Description        |
+    |------------------|--------------------|
+    | `Ctrl+C`, `Copy` | Copy selected text |
+    | `Ctrl+X`, `Cut`  | Cut selected text  |
+  - The following APIs are added
+    - `TextArea::copy` keeps the selected text as a yanked text
+    - `TextArea::cut` deletes the selected text and keeps it as a yanked text
+    - `TextArea::start_selection` starts text selection
+    - `TextArea::cancel_selection` cancels text selection
+    - `TextArea::select_all` selects the entire text
+    - `TextArea::set_selection_style` sets the style of selected text
+    - `TextArea::selection_style` returns the current style for selected text
+- **BREAKING CHANGE:** `col` argument of `TextArea::delete_str` was removed. Instead, current cursor position is used. This change is for aligninig the API signature with `TextArea::insert_str`.
+  - Before: `fn delete_str(&mut self, col: usize, chars: usize) -> bool`
+  - After: `fn delete_str(&mut self, chars: usize) -> bool`
+- **BREAKING CHANGE:** `TextArea::yank_text` now returns `String` instead of `&str`. This change was caused to handle yanking multiple-line text correctly.
+  - Before: `fn yank_text<'a>(&'a self) -> &'a str`
+  - After: `fn yank_text(&self) -> String`
+- **BREAKING CHANGE:** `shift` field was added to `Input` to support the Shift modifier key.
+- Add `Key::Paste`, `Key::Copy`, and `Key::Cut`. They are only supported by termwiz crate.
+- Fix `TextArea::insert_char` didn't handle newline (`'\n'`) correctly.
+- Allow passing multi-line string to `TextArea::insert_str`. A string joined with newlines is inserted as multiple lines correctly.
+- Allow `TextArea::delete_str` to delete multiple lines ([#42](https://github.com/rhysd/tui-textarea/issues/42)).
+- Fix `TextArea::set_yank_text` didn't handle multiple lines correctly.
+- Fix `editor` example didn't handle terminal raw mode on Windows ([#44](https://github.com/rhysd/tui-textarea/issues/44)).
+- `modal` example was rebuilt as [`vim` example](https://github.com/rhysd/tui-textarea/blob/main/examples/vim.rs). It implements Vim emulation to some level as a state machine. It adds the support for very basic visual mode and operator-pending mode. This example aims to show how to implement complicated and stateful key shortcuts.
+- Add many unit test cases. Several edge cases found by them were fixed. The [code coverage](https://app.codecov.io/gh/rhysd/tui-textarea) of this crate reached 90%.
+
+[Changes][v0.4.0]
+
+
 <a name="v0.3.1"></a>
 # [v0.3.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.3.1) - 04 Nov 2023
 
@@ -264,6 +303,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.4.0]: https://github.com/rhysd/tui-textarea/compare/v0.3.1...v0.4.0
 [v0.3.1]: https://github.com/rhysd/tui-textarea/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/rhysd/tui-textarea/compare/v0.2.4...v0.3.0
 [v0.2.4]: https://github.com/rhysd/tui-textarea/compare/v0.2.3...v0.2.4
