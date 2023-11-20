@@ -7,6 +7,7 @@
 #[cfg(all(feature = "ratatui", feature = "tuirs"))]
 compile_error!("ratatui support and tui-rs support are exclusive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
 
+mod clipboard;
 mod cursor;
 mod highlight;
 mod history;

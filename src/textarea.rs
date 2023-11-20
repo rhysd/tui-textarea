@@ -1,3 +1,4 @@
+use crate::clipboard::{Clipboard, ClipboardContent};
 use crate::cursor::CursorMove;
 use crate::highlight::LineHighlighter;
 use crate::history::{Edit, EditKind, History};
@@ -17,42 +18,6 @@ use std::cmp::Ordering;
 #[cfg(feature = "tuirs")]
 use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
-
-#[derive(Debug, Clone)]
-enum YankText {
-    Piece(String),
-    Chunk(Vec<String>),
-}
-
-impl Default for YankText {
-    fn default() -> Self {
-        Self::Piece(String::new())
-    }
-}
-
-impl From<String> for YankText {
-    fn from(s: String) -> Self {
-        Self::Piece(s)
-    }
-}
-impl From<Vec<String>> for YankText {
-    fn from(mut c: Vec<String>) -> Self {
-        match c.len() {
-            0 => Self::default(),
-            1 => Self::Piece(c.remove(0)),
-            _ => Self::Chunk(c),
-        }
-    }
-}
-
-impl ToString for YankText {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Piece(s) => s.clone(),
-            Self::Chunk(ss) => ss.join("\n"),
-        }
-    }
-}
 
 /// A type to manage state of textarea.
 ///
@@ -87,7 +52,7 @@ pub struct TextArea<'a> {
     line_number_style: Option<Style>,
     pub(crate) viewport: Viewport,
     cursor_style: Style,
-    yank: YankText,
+    clipboard: Clipboard,
     #[cfg(feature = "search")]
     search: Search,
     alignment: Alignment,
@@ -192,7 +157,7 @@ impl<'a> TextArea<'a> {
             line_number_style: None,
             viewport: Viewport::default(),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
-            yank: YankText::default(),
+            clipboard: Clipboard::default(),
             #[cfg(feature = "search")]
             search: Search::default(),
             alignment: Alignment::Left,
@@ -839,7 +804,7 @@ impl<'a> TextArea<'a> {
                 .as_str()
                 .to_string();
             if should_yank {
-                self.yank = removed.clone().into();
+                self.clipboard.set_piece(removed.clone());
             }
             self.push_history(EditKind::DeleteStr(removed), end, start.offset);
             return;
@@ -858,7 +823,7 @@ impl<'a> TextArea<'a> {
         }
 
         if should_yank {
-            self.yank = YankText::Chunk(deleted.clone());
+            self.clipboard.set_chunk(deleted.clone());
         }
 
         let edit = if deleted.len() == 1 {
@@ -931,7 +896,7 @@ impl<'a> TextArea<'a> {
                 .drain(start_offset..end_offset)
                 .as_str()
                 .to_string();
-            self.yank = removed.clone().into();
+            self.clipboard.set_piece(removed.clone());
             self.push_history(
                 EditKind::DeleteStr(removed),
                 Pos::new(start_row, end_col, end_offset),
@@ -990,7 +955,7 @@ impl<'a> TextArea<'a> {
                 Pos::new(row, col + chars, i + bytes),
                 i,
             );
-            self.yank = removed.into();
+            self.clipboard.set_piece(removed);
             true
         } else {
             false
@@ -1285,9 +1250,9 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn paste(&mut self) -> bool {
         self.delete_selection(false);
-        match self.yank.clone() {
-            YankText::Piece(s) => self.insert_piece(s),
-            YankText::Chunk(c) => self.insert_chunk(c),
+        match self.clipboard.contents() {
+            ClipboardContent::Piece(p) => self.insert_piece(p.into_owned()),
+            ClipboardContent::Chunk(c) => self.insert_chunk(c.into_owned()),
         }
     }
 
@@ -1441,15 +1406,14 @@ impl<'a> TextArea<'a> {
     pub fn copy(&mut self) {
         if let Some((start, end)) = self.take_selection_range() {
             if start.row == end.row {
-                self.yank = self.lines[start.row][start.offset..end.offset]
-                    .to_string()
-                    .into();
+                let content = self.lines[start.row][start.offset..end.offset].to_string();
+                self.clipboard.set_piece(content);
                 return;
             }
             let mut chunk = vec![self.lines[start.row][start.offset..].to_string()];
             chunk.extend(self.lines[start.row + 1..end.row].iter().cloned());
             chunk.push(self.lines[end.row][..end.offset].to_string());
-            self.yank = YankText::Chunk(chunk);
+            self.clipboard.set_chunk(chunk);
         }
     }
 
@@ -2064,7 +2028,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.yank_text(), "abc\nd");
     /// ```
     pub fn yank_text(&self) -> String {
-        self.yank.to_string()
+        self.clipboard.contents().into()
     }
 
     /// Set a yanked text. The text can be inserted by [`TextArea::paste`]. `\n` and `\r\n` are recognized as newline
@@ -2085,7 +2049,7 @@ impl<'a> TextArea<'a> {
             .split('\n')
             .map(|s| s.strip_suffix('\r').unwrap_or(s).to_string())
             .collect();
-        self.yank = lines.into();
+        self.clipboard.set_chunk(lines);
     }
 
     /// Set a regular expression pattern for text search. Setting an empty string stops the text search.
