@@ -43,10 +43,6 @@ impl Clipboard {
             "multi-line test is passed to Clipboard::set_piece: {s:?}",
         );
 
-        if s.is_empty() {
-            return;
-        }
-
         #[cfg(feature = "clipboard")]
         if let Self::Os(ctx) = self {
             if let Ok(mut ctx) = ctx.try_borrow_mut() {
@@ -60,7 +56,7 @@ impl Clipboard {
 
     pub fn set_chunk(&mut self, mut c: Vec<String>) {
         match c.len() {
-            0 => {}
+            0 => self.set_piece(String::new()),
             1 => self.set_piece(c.remove(0)),
             _ => {
                 #[cfg(feature = "clipboard")]
@@ -166,7 +162,7 @@ mod tests {
     #[test]
     fn set_get_piece() {
         let _guard = guard();
-        let tests = ["abc", "あいうえお"];
+        let tests = ["", "abc", "あいうえお"];
         for test in tests {
             let mut c = Clipboard::default();
             c.set_piece(test.to_string());
@@ -175,21 +171,10 @@ mod tests {
     }
 
     #[test]
-    fn set_get_empty() {
-        let _guard = guard();
-        let mut c = Clipboard::default();
-        c.set_piece("abc".to_string());
-
-        c.set_piece("".to_string());
-        assert_eq!(String::from(c.contents()), "abc");
-        c.set_chunk(vec![]);
-        assert_eq!(String::from(c.contents()), "abc");
-    }
-
-    #[test]
     fn set_get_chunk() {
         let _guard = guard();
         let tests = [
+            ("", ""),
             ("\n", "\n"),
             ("\n\n", "\n\n"),
             ("a\n", "a\n"),
