@@ -1,5 +1,5 @@
 #[cfg(feature = "clipboard")]
-use copypasta::{ClipboardContext, ClipboardProvider as _};
+use arboard::Clipboard as Arboard;
 use std::borrow::Cow;
 #[cfg(feature = "clipboard")]
 use std::cell::RefCell;
@@ -23,13 +23,13 @@ pub enum Clipboard {
     Piece(String),
     Chunk(Vec<String>),
     #[cfg(feature = "clipboard")]
-    Os(RefCell<ClipboardContext>), // Use `RefCell` not to make `Clipboard::contents` mut method
+    Os(RefCell<Arboard>), // Use `RefCell` not to make `Clipboard::contents` mut method
 }
 
 impl Default for Clipboard {
     fn default() -> Self {
         #[cfg(feature = "clipboard")]
-        if let Ok(ctx) = ClipboardContext::new() {
+        if let Ok(ctx) = Arboard::new() {
             return Self::Os(RefCell::new(ctx));
         }
         Self::Piece(String::new())
@@ -50,7 +50,7 @@ impl Clipboard {
         #[cfg(feature = "clipboard")]
         if let Self::Os(ctx) = self {
             if let Ok(mut ctx) = ctx.try_borrow_mut() {
-                let _ = ctx.set_contents(s);
+                let _ = ctx.set_text(s);
                 return;
             }
         }
@@ -66,7 +66,7 @@ impl Clipboard {
                 #[cfg(feature = "clipboard")]
                 if let Self::Os(ctx) = self {
                     if let Ok(mut ctx) = ctx.try_borrow_mut() {
-                        let _ = ctx.set_contents(c.join("\n"));
+                        let _ = ctx.set_text(c.join("\n"));
                         return;
                     }
                 }
@@ -82,7 +82,7 @@ impl Clipboard {
             #[cfg(feature = "clipboard")]
             Self::Os(ctx) => {
                 if let Ok(mut ctx) = ctx.try_borrow_mut() {
-                    if let Ok(contents) = ctx.get_contents() {
+                    if let Ok(contents) = ctx.get_text() {
                         let mut lines = contents
                             .split('\n')
                             .map(|s| s.strip_suffix('\r').unwrap_or(s).to_string())
@@ -119,7 +119,7 @@ impl Clone for Clipboard {
             Self::Chunk(c) => Self::Chunk(c.clone()),
             #[cfg(feature = "clipboard")]
             Self::Os(_) => {
-                if let Ok(ctx) = ClipboardContext::new() {
+                if let Ok(ctx) = Arboard::new() {
                     Self::Os(RefCell::new(ctx))
                 } else {
                     Self::Piece(String::new())
@@ -157,10 +157,8 @@ mod tests {
     #[test]
     fn default_value() {
         let _guard = guard();
-        ClipboardContext::new()
-            .unwrap()
-            .set_contents("Hello, world".into())
-            .unwrap();
+        let mut arboard = Arboard::new().unwrap();
+        arboard.set_text("Hello, world").unwrap();
         let c = Clipboard::default();
         assert_eq!(String::from(c.contents()), "Hello, world");
     }
