@@ -44,6 +44,15 @@ impl Default for Clipboard {
 
 impl Clipboard {
     pub fn set_piece(&mut self, s: String) {
+        debug_assert!(
+            !s.contains('\n'),
+            "multi-line test is passed to Clipboard::set_piece: {s:?}",
+        );
+
+        if s.is_empty() {
+            return;
+        }
+
         #[cfg(feature = "clipboard")]
         if let Self::Os(ctx) = self {
             if let Ok(mut ctx) = ctx.try_borrow_mut() {
@@ -51,12 +60,13 @@ impl Clipboard {
                 return;
             }
         }
+
         *self = Self::Piece(s);
     }
 
     pub fn set_chunk(&mut self, mut c: Vec<String>) {
         match c.len() {
-            0 => self.set_piece(String::new()),
+            0 => {}
             1 => self.set_piece(c.remove(0)),
             _ => {
                 #[cfg(feature = "clipboard")]
@@ -71,7 +81,7 @@ impl Clipboard {
         }
     }
 
-    pub fn content(&self) -> ClipboardContent<'_> {
+    pub fn contents(&self) -> ClipboardContent<'_> {
         match self {
             Self::Piece(p) => ClipboardContent::Piece(p.as_str().into()),
             Self::Chunk(c) => ClipboardContent::Chunk(c.as_slice().into()),
@@ -107,6 +117,7 @@ impl fmt::Debug for Clipboard {
     }
 }
 
+// Note: `Clone` is necessary for `TextArea` to derive `Clone`
 impl Clone for Clipboard {
     fn clone(&self) -> Self {
         match self {
@@ -121,5 +132,99 @@ impl Clone for Clipboard {
                 }
             }
         }
+    }
+}
+
+#[allow(clippy::let_unit_value)]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Aquiring the lock is necessary to make all tests in serial. When `clipboard` feature is enabled, these tests
+    // access the global OS clipboard. Running tests in parallel causes races.
+    #[cfg(feature = "clipboard")]
+    fn guard() -> impl Drop {
+        use std::sync::Mutex;
+        static M: Mutex<()> = Mutex::new(());
+        M.lock().unwrap()
+    }
+    #[cfg(not(feature = "clipboard"))]
+    fn guard() {}
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn default_value() {
+        let _guard = guard();
+        let c = Clipboard::default();
+        assert_eq!(String::from(c.contents()), "");
+    }
+
+    #[cfg(feature = "clipboard")]
+    #[test]
+    fn default_value() {
+        let _guard = guard();
+        ClipboardContext::new()
+            .unwrap()
+            .set_contents("Hello, world".into())
+            .unwrap();
+        let c = Clipboard::default();
+        assert_eq!(String::from(c.contents()), "Hello, world");
+    }
+
+    #[test]
+    fn set_get_piece() {
+        let _guard = guard();
+        let tests = ["abc", "あいうえお"];
+        for test in tests {
+            let mut c = Clipboard::default();
+            c.set_piece(test.to_string());
+            assert_eq!(String::from(c.contents()), test, "{test:?}");
+        }
+    }
+
+    #[test]
+    fn set_get_empty() {
+        let _guard = guard();
+        let mut c = Clipboard::default();
+        c.set_piece("abc".to_string());
+
+        c.set_piece("".to_string());
+        assert_eq!(String::from(c.contents()), "abc");
+        c.set_chunk(vec![]);
+        assert_eq!(String::from(c.contents()), "abc");
+    }
+
+    #[test]
+    fn set_get_chunk() {
+        let _guard = guard();
+        let tests = [
+            ("\n", "\n"),
+            ("\n\n", "\n\n"),
+            ("a\n", "a\n"),
+            ("a\nb", "a\nb"),
+            ("a\nb\nc", "a\nb\nc"),
+            ("あ\nい\nう", "あ\nい\nう"),
+            ("\r\n", "\n"),
+            ("a\r\nb\r\nc", "a\nb\nc"),
+        ];
+        for test in tests {
+            let (before, after) = test;
+            let mut c = Clipboard::default();
+            let before = before
+                .replace('\r', "")
+                .split('\n')
+                .map(|s| s.to_string())
+                .collect();
+            c.set_chunk(before);
+            assert_eq!(String::from(c.contents()), after, "{test:?}");
+        }
+    }
+
+    #[test]
+    fn clone_and_debug() {
+        let _guard = guard();
+        let c1 = Clipboard::default();
+        let c2 = c1.clone();
+        assert_eq!(format!("{c1:?}"), format!("{c2:?}"));
     }
 }
