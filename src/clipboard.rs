@@ -10,12 +10,6 @@ pub enum ClipboardContent<'a> {
     Chunk(Cow<'a, [String]>),
 }
 
-impl<'a> Default for ClipboardContent<'a> {
-    fn default() -> Self {
-        Self::Piece(String::new().into())
-    }
-}
-
 impl<'a> From<ClipboardContent<'a>> for String {
     fn from(contents: ClipboardContent<'a>) -> String {
         match contents {
@@ -95,12 +89,12 @@ impl Clipboard {
                             .collect::<Vec<_>>();
                         match lines.len() {
                             0 => {}
-                            1 => return ClipboardContent::Piece(Cow::Owned(lines.remove(0))),
-                            _ => return ClipboardContent::Chunk(Cow::Owned(lines)),
+                            1 => return ClipboardContent::Piece(lines.remove(0).into()),
+                            _ => return ClipboardContent::Chunk(lines.into()),
                         }
                     }
                 }
-                ClipboardContent::default()
+                ClipboardContent::Piece(String::new().into())
             }
         }
     }
@@ -223,7 +217,12 @@ mod tests {
     #[test]
     fn clone_and_debug() {
         let _guard = guard();
-        let c1 = Clipboard::default();
+        let mut c1 = Clipboard::default();
+
+        let c2 = c1.clone();
+        assert_eq!(format!("{c1:?}"), format!("{c2:?}"));
+
+        c1.set_chunk(vec!["a".to_string(), "b".to_string()]);
         let c2 = c1.clone();
         assert_eq!(format!("{c1:?}"), format!("{c2:?}"));
     }
