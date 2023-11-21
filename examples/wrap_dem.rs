@@ -87,13 +87,15 @@ fn main() -> io::Result<()> {
                     ctrl: true,
                     shift: true,
                     alt: false,
-                } => textarea.set_wrap_mode(WrapMode::Word),
+                }
+                | Input { key: Key::F(1), .. } => textarea.set_wrap_mode(WrapMode::Word),
                 Input {
                     key: Key::Char('Z'),
                     ctrl: true,
                     shift: true,
                     alt: false,
-                } => textarea.set_wrap_mode(WrapMode::None),
+                }
+                | Input { key: Key::F(2), .. } => textarea.set_wrap_mode(WrapMode::None),
                 Input {
                     key: Key::Char('F'),
                     ctrl: true,
