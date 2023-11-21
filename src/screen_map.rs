@@ -191,6 +191,7 @@ impl<'a> TextArea<'a> {
             let alc = &al[chidx];
             dataoff = alc.3;
             if scwidth + alc.1 > width {
+                trace!("chop_line {} {} {}", scwidth, start, chidx);
                 // reached part of line that overflows screen width
                 if let Some(off) = find_word_start_backward(line, chidx) {
                     trace!(
@@ -201,7 +202,7 @@ impl<'a> TextArea<'a> {
                         al[off]
                     );
 
-                    if off == 0 {
+                    if off == 0 || off - start < 2 {
                         // no word to back up to, just chop the line
                         let lp = LinePtr {
                             data_line: line_num,
@@ -213,6 +214,7 @@ impl<'a> TextArea<'a> {
                             lp_num: lps.len(),
                             lp_count: 0,
                         };
+                        trace!("lp {:?} ", lp);
                         debug_assert!(is_utf8_char_boundary(line.as_bytes()[al[start].3]));
                         start = chidx;
                         lps.push(lp);
@@ -235,6 +237,7 @@ impl<'a> TextArea<'a> {
                             lp_num: lps.len(),
                             lp_count: 0,
                         };
+                        trace!("lp {:?} ", lp);
                         debug_assert!(is_utf8_char_boundary(line.as_bytes()[al[start].3]));
                         debug_assert!(is_utf8_char_boundary(
                             line.as_bytes()[al[start].3 + lp.byte_length]
