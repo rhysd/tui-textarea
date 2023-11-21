@@ -83,7 +83,7 @@ fn main() -> io::Result<()> {
                 Input { key: Key::Esc, .. } => break,
 
                 Input {
-                    key: Key::Char('R'),
+                    key: Key::Char('R' | 'r'),
                     ctrl: true,
                     shift: true,
                     alt: false,
