@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use crate::cursor::DataCursor;
+
 #[derive(Clone, Debug)]
 pub enum EditKind {
     InsertChar(char, usize),
@@ -86,16 +88,12 @@ impl EditKind {
 #[derive(Clone, Debug)]
 pub struct Edit {
     kind: EditKind,
-    cursor_before: (usize, usize),
-    cursor_after: (usize, usize),
+    cursor_before: DataCursor,
+    cursor_after: DataCursor,
 }
 
 impl Edit {
-    pub fn new(
-        kind: EditKind,
-        cursor_before: (usize, usize),
-        cursor_after: (usize, usize),
-    ) -> Self {
+    pub fn new(kind: EditKind, cursor_before: DataCursor, cursor_after: DataCursor) -> Self {
         Self {
             kind,
             cursor_before,
@@ -104,20 +102,20 @@ impl Edit {
     }
 
     pub fn redo(&self, lines: &mut Vec<String>) {
-        let (row, _) = self.cursor_before;
+        let DataCursor(row, _) = self.cursor_before;
         self.kind.apply(row, lines);
     }
 
     pub fn undo(&self, lines: &mut Vec<String>) {
-        let (row, _) = self.cursor_after;
+        let DataCursor(row, _) = self.cursor_after;
         self.kind.invert().apply(row, lines); // Undo is redo of inverted edit
     }
 
-    pub fn cursor_before(&self) -> (usize, usize) {
+    pub fn cursor_before(&self) -> DataCursor {
         self.cursor_before
     }
 
-    pub fn cursor_after(&self) -> (usize, usize) {
+    pub fn cursor_after(&self) -> DataCursor {
         self.cursor_after
     }
 }
@@ -156,7 +154,7 @@ impl History {
         self.edits.push_back(edit);
     }
 
-    pub fn redo(&mut self, lines: &mut Vec<String>) -> Option<(usize, usize)> {
+    pub fn redo(&mut self, lines: &mut Vec<String>) -> Option<DataCursor> {
         if self.index == self.edits.len() {
             return None;
         }
@@ -166,7 +164,7 @@ impl History {
         Some(edit.cursor_after())
     }
 
-    pub fn undo(&mut self, lines: &mut Vec<String>) -> Option<(usize, usize)> {
+    pub fn undo(&mut self, lines: &mut Vec<String>) -> Option<DataCursor> {
         self.index = self.index.checked_sub(1)?;
         let edit = &self.edits[self.index];
         edit.undo(lines);

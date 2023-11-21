@@ -7,10 +7,34 @@
 #[cfg(all(feature = "ratatui", feature = "tuirs"))]
 compile_error!("ratatui support and tui-rs support are exclusive. only one of them can be enabled at the same time. see https://github.com/rhysd/tui-textarea#installation");
 
+#[macro_export]
+macro_rules! trace {
+    ($fmt:literal, $($arg:expr),*) => {
+        #[cfg(debug_assertions)]
+        {
+            if cfg!(test){
+                println!($fmt, $($arg),*);
+            } else {
+                log::warn!($fmt, $($arg),*);
+            }
+        }
+    };
+    ($msg:expr) => {
+        #[cfg(debug_assertions)]
+        {
+            if cfg!(test){
+                println!($msg);
+            } else {
+                log::warn!($msg);
+            }
+        }
+    };
+}
 mod cursor;
 mod highlight;
 mod history;
 mod input;
+mod screen_map;
 mod scroll;
 #[cfg(feature = "search")]
 mod search;
@@ -35,3 +59,4 @@ pub use cursor::CursorMove;
 pub use input::{Input, Key};
 pub use scroll::Scrolling;
 pub use textarea::TextArea;
+pub use textarea::WrapMode;

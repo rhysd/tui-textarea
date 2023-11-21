@@ -1,5 +1,7 @@
+use crate::cursor::ScreenCursor;
 use crate::ratatui::style::Style;
 use crate::ratatui::text::Span;
+use crate::screen_map::LinePtr;
 use crate::util::{num_digits, spaces};
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
@@ -8,7 +10,7 @@ use std::cmp::Ordering;
 use std::iter;
 #[cfg(feature = "tuirs")]
 use tui::text::Spans as Line;
-use unicode_width::UnicodeWidthChar as _;
+use unicode_width::UnicodeWidthChar;
 
 #[derive(Debug)]
 enum Boundary {
@@ -106,6 +108,8 @@ pub struct LineHighlighter<'a> {
     tab_len: u8,
     mask: Option<char>,
     select_style: Style,
+    char_indices: std::str::CharIndices<'a>,
+    running_width: usize,
 }
 
 impl<'a> LineHighlighter<'a> {
@@ -126,25 +130,49 @@ impl<'a> LineHighlighter<'a> {
             tab_len,
             mask,
             select_style,
+            char_indices: line.char_indices(),
+            running_width: 0,
+        }
+    }
+    fn screen_col_to_byteoffset(&mut self, col: usize) -> usize {
+        loop {
+            assert!(
+                self.running_width <= col,
+                "running_width {} col {}",
+                self.running_width,
+                col
+            );
+            if let Some((i, c)) = self.char_indices.next() {
+                if self.running_width == col {
+                    return i;
+                }
+                self.running_width += UnicodeWidthChar::width(c).unwrap_or(0);
+            } else {
+                return self.line.len();
+            }
         }
     }
 
-    pub fn line_number(&mut self, row: usize, lnum_len: u8, style: Style) {
-        let pad = spaces(lnum_len - num_digits(row + 1) + 1);
-        self.spans
-            .push(Span::styled(format!("{}{} ", pad, row + 1), style));
+    pub(crate) fn line_number(&mut self, row: usize, lnum_len: u8, style: Style, lp: &LinePtr) {
+        if lp.lp_num == 0 {
+            let pad = spaces(lnum_len - num_digits(row + 1) + 1);
+            self.spans
+                .push(Span::styled(format!("{}{} ", pad, row + 1), style));
+        } else {
+            self.spans.push(Span::styled(spaces(lnum_len + 2), style));
+        };
     }
 
     pub fn select(&mut self, start: usize, end: usize, style: Style) {
         self.boundaries.push((Boundary::Select(style), start));
         self.boundaries.push((Boundary::End, end));
     }
-
-    pub fn cursor_line(&mut self, cursor_col: usize, style: Style) {
-        if let Some((start, c)) = self.line.char_indices().nth(cursor_col) {
+    pub(crate) fn cursor_line(&mut self, sc: ScreenCursor, style: Style, _lp: &LinePtr) {
+        if let Some(c) = sc.char {
+            let boff = self.screen_col_to_byteoffset(sc.col);
             self.boundaries
-                .push((Boundary::Cursor(self.cursor_style), start));
-            self.boundaries.push((Boundary::End, start + c.len_utf8()));
+                .push((Boundary::Cursor(self.cursor_style), boff));
+            self.boundaries.push((Boundary::End, boff + c.len_utf8()));
         } else {
             self.cursor_at_end = true;
         }
@@ -155,22 +183,23 @@ impl<'a> LineHighlighter<'a> {
         &mut self,
         row: usize,
         line: &str,
-        start: (usize, usize),
-        end: (usize, usize),
+        start: ScreenCursor,
+        end: ScreenCursor,
+        lp: &LinePtr,
     ) {
         // is this row selected?
 
         // note that the input coordinates here are in char offsets not bytes
         // so a lot of this code is converting from char offsets to byte offsets
-        if start.0 <= row && end.0 >= row {
+        if start.row <= row && end.row >= row {
             let mut indices = line.char_indices();
             let llen = line.len();
-            match (start.0 == row, end.0 == row) {
+            match (start.row == row, end.row == row) {
                 (true, true) => {
                     // only line
                     self.select(
-                        indices.nth(start.1).unwrap_or((llen, 'x')).0,
-                        indices.nth(end.1 - start.1).unwrap_or((llen, 'x')).0,
+                        indices.nth(start.col).unwrap_or((llen, 'x')).0,
+                        indices.nth(end.col - start.col).unwrap_or((llen, 'x')).0,
                         self.select_style,
                     );
                 }
@@ -181,25 +210,27 @@ impl<'a> LineHighlighter<'a> {
                     // that the newline is included
                     // same done for middle rows below
 
+                    // but only on the last segment of wrapped line
+
                     self.select(
-                        indices.nth(start.1).unwrap_or((llen, 'x')).0,
-                        llen + 1,
+                        indices.nth(start.col).unwrap_or((llen, 'x')).0,
+                        llen + if lp.last { 1 } else { 0 },
                         self.select_style,
                     );
                 }
                 (false, true) => {
                     // last line
-                    if end.1 > 0 {
+                    if end.col > 0 {
                         self.select(
                             0,
-                            indices.nth(end.1).unwrap_or((llen, 'x')).0,
+                            indices.nth(end.col).unwrap_or((llen, 'x')).0,
                             self.select_style,
                         );
                     }
                 }
                 (false, false) => {
                     // in the middle of selection
-                    self.select(0, llen + 1, self.select_style);
+                    self.select(0, llen + if lp.last { 1 } else { 0 }, self.select_style);
                 }
             }
         }
@@ -215,7 +246,7 @@ impl<'a> LineHighlighter<'a> {
         }
     }
 
-    pub fn into_spans(self) -> Line<'a> {
+    pub(crate) fn into_spans(self, lp: &LinePtr) -> Line<'a> {
         let Self {
             line,
             mut spans,
@@ -226,9 +257,11 @@ impl<'a> LineHighlighter<'a> {
             cursor_at_end,
             mask,
             select_style,
+            char_indices: _,
+            running_width: _,
         } = self;
         let mut builder = DisplayTextBuilder::new(tab_len, mask);
-
+        let llen = line.len();
         if boundaries.is_empty() {
             spans.push(Span::styled(builder.build(line), style_begin));
             if cursor_at_end {
@@ -241,16 +274,24 @@ impl<'a> LineHighlighter<'a> {
             Ordering::Equal => l.cmp(r),
             o => o,
         });
-
+        let mut dont_add_cursor = false;
         let mut style = style_begin;
         let mut start = 0;
         let mut stack = vec![];
-        let mut dont_add_cursor = false;
+
         for (next_boundary, end) in boundaries {
+            trace!(
+                "boundary {:?} {} {} {} {:?}",
+                next_boundary,
+                start,
+                end,
+                llen,
+                style
+            );
             if start < end {
                 // add extra select space at line end to indicate
                 // that the \n will be deleted / included
-                if end > line.len() && style == select_style {
+                if end > llen && style == select_style && lp.last {
                     spans.push(Span::styled(builder.build(&line[start..end - 1]), style));
                     spans.push(Span::styled(" ", style));
                     dont_add_cursor = true;
@@ -267,7 +308,7 @@ impl<'a> LineHighlighter<'a> {
             };
             start = end;
         }
-        if start < line.len() {
+        if start < llen {
             spans.push(Span::styled(builder.build(&line[start..]), style));
         }
         if cursor_at_end && !dont_add_cursor {

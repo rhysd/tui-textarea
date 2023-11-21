@@ -1,5 +1,6 @@
 use crate::widget::Viewport;
 use crate::word::{find_word_start_backward, find_word_start_forward};
+use crate::TextArea;
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
 use std::cmp;
@@ -224,101 +225,162 @@ pub enum CursorMove {
     /// ```
     InViewport,
 }
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DataCursor(pub usize, pub usize);
+impl DataCursor {
+    pub(crate) fn to_screen_cursor(self, ta: &TextArea) -> ScreenCursor {
+        ta.array_to_screen(self)
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ScreenCursor {
+    pub row: usize,
+    pub col: usize,
+    pub char: Option<char>,
+    pub dc: Option<DataCursor>,
+}
+impl ScreenCursor {
+    pub(crate) fn to_array_cursor(self, ta: &TextArea) -> DataCursor {
+        ta.screen_to_array(self)
+    }
+}
 
 impl CursorMove {
     pub(crate) fn next_cursor(
         &self,
-        (row, col): (usize, usize),
-        lines: &[String],
+        cursor: ScreenCursor,
+        ta: &TextArea,
         viewport: &Viewport,
-    ) -> Option<(usize, usize)> {
+    ) -> Option<ScreenCursor> {
         use CursorMove::*;
+        let row = cursor.row;
+        let col = cursor.col;
 
-        fn fit_col(col: usize, line: &str) -> usize {
-            cmp::min(col, line.chars().count())
-        }
-
-        match self {
-            Forward if col >= lines[row].chars().count() => {
-                (row + 1 < lines.len()).then(|| (row + 1, 0))
+        trace!(
+            "next_cursor: {:?} {:?} {:?} {:?} {}",
+            self,
+            cursor,
+            row,
+            col,
+            ta.screen_lines_count()
+        );
+        let ret_sc = match self {
+            Forward if col >= ta.screen_line_width(row) => {
+                (row + 1 < ta.screen_lines_count()).then(|| (row + 1, 0))
             }
-            Forward => Some((row, col + 1)),
+            Forward => Some((row, ta.increment_screen_cursor(cursor).col)),
             Back if col == 0 => {
                 let row = row.checked_sub(1)?;
-                Some((row, lines[row].chars().count()))
+                Some((row, ta.screen_line_width(row)))
             }
-            Back => Some((row, col - 1)),
+            Back => Some((row, ta.decrement_screen_cursor(cursor).col)),
             Up => {
                 let row = row.checked_sub(1)?;
-                Some((row, fit_col(col, &lines[row])))
+                Some((row, cmp::min(col, ta.screen_line_width(row))))
             }
-            Down => Some((row + 1, fit_col(col, lines.get(row + 1)?))),
+            Down => {
+                if row == ta.screen_lines_count() - 1 {
+                    None
+                } else {
+                    Some((row + 1, cmp::min(col, ta.screen_line_width(row + 1))))
+                }
+            }
             Head => Some((row, 0)),
-            End => Some((row, lines[row].chars().count())),
-            Top => Some((0, fit_col(col, &lines[0]))),
+            End => Some((row, ta.screen_line_width(row))),
+            Top => Some((0, cmp::min(col, ta.screen_line_width(0)))),
             Bottom => {
-                let row = lines.len() - 1;
-                Some((row, fit_col(col, &lines[row])))
+                let row = ta.screen_lines_count() - 1;
+                Some((row, cmp::min(col, ta.screen_line_width(row))))
             }
+
+            // these moves are all based of data not screen position
+            // hence the switch back to data coordinates
             WordForward => {
-                if let Some(col) = find_word_start_forward(&lines[row], col) {
-                    Some((row, col))
-                } else if row + 1 < lines.len() {
+                let dc = cursor.dc.unwrap();
+                if let Some(col) = find_word_start_forward(&ta.lines[dc.0], dc.1) {
+                    let dc = DataCursor(dc.0, col);
+                    let sc = dc.to_screen_cursor(ta);
+                    Some((sc.row, sc.col))
+                } else if row + 1 < ta.screen_lines.borrow().len() {
                     Some((row + 1, 0))
                 } else {
-                    Some((row, lines[row].chars().count()))
+                    Some((row, ta.screen_line_width(row)))
                 }
             }
             WordBack => {
-                if let Some(col) = find_word_start_backward(&lines[row], col) {
-                    Some((row, col))
+                let dc = cursor.dc.unwrap();
+                if let Some(col) = find_word_start_backward(&ta.lines[dc.0], dc.1) {
+                    let dc = DataCursor(dc.0, col);
+                    let sc = dc.to_screen_cursor(ta);
+                    Some((sc.row, sc.col))
                 } else if row > 0 {
-                    Some((row - 1, lines[row - 1].chars().count()))
+                    Some((row - 1, ta.screen_line_width(row - 1)))
                 } else {
                     Some((row, 0))
                 }
             }
             ParagraphForward => {
-                let mut prev_is_empty = lines[row].is_empty();
-                for row in row + 1..lines.len() {
-                    let line = &lines[row];
+                let dc = cursor.dc.unwrap();
+                let row = dc.0;
+                let mut prev_is_empty = ta.lines[row].is_empty();
+                for row in row + 1..ta.lines.len() {
+                    let line = &ta.lines[row];
                     let is_empty = line.is_empty();
                     if !is_empty && prev_is_empty {
-                        return Some((row, fit_col(col, line)));
+                        let dc = DataCursor(row, cmp::min(col, ta.screen_line_width(row)));
+                        let sc = dc.to_screen_cursor(ta);
+                        return Some(sc);
                     }
                     prev_is_empty = is_empty;
                 }
-                let row = lines.len() - 1;
-                Some((row, fit_col(col, &lines[row])))
+                let row = ta.lines.len() - 1;
+                let dc = DataCursor(row, cmp::min(col, ta.screen_line_width(row)));
+                let sc = dc.to_screen_cursor(ta);
+                Some((sc.row, sc.col))
             }
             ParagraphBack => {
+                let dc = cursor.dc.unwrap();
+                let row = dc.0;
                 let row = row.checked_sub(1)?;
-                let mut prev_is_empty = lines[row].is_empty();
+                let mut prev_is_empty = ta.lines[row].is_empty();
                 for row in (0..row).rev() {
-                    let is_empty = lines[row].is_empty();
+                    let is_empty = ta.lines[row].is_empty();
                     if is_empty && !prev_is_empty {
-                        return Some((row + 1, fit_col(col, &lines[row + 1])));
+                        let dc = DataCursor(row + 1, cmp::min(col, ta.screen_line_width(row + 1)));
+                        let sc = dc.to_screen_cursor(ta);
+                        return Some(sc);
                     }
                     prev_is_empty = is_empty;
                 }
-                Some((0, fit_col(col, &lines[0])))
+                Some((0, cmp::min(col, ta.screen_line_width(0))))
             }
             Jump(row, col) => {
-                let row = cmp::min(*row as usize, lines.len() - 1);
-                let col = fit_col(*col as usize, &lines[row]);
-                Some((row, col))
+                let row = cmp::min(*row as usize, ta.lines.len() - 1);
+                let col = cmp::min(*col as usize, ta.lines[row].len());
+                let dc = DataCursor(row, col);
+                let sc = dc.to_screen_cursor(ta);
+                Some((sc.row, sc.col))
             }
             InViewport => {
                 let (row_top, col_top, row_bottom, col_bottom) = viewport.position();
 
                 let row = row.clamp(row_top as usize, row_bottom as usize);
-                let row = cmp::min(row, lines.len() - 1);
+                let row = cmp::min(row, ta.screen_lines_count() - 1);
                 let col = col.clamp(col_top as usize, col_bottom as usize);
-                let col = fit_col(col, &lines[row]);
+                let col = cmp::min(col, ta.screen_line_width(row));
 
                 Some((row, col))
             }
-        }
+        };
+        trace!("New screen cursor:{:?}", ret_sc);
+        ret_sc.map(|(row, col)| ScreenCursor {
+            row,
+            col,
+            // we dont know either of these
+            // they will get filled in later
+            char: None,
+            dc: None,
+        })
     }
 }
 

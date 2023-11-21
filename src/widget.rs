@@ -1,3 +1,4 @@
+use crate::cursor::DataCursor;
 use crate::ratatui::buffer::Buffer;
 use crate::ratatui::layout::Rect;
 use crate::ratatui::text::Text;
@@ -85,12 +86,21 @@ impl<'a> Renderer<'a> {
 
     #[inline]
     fn text(&self, top_row: usize, height: usize) -> Text<'a> {
-        let lines_len = self.0.lines().len();
+        let line_table = self.0.screen_lines.borrow();
+        let lines_len = line_table.len();
         let lnum_len = num_digits(lines_len);
         let bottom_row = cmp::min(top_row + height, lines_len);
         let mut lines = Vec::with_capacity(bottom_row - top_row);
-        for (i, line) in self.0.lines()[top_row..bottom_row].iter().enumerate() {
-            lines.push(self.0.line_spans(line.as_str(), top_row + i, lnum_len));
+
+        if line_table.is_empty() {
+            return Text::from(lines);
+        }
+        trace!("top_row: {}, bottom_row: {}", top_row, bottom_row);
+        for (i, lp) in line_table[top_row..bottom_row].iter().enumerate() {
+            trace!("line: {:?}", lp);
+            let slice =
+                &self.0.lines[lp.data_line][lp.byte_offset..lp.byte_length + lp.byte_offset];
+            lines.push(self.0.line_spans(slice, top_row + i, lnum_len, lp));
         }
         Text::from(lines)
     }
@@ -98,11 +108,33 @@ impl<'a> Renderer<'a> {
 
 impl<'a> Widget for Renderer<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let Rect { width, height, .. } = if let Some(b) = self.0.block() {
+        trace!(
+            "DRAW {:?} =======================================================",
+            area
+        );
+        let Rect {
+            width,
+            height,
+            x,
+            y,
+        } = if let Some(b) = self.0.block() {
             b.inner(area)
         } else {
             area
         };
+
+        // this is the first time we get to see the area we are being rendered into
+        // First time in or new width, reload the line table
+
+        if self.0.area.get().width != width {
+            self.0.area.set(Rect {
+                width,
+                height,
+                x,
+                y,
+            });
+            self.0.screen_map_load();
+        }
 
         fn next_scroll_top(prev_top: u16, cursor: u16, length: u16) -> u16 {
             if cursor < prev_top {
@@ -114,10 +146,25 @@ impl<'a> Widget for Renderer<'a> {
             }
         }
 
-        let cursor = self.0.cursor();
+        let data_cursor = DataCursor(self.0.cursor().0, self.0.cursor().1);
+        let screen_cursor = self.0.array_to_screen(data_cursor);
         let (top_row, top_col) = self.0.viewport.scroll_top();
-        let top_row = next_scroll_top(top_row, cursor.0 as u16, height);
-        let top_col = next_scroll_top(top_col, cursor.1 as u16, width);
+        trace!(
+            "top_row: {}, top_col: {}, screen_cursor: {:?} {} {}",
+            top_row,
+            top_col,
+            screen_cursor,
+            width,
+            height
+        );
+        let top_row = next_scroll_top(top_row, screen_cursor.row as u16, height);
+        let top_col = next_scroll_top(top_col, screen_cursor.col as u16, width);
+        trace!(
+            "top_row: {}, top_col: {}, screen_cursor: {:?}",
+            top_row,
+            top_col,
+            screen_cursor
+        );
 
         let (text, style) = if !self.0.placeholder.is_empty() && self.0.is_empty() {
             let text = Text::from(self.0.placeholder.as_str());
@@ -132,6 +179,7 @@ impl<'a> Widget for Renderer<'a> {
         let mut inner = Paragraph::new(text)
             .style(style)
             .alignment(self.0.alignment());
+
         if let Some(b) = self.0.block() {
             text_area = b.inner(area);
             b.clone().render(area, buf)
@@ -144,5 +192,6 @@ impl<'a> Widget for Renderer<'a> {
         self.0.viewport.store(top_row, top_col, width, height);
 
         inner.render(text_area, buf);
+        trace!("END DRAW ===================================================");
     }
 }
