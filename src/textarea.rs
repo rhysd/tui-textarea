@@ -1238,6 +1238,7 @@ impl<'a> TextArea<'a> {
     /// Paste a string previously deleted by [`TextArea::delete_line_by_head`], [`TextArea::delete_line_by_end`],
     /// [`TextArea::delete_word`], [`TextArea::delete_next_word`]. This method returns if some text was inserted or not
     /// in the textarea.
+    /// When `clipboard` feature is enabled, this method reads the content from the OS clipboard.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -1387,6 +1388,7 @@ impl<'a> TextArea<'a> {
 
     /// Copy the selection text to the yank buffer. When nothing is selected, this method does nothing.
     /// To get the yanked text, use [`TextArea::yank_text`].
+    /// When `clipboard` feature is enabled, copied content will be written to the OS clipboard.
     /// ```
     /// use tui_textarea::{TextArea, Key, Input, CursorMove};
     ///
@@ -1420,6 +1422,7 @@ impl<'a> TextArea<'a> {
     /// Cut the selected text and place it in the yank buffer. This method returns whether the text was modified.
     /// The cursor will move to the start position of the text selection.
     /// To get the yanked text, use [`TextArea::yank_text`].
+    /// When `clipboard` feature is enabled, the content will be written to the OS clipboard.
     /// ```
     /// use tui_textarea::{TextArea, Key, Input, CursorMove};
     ///

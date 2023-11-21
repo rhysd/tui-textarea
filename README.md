@@ -19,6 +19,7 @@ Multi-line text editor can be easily put as part of your TUI application.
 - Text selection
 - Mouse scrolling
 - Yank support. Paste text deleted with `C-k`, `C-j`, ...
+- The OS clipboard integration
 - Backend agnostic. [crossterm][], [termion][], [termwiz][], and your own backend are all supported
 - Multiple textarea widgets in the same screen
 - Support both [ratatui][] (the fork by community) and [tui-rs][] (the original)
@@ -149,13 +150,13 @@ ratatui = "*"
 tui-textarea = "*"
 ```
 
-If you need text search with regular expressions, enable `search` feature. It adds [regex crate][regex] crate as
-dependency.
+This crate provides extra non-default features like [text search](#text-search) and
+[the OS clipboard integration](#os-clipboard).
 
 ```toml
 [dependencies]
 ratatui = "*"
-tui-textarea = { version = "*", features = ["search"] }
+tui-textarea = { version = "*", features = ["search", "clipboard"] }
 ```
 
 If you're using ratatui with [termion][] or [termwiz][], enable respective feature instead of `crossterm` feature.
@@ -398,6 +399,7 @@ Setting 0 disables undo/redo.
 textarea.set_max_histories(0);
 ```
 
+<a name="text-search"></a>
 ### Text search with regular expressions
 
 To search text in textarea, set a regular expression pattern with `TextArea::set_search_pattern()` and move cursor with
@@ -435,6 +437,27 @@ depending on `regex` crate until it is necessary.
 ```toml
 tui-textarea = { version = "*", features = ["search"] }
 ```
+
+Note that enabling this feature adds [regex crate][regex] to your dependencies.
+
+<a name="os-clipboard"></a>
+### The OS clipboard integration
+
+By default, `TextArea` has its own internal clipboard. This means that clipboard operations such as copy or cut don't modify
+the OS clipboard. The clipboard contents can be pasted only in the textarea.
+
+When the OS clipboard integration is enabled, `TextArea` uses the OS clipboard for the clipboard operations instead of the
+internal one. Pasting a text reads the OS clipboard and copying and cutting a text writes it to the OS clipboard as well.
+
+When it could not access the OS clipboard, it falls back to the `TextArea`-internal clipboard.
+
+To enable the OS clipboard integration, enable `clipboard` feature in your `Cargo.toml`.
+
+```toml
+tui-textarea = { version = "*", features = ["clipboard"] }
+```
+
+Note that enabling this feature adds [arboard crate][arboard] to your dependencies.
 
 ## Advanced Usage
 
@@ -687,4 +710,5 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 [repo]: https://github.com/rhysd/tui-textarea
 [new-issue]: https://github.com/rhysd/tui-textarea/issues/new
 [pulls]: https://github.com/rhysd/tui-textarea/pulls
-[regex]: https://docs.rs/regex/latest/regex/
+[regex]: https://crates.io/crates/regex
+[arboard]: https://crates.io/crates/arboard

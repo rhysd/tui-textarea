@@ -3,13 +3,13 @@
 For reporting a bug, please make sure your report includes the following points.
 
 - How to reproduce it
-  - What text the textarea contained as pre-condition
-  - What operations you did
-  - What was the expected behavior
-  - What was the actual behavior
+  - What text did the textarea contain as pre-condition?
+  - What operations did you input?
+  - What was the expected behavior?
+  - What was the actual behavior?
 - Environment
   - Your terminal
-  - Rust version
+  - Rust compiler version
   - `ratatui` or `tui` crate version
   - Enabled features of `tui-textarea` crate
 
@@ -31,6 +31,12 @@ To run linters:
 cargo clippy --features=search,termwiz,termion --tests --examples
 cargo clippy --features=tuirs-crossterm,tuirs-termion,search --no-default-features --tests --examples
 cargo fmt -- --check
+```
+
+When you modified the implementation around `clipboard` feature, run test cases for the clipboard implementation separately:
+
+```sh
+cargo test --features=clipboard clipboard::tests::
 ```
 
 Note: On Windows, remove `termion` and `tuirs-termion` features from `--features` argument since termion doesn't support Windows.
