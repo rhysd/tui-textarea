@@ -1277,6 +1277,7 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn undo(&mut self) -> bool {
         if let Some(cursor) = self.history.undo(&mut self.lines) {
+            self.screen_map_load();
             self.cursor = cursor;
             true
         } else {
@@ -1300,6 +1301,7 @@ impl<'a> TextArea<'a> {
     pub fn redo(&mut self) -> bool {
         if let Some(cursor) = self.history.redo(&mut self.lines) {
             self.cursor = cursor;
+            self.screen_map_load();
             true
         } else {
             false
