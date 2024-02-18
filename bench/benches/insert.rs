@@ -15,6 +15,7 @@ fn append_lorem(repeat: usize) -> usize {
                     key: Key::Char(c),
                     ctrl: false,
                     alt: false,
+                    shift: false,
                 });
                 term.draw_textarea(&textarea);
             }
@@ -23,6 +24,7 @@ fn append_lorem(repeat: usize) -> usize {
             key: Key::Enter,
             ctrl: false,
             alt: false,
+            shift: false,
         });
         term.draw_textarea(&textarea);
     }
@@ -45,6 +47,7 @@ fn random_lorem(repeat: usize) -> usize {
                 key: Key::Enter,
                 ctrl: false,
                 alt: false,
+                shift: false,
             });
             term.draw_textarea(&textarea);
 
@@ -53,6 +56,7 @@ fn random_lorem(repeat: usize) -> usize {
                     key: Key::Char(c),
                     ctrl: false,
                     alt: false,
+                    shift: false,
                 });
                 term.draw_textarea(&textarea);
             }
@@ -74,6 +78,7 @@ fn append_long_lorem(repeat: usize) -> usize {
                     key: Key::Char(c),
                     ctrl: false,
                     alt: false,
+                    shift: false,
                 });
                 term.draw_textarea(&textarea);
             }
