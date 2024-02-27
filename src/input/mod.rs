@@ -7,6 +7,8 @@ mod termwiz;
 
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// Backend-agnostic key input kind.
 ///
@@ -14,6 +16,7 @@ use arbitrary::Arbitrary;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Key {
     /// Normal letter key input
     Char(char),
@@ -102,6 +105,7 @@ impl Default for Key {
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Hash)]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Input {
     /// Typed key.
     pub key: Key,
