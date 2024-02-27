@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// This type is marked as `#[non_exhaustive]` since more keys may be supported in the future.
 #[non_exhaustive]
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq)]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Key {
@@ -103,7 +103,7 @@ impl Default for Key {
 ///     shift: false,
 /// });
 /// ```
-#[derive(Debug, Clone, Default, PartialEq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Hash, Eq)]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Input {
