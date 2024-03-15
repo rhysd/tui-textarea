@@ -109,7 +109,7 @@ pub struct Input {
     pub ctrl: bool,
     /// Alt modifier key. `true` means Alt key was pressed.
     pub alt: bool,
-    /// Shift modifier key. `true` means Alt key was pressed.
+    /// Shift modifier key. `true` means Shift key was pressed.
     pub shift: bool,
 }
 
