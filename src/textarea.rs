@@ -14,6 +14,7 @@ use crate::word::{find_word_end_forward, find_word_start_backward};
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
 use std::cmp::Ordering;
+use std::fmt;
 #[cfg(feature = "tuirs")]
 use tui::text::Spans as Line;
 use unicode_width::UnicodeWidthChar as _;
@@ -45,11 +46,11 @@ impl From<Vec<String>> for YankText {
     }
 }
 
-impl ToString for YankText {
-    fn to_string(&self) -> String {
+impl fmt::Display for YankText {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Piece(s) => s.clone(),
-            Self::Chunk(ss) => ss.join("\n"),
+            Self::Piece(s) => write!(f, "{}", s),
+            Self::Chunk(ss) => write!(f, "{}", ss.join("\n")),
         }
     }
 }
