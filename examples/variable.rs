@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
             let height = cmp::max(textarea.lines().len(), MIN_HEIGHT) as u16 + 2; // + 2 for borders
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([Constraint::Length(height), Constraint::Min(0)].as_slice())
+                .constraints([Constraint::Length(height), Constraint::Min(0)])
                 .split(f.size());
             f.render_widget(textarea.widget(), chunks[0]);
         })?;

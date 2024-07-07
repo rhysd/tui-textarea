@@ -23,7 +23,7 @@ fn main() -> io::Result<()> {
     textarea.set_cursor_line_style(Style::default());
     textarea.set_mask_char('\u{2022}'); //U+2022 BULLET (•)
     textarea.set_placeholder_text("Please enter your password");
-    let constraints = [Constraint::Length(3), Constraint::Min(1)].as_slice();
+    let constraints = [Constraint::Length(3), Constraint::Min(1)];
     let layout = Layout::default().constraints(constraints);
     textarea.set_style(Style::default().fg(Color::LightGreen));
     textarea.set_block(Block::default().borders(Borders::ALL).title("Password"));
