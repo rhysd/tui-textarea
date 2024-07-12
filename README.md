@@ -660,6 +660,30 @@ Values of the following types can be serialized/deserialized:
 - `CursorMove`
 - `Scrolling`
 
+Here is an example for deserializing key input from JSON using [serde_json][].
+
+```rust
+use tui_textarea::Input;
+
+let json = r#"
+    {
+        "key": { "Char": "a" },
+        "ctrl": true,
+        "alt": false,
+        "shift": true
+    }
+"#;
+
+let input: Input = serde_json::from_str(json).unwrap();
+println!("{input}");
+// Input {
+//     key: Key::Char('a'),
+//     ctrl: true,
+//     alt: false,
+//     shift: true,
+// }
+```
+
 ## Minimum Supported Rust Version
 
 MSRV of this crate is depending on `tui` crate. Currently MSRV is 1.56.1. Note that `ratatui` crate requires more recent Rust version.
@@ -705,3 +729,4 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 [pulls]: https://github.com/rhysd/tui-textarea/pulls
 [regex]: https://docs.rs/regex/latest/regex/
 [serde]: https://crates.io/crates/serde
+[serde_json]: https://crates.io/crates/serde_json

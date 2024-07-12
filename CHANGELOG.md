@@ -1,3 +1,33 @@
+<a name="v0.5.1"></a>
+# [v0.5.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.1) - 12 Jul 2024
+
+- Add `serde` optional feature. When it is enabled, some types support the serialization/deserialization with [serde](https://crates.io/crates/serde) crate. See [the document](https://github.com/rhysd/tui-textarea?tab=readme-ov-file#serializationdeserialization-support) for more details. ([#62](https://github.com/rhysd/tui-textarea/issues/62), thanks [@cestef](https://github.com/cestef))
+  ```rust
+  use tui_textarea::Input;
+
+  let json = r#"
+      {
+          "key": { "Char": "a" },
+          "ctrl": true,
+          "alt": false,
+          "shift": true
+      }
+  "#;
+
+  let input: Input = serde_json::from_str(json).unwrap();
+  println!("{input}");
+  // Input {
+  //     key: Key::Char('a'),
+  //     ctrl: true,
+  //     alt: false,
+  //     shift: true,
+  // }
+  ```
+
+
+[Changes][v0.5.1]
+
+
 <a name="v0.5.0"></a>
 # [v0.5.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.0) - 07 Jul 2024
 
@@ -317,6 +347,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.5.1]: https://github.com/rhysd/tui-textarea/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/rhysd/tui-textarea/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/rhysd/tui-textarea/compare/v0.3.1...v0.4.0
 [v0.3.1]: https://github.com/rhysd/tui-textarea/compare/v0.3.0...v0.3.1
