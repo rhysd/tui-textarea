@@ -644,6 +644,22 @@ loop {
 
 See [`split` example](./examples/split.rs) and [`editor` example](./examples/editor.rs) for working example.
 
+### Serialization/Deserialization support
+
+This crate optionally supports [serde][] crate by enabling `serde` feature.
+
+```toml
+[dependencies]
+tui-textarea = { version = "*", features = ["serde"] }
+```
+
+Values of the following types can be serialized/deserialized:
+
+- `Key`
+- `Input`
+- `CursorMove`
+- `Scrolling`
+
 ## Minimum Supported Rust Version
 
 MSRV of this crate is depending on `tui` crate. Currently MSRV is 1.56.1. Note that `ratatui` crate requires more recent Rust version.
@@ -688,3 +704,4 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 [new-issue]: https://github.com/rhysd/tui-textarea/issues/new
 [pulls]: https://github.com/rhysd/tui-textarea/pulls
 [regex]: https://docs.rs/regex/latest/regex/
+[serde]: https://crates.io/crates/serde
