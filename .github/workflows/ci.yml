@@ -45,6 +45,7 @@ jobs:
       - run: cargo fmt -- --check
       - run: cargo clippy --examples --tests -- -D warnings
       - run: cargo clippy --examples --tests --features search -- -D warnings
+      - run: cargo clippy --examples --tests --features serde -- -D warnings
       - run: cargo clippy --examples --tests --no-default-features --features termion -- -D warnings
       - run: cargo clippy --examples --tests --no-default-features --features termion,search -- -D warnings
       - run: cargo clippy --examples --tests --no-default-features --features termwiz -- -D warnings

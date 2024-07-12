@@ -31,6 +31,7 @@ tuirs-termion = ["tuirs", "dep:termion", "tui/termion"]
 tuirs-no-backend = ["tuirs"]
 # Other optional features
 search = ["dep:regex"]
+serde = ["dep:serde"]
 
 [dependencies]
 arbitrary = { version = "1", features = ["derive"], optional = true }
@@ -42,6 +43,7 @@ termion = { version = "4.0", optional = true }
 termwiz = { version = "0.22.0", optional = true }
 tui = { version = "0.19", default-features = false, optional = true }
 unicode-width = "0.1.11"
+serde = { version = "1", optional = true , features = ["derive"] }
 
 [[example]]
 name = "minimal"

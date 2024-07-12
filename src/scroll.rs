@@ -1,5 +1,6 @@
 use crate::widget::Viewport;
-
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 /// Specify how to scroll the textarea.
 ///
 /// This type is marked as `#[non_exhaustive]` since more variations may be supported in the future. Note that the cursor will
@@ -7,6 +8,8 @@ use crate::widget::Viewport;
 ///
 /// [`TextArea::scroll`]: https://docs.rs/tui-textarea/latest/tui_textarea/struct.TextArea.html#method.scroll
 #[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Scrolling {
     /// Scroll the textarea by rows (vertically) and columns (horizontally). Passing positive scroll amounts to `rows` and `cols`
     /// scolls it to down and right. Negative integers means the opposite directions. `(i16, i16)` pair can be converted into
