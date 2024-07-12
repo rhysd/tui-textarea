@@ -18,12 +18,12 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Run tests on Linux or macOS
         run: |
-          cargo llvm-cov --color always --lcov --output-path lcov.info --features=search,termwiz,termion,arbitrary
+          cargo llvm-cov --color always --lcov --output-path lcov.info --features=search,termwiz,termion,serde,arbitrary
           cargo llvm-cov --color always --no-run
         if: ${{ matrix.os != 'windows-latest' }}
       - name: Run tests on Windows
         run: |
-          cargo llvm-cov --color always --lcov --output-path lcov.info --features=search,termwiz,arbitrary
+          cargo llvm-cov --color always --lcov --output-path lcov.info --features=search,termwiz,serde,arbitrary
           cargo llvm-cov --color always --no-run
         if: ${{ matrix.os == 'windows-latest' }}
       - run: cargo test --no-default-features --features=tuirs-crossterm,search -- --skip .rs
@@ -44,8 +44,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt -- --check
       - run: cargo clippy --examples --tests -- -D warnings
-      - run: cargo clippy --examples --tests --features search -- -D warnings
-      - run: cargo clippy --examples --tests --features serde -- -D warnings
+      - run: cargo clippy --examples --tests --features search,serde -- -D warnings
       - run: cargo clippy --examples --tests --no-default-features --features termion -- -D warnings
       - run: cargo clippy --examples --tests --no-default-features --features termion,search -- -D warnings
       - run: cargo clippy --examples --tests --no-default-features --features termwiz -- -D warnings
@@ -58,7 +57,7 @@ jobs:
       - run: cargo clippy --examples --tests --no-default-features --features tuirs-termion,search -- -D warnings
       - run: cargo clippy --examples --tests --no-default-features --features tuirs-no-backend -- -D warnings
       - run: cargo clippy --examples --tests --no-default-features --features tuirs-no-backend,search -- -D warnings
-      - run: cargo rustdoc --features=search,termwiz,termion -p tui-textarea -- -D warnings
+      - run: cargo rustdoc --features=search,termwiz,termion,serde -p tui-textarea -- -D warnings
   cargo-doc:
     runs-on: ubuntu-latest
     steps:
