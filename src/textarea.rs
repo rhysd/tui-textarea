@@ -484,6 +484,12 @@ impl<'a> TextArea<'a> {
                 ctrl: true,
                 alt: false,
                 shift,
+            }
+            | Input {
+                key: Key::Right,
+                ctrl: false,
+                alt: true,
+                shift,
             } => {
                 self.move_cursor_with_shift(CursorMove::WordForward, shift);
                 false
@@ -498,6 +504,12 @@ impl<'a> TextArea<'a> {
                 key: Key::Left,
                 ctrl: true,
                 alt: false,
+                shift,
+            }
+            | Input {
+                key: Key::Left,
+                ctrl: false,
+                alt: true,
                 shift,
             } => {
                 self.move_cursor_with_shift(CursorMove::WordBack, shift);
