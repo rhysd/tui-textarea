@@ -120,7 +120,25 @@ impl<'a> Widget for Renderer<'a> {
         let top_col = next_scroll_top(top_col, cursor.1 as u16, width);
 
         let (text, style) = if !self.0.placeholder.is_empty() && self.0.is_empty() {
+            #[cfg(any(
+                feature = "tuirs-crossterm",
+                feature = "tuirs-termion",
+                feature = "tuirs-no-backend",
+            ))]
             let text = Text::from(self.0.placeholder.as_str());
+
+            #[cfg(not(any(
+                feature = "tuirs-crossterm",
+                feature = "tuirs-termion",
+                feature = "tuirs-no-backend",
+            )))]
+            let text = if self.0.show_placeholder_with_cursor {
+                let mut text = self.text(top_row as usize, height as usize);
+                text.push_span(self.0.placeholder.as_str());
+                text
+            } else {
+                Text::from(self.0.placeholder.as_str())
+            };
             (text, self.0.placeholder_style)
         } else {
             (self.text(top_row as usize, height as usize), self.0.style())
