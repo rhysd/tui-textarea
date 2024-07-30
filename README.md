@@ -663,7 +663,7 @@ Values of the following types can be serialized/deserialized:
 
 Here is an example for deserializing key input from JSON using [serde_json][].
 
-```rust
+```rust,ignore
 use tui_textarea::Input;
 
 let json = r#"
