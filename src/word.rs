@@ -57,7 +57,7 @@ pub fn find_word_end_next(line: &str, start_col: usize) -> Option<usize> {
         cur_col = next_col;
     }
     // if end of line is whitespace, don't stop the cursor
-    if cur != CharKind::Space && cur_col.saturating_sub(start_col) > 1 {
+    if cur != CharKind::Space && cur_col.saturating_sub(start_col) >= 1 {
         return Some(cur_col);
     }
     None
