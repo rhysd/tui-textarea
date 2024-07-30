@@ -289,14 +289,15 @@ impl CursorMove {
             WordEnd => {
                 if let Some(col) = find_word_end_next(&lines[row], col) {
                     Some((row, col))
+                } else if let Some(col) = (row + 1 < lines.len())
+                    .then(|| find_word_end_next(&lines[row + 1], 0))
+                    .unwrap_or_default()
+                {
+                    Some((row + 1, col))
                 } else if row + 1 < lines.len() {
-                    if let Some(col) = find_word_end_next(&lines[row + 1], 0) {
-                        Some((row + 1, col))
-                    } else {
-                        Some((row + 1, lines[row + 1].chars().count()))
-                    }
+                    Some((row + 1, lines[row + 1].chars().count().saturating_sub(1)))
                 } else {
-                    Some((row, lines[row].chars().count()))
+                    Some((row, lines[row].chars().count().saturating_sub(1)))
                 }
             }
             WordForward => {
