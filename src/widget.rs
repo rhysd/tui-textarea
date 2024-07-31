@@ -1,11 +1,15 @@
 use crate::ratatui::buffer::Buffer;
 use crate::ratatui::layout::Rect;
-use crate::ratatui::text::Text;
+use crate::ratatui::text::{Span, Text};
 use crate::ratatui::widgets::{Paragraph, Widget};
 use crate::textarea::TextArea;
 use crate::util::num_digits;
+#[cfg(feature = "ratatui")]
+use ratatui::text::Line;
 use std::cmp;
 use std::sync::atomic::{AtomicU64, Ordering};
+#[cfg(feature = "tuirs")]
+use tui::text::Spans as Line;
 
 // &mut 'a (u16, u16, u16, u16) is not available since Renderer instance totally takes over the ownership of TextArea
 // instance. In the case, the TextArea instance cannot be accessed from any other objects since it is mutablly
@@ -94,6 +98,13 @@ impl<'a> Renderer<'a> {
         }
         Text::from(lines)
     }
+
+    #[inline]
+    fn placeholder_text(&self) -> Text<'a> {
+        let cursor = Span::styled(" ", self.0.cursor_style);
+        let text = Span::raw(self.0.placeholder.as_str());
+        Text::from(Line::from(vec![cursor, text]))
+    }
 }
 
 impl<'a> Widget for Renderer<'a> {
@@ -120,26 +131,7 @@ impl<'a> Widget for Renderer<'a> {
         let top_col = next_scroll_top(top_col, cursor.1 as u16, width);
 
         let (text, style) = if !self.0.placeholder.is_empty() && self.0.is_empty() {
-            #[cfg(any(
-                feature = "tuirs-crossterm",
-                feature = "tuirs-termion",
-                feature = "tuirs-no-backend",
-            ))]
-            let text = Text::from(self.0.placeholder.as_str());
-
-            #[cfg(not(any(
-                feature = "tuirs-crossterm",
-                feature = "tuirs-termion",
-                feature = "tuirs-no-backend",
-            )))]
-            let text = if self.0.show_placeholder_with_cursor {
-                let mut text = self.text(top_row as usize, height as usize);
-                text.push_span(self.0.placeholder.as_str());
-                text
-            } else {
-                Text::from(self.0.placeholder.as_str())
-            };
-            (text, self.0.placeholder_style)
+            (self.placeholder_text(), self.0.placeholder_style)
         } else {
             (self.text(top_row as usize, height as usize), self.0.style())
         };
