@@ -10,7 +10,7 @@ use crate::scroll::Scrolling;
 use crate::search::Search;
 use crate::util::{spaces, Pos};
 use crate::widget::{Renderer, Viewport};
-use crate::word::{find_word_end_forward, find_word_start_backward};
+use crate::word::{find_word_exclusive_end_forward, find_word_start_backward};
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
 use std::cmp::Ordering;
@@ -1256,7 +1256,7 @@ impl<'a> TextArea<'a> {
         }
         let (r, c) = self.cursor;
         let line = &self.lines[r];
-        if let Some(col) = find_word_end_forward(line, c) {
+        if let Some(col) = find_word_exclusive_end_forward(line, c) {
             self.delete_piece(c, col - c)
         } else {
             let end_col = line.chars().count();

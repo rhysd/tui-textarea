@@ -30,7 +30,7 @@ pub fn find_word_start_forward(line: &str, start_col: usize) -> Option<usize> {
     None
 }
 
-pub fn find_word_end_forward(line: &str, start_col: usize) -> Option<usize> {
+pub fn find_word_exclusive_end_forward(line: &str, start_col: usize) -> Option<usize> {
     let mut it = line.chars().enumerate().skip(start_col);
     let mut prev = CharKind::new(it.next()?.1);
     for (col, c) in it {
@@ -43,24 +43,19 @@ pub fn find_word_end_forward(line: &str, start_col: usize) -> Option<usize> {
     None
 }
 
-pub fn find_word_end_next(line: &str, start_col: usize) -> Option<usize> {
+pub fn find_word_inclusive_end_forward(line: &str, start_col: usize) -> Option<usize> {
     let mut it = line.chars().enumerate().skip(start_col);
-    let (mut cur_col, cur_char) = it.next()?;
-    let mut cur = CharKind::new(cur_char);
-    for (next_col, c) in it {
-        let next = CharKind::new(c);
-        // if cursor started at the end of a word, don't stop
-        if next_col.saturating_sub(start_col) > 1 && cur != CharKind::Space && next != cur {
-            return Some(next_col.saturating_sub(1));
+    let (mut last_col, c) = it.next()?;
+    let mut prev = CharKind::new(c);
+    for (col, c) in it {
+        let cur = CharKind::new(c);
+        if prev != CharKind::Space && cur != prev {
+            return Some(col.saturating_sub(1));
         }
-        cur = next;
-        cur_col = next_col;
+        prev = cur;
+        last_col = col;
     }
-    // if end of line is whitespace, don't stop the cursor
-    if cur != CharKind::Space && cur_col.saturating_sub(start_col) >= 1 {
-        return Some(cur_col);
-    }
-    None
+    (prev != CharKind::Space).then_some(last_col)
 }
 
 pub fn find_word_start_backward(line: &str, start_col: usize) -> Option<usize> {
