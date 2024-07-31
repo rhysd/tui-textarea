@@ -675,7 +675,7 @@ let json = r#"
 "#;
 
 let input: Input = serde_json::from_str(json).unwrap();
-println!("{input}");
+println!("{input:?}");
 // Input {
 //     key: Key::Char('a'),
 //     ctrl: true,
