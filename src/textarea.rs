@@ -94,6 +94,7 @@ pub struct TextArea<'a> {
     alignment: Alignment,
     pub(crate) placeholder: String,
     pub(crate) placeholder_style: Style,
+    pub(crate) show_placeholder_with_cursor: bool, // not supported for tui-rs
     mask: Option<char>,
     selection_start: Option<(usize, usize)>,
     select_style: Style,
@@ -199,6 +200,7 @@ impl<'a> TextArea<'a> {
             alignment: Alignment::Left,
             placeholder: String::new(),
             placeholder_style: Style::default().fg(Color::DarkGray),
+            show_placeholder_with_cursor: false,
             mask: None,
             selection_start: None,
             select_style: Style::default().bg(Color::LightBlue),
@@ -1850,6 +1852,20 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn set_placeholder_style(&mut self, style: Style) {
         self.placeholder_style = style;
+    }
+
+    /// Set if cursor and placeholder are shown together. The default value is `false`.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// assert_eq!(textarea.show_placeholder_with_cursor, false);
+    ///
+    /// textarea.set_show_placeholder_with_cursor(true);
+    /// assert_eq!(textarea.show_placeholder_with_cursor, true);
+    /// ```
+    pub fn set_show_placeholder_with_cursor(&mut self, enabled: bool) {
+        self.show_placeholder_with_cursor = enabled;
     }
 
     /// Get the placeholder text. An empty string means the placeholder is disabled. The default value is an empty string.
