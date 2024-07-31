@@ -280,3 +280,57 @@ fn bottom_trim() {
         assert_eq!(t.cursor(), (t.lines().len() - 1, col), "{:?}", t.lines());
     }
 }
+
+#[test]
+fn word_end() {
+    for (lines, positions) in [
+        (
+            &[
+                "aaa !!! bbb", // Consective punctuations are a word
+            ][..],
+            &[(0, 2), (0, 6), (0, 10)][..],
+        ),
+        (
+            &[
+                "aaa!!!bbb", // Word boundaries without spaces
+            ][..],
+            &[(0, 2), (0, 5), (0, 8)][..],
+        ),
+        (
+            &[
+                "aaa", "", "", "bbb", // Go across multiple empty lines (regression of #75)
+            ][..],
+            &[(0, 2), (3, 2)][..],
+        ),
+        (
+            &[
+                "aaa", "   ", "   ", "bbb", // Go across multiple blank lines
+            ][..],
+            &[(0, 2), (3, 2)][..],
+        ),
+        (
+            &[
+                "   aaa", "   bbb", // Ignore the spaces at the head of line
+            ][..],
+            &[(0, 5), (1, 5)][..],
+        ),
+        (
+            &[
+                "aaa   ", "bbb   ", // Ignore the spaces at the end of line
+            ][..],
+            &[(0, 2), (1, 2), (1, 6)][..],
+        ),
+        (
+            &[
+                "a aa", "b!!!", // Accept the head of line (regression of #75)
+            ][..],
+            &[(0, 3), (1, 0), (1, 3)][..],
+        ),
+    ] {
+        let mut t: TextArea = lines.iter().cloned().collect();
+        for pos in positions {
+            t.move_cursor(CursorMove::WordEnd);
+            assert_eq!(t.cursor(), *pos, "{:?}", t.lines());
+        }
+    }
+}
