@@ -55,7 +55,11 @@ pub fn find_word_inclusive_end_forward(line: &str, start_col: usize) -> Option<u
         prev = cur;
         last_col = col;
     }
-    (prev != CharKind::Space).then_some(last_col)
+    if prev != CharKind::Space {
+        Some(last_col)
+    } else {
+        None
+    }
 }
 
 pub fn find_word_start_backward(line: &str, start_col: usize) -> Option<usize> {
