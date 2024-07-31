@@ -363,7 +363,7 @@ cursor line with bold text.
 use ratatui::style::{Style, Modifier};
 
 let style = Style::default().add_modifier(Modifier::BOLD);
-textarea.set_line_number_style(style);
+textarea.set_cursor_line_style(style);
 ```
 
 To disable cursor line style, set the default style as follows:
@@ -371,7 +371,7 @@ To disable cursor line style, set the default style as follows:
 ```rust,ignore
 use ratatui::style::{Style, Modifier};
 
-textarea.set_line_number_style(Style::default());
+textarea.set_cursor_line_style(Style::default());
 ```
 
 ### Configure tab width
