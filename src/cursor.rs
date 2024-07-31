@@ -1,5 +1,5 @@
 use crate::widget::Viewport;
-use crate::word::{find_word_start_backward, find_word_start_forward};
+use crate::word::{find_word_end_next, find_word_start_backward, find_word_start_forward};
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
 #[cfg(feature = "serde")]
@@ -121,6 +121,29 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (0, 8));
     /// ```
     WordForward,
+    /// Move cursor forward to the next end of word. Word boundary appears at spaces, punctuations, and others. For example
+    /// `fn foo(a)` consists of words `fn`, `foo`, `(`, `a`, `)`. When the cursor is at the end of line, it moves to the
+    /// end of the first word of the next line.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["aaa bbb (c)", " dd"]);
+    ///
+    ///
+    /// textarea.move_cursor(CursorMove::WordEnd);
+    /// assert_eq!(textarea.cursor(), (0, 2));
+    /// textarea.move_cursor(CursorMove::WordEnd);
+    /// assert_eq!(textarea.cursor(), (0, 6));
+    /// textarea.move_cursor(CursorMove::WordEnd);
+    /// assert_eq!(textarea.cursor(), (0, 8));
+    /// textarea.move_cursor(CursorMove::WordEnd);
+    /// assert_eq!(textarea.cursor(), (0, 9));
+    /// textarea.move_cursor(CursorMove::WordEnd);
+    /// assert_eq!(textarea.cursor(), (0, 10));
+    /// textarea.move_cursor(CursorMove::WordEnd);
+    /// assert_eq!(textarea.cursor(), (1, 2));
+    /// ```
+    WordEnd,
     /// Move cursor backward by one word.  Word boundary appears at spaces, punctuations, and others. For example
     /// `fn foo(a)` consists of words `fn`, `foo`, `(`, `a`, `)`.When the cursor is at the head of line, it moves to
     /// the end of previous line.
@@ -262,6 +285,20 @@ impl CursorMove {
             Bottom => {
                 let row = lines.len() - 1;
                 Some((row, fit_col(col, &lines[row])))
+            }
+            WordEnd => {
+                if let Some(col) = find_word_end_next(&lines[row], col) {
+                    Some((row, col))
+                } else if let Some(col) = (row + 1 < lines.len())
+                    .then(|| find_word_end_next(&lines[row + 1], 0))
+                    .unwrap_or_default()
+                {
+                    Some((row + 1, col))
+                } else if row + 1 < lines.len() {
+                    Some((row + 1, lines[row + 1].chars().count().saturating_sub(1)))
+                } else {
+                    Some((row, lines[row].chars().count().saturating_sub(1)))
+                }
             }
             WordForward => {
                 if let Some(col) = find_word_start_forward(&lines[row], col) {

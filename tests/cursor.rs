@@ -17,6 +17,7 @@ fn empty_textarea() {
         Top,
         Bottom,
         WordForward,
+        WordEnd,
         WordBack,
         ParagraphForward,
         ParagraphBack,

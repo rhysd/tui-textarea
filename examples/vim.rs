@@ -113,6 +113,11 @@ impl Vim {
                         ..
                     } => textarea.move_cursor(CursorMove::WordForward),
                     Input {
+                        key: Key::Char('e'),
+                        ctrl: false,
+                        ..
+                    } => textarea.move_cursor(CursorMove::WordEnd),
+                    Input {
                         key: Key::Char('b'),
                         ctrl: false,
                         ..

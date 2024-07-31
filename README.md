@@ -497,6 +497,7 @@ notify how to move the cursor.
 | `textarea.move_cursor(CursorMove::Up)`               | Move cursor up by one line                      |
 | `textarea.move_cursor(CursorMove::Down)`             | Move cursor down by one line                    |
 | `textarea.move_cursor(CursorMove::WordForward)`      | Move cursor forward by word                     |
+| `textarea.move_cursor(CursorMove::WordEnd)`          | Move cursor to next end of word                 |
 | `textarea.move_cursor(CursorMove::WordBack)`         | Move cursor backward by word                    |
 | `textarea.move_cursor(CursorMove::ParagraphForward)` | Move cursor up by paragraph                     |
 | `textarea.move_cursor(CursorMove::ParagraphBack)`    | Move cursor down by paragraph                   |
@@ -662,7 +663,7 @@ Values of the following types can be serialized/deserialized:
 
 Here is an example for deserializing key input from JSON using [serde_json][].
 
-```rust
+```rust,ignore
 use tui_textarea::Input;
 
 let json = r#"

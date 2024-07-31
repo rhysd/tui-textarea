@@ -43,6 +43,26 @@ pub fn find_word_end_forward(line: &str, start_col: usize) -> Option<usize> {
     None
 }
 
+pub fn find_word_end_next(line: &str, start_col: usize) -> Option<usize> {
+    let mut it = line.chars().enumerate().skip(start_col);
+    let (mut cur_col, cur_char) = it.next()?;
+    let mut cur = CharKind::new(cur_char);
+    for (next_col, c) in it {
+        let next = CharKind::new(c);
+        // if cursor started at the end of a word, don't stop
+        if next_col.saturating_sub(start_col) > 1 && cur != CharKind::Space && next != cur {
+            return Some(next_col.saturating_sub(1));
+        }
+        cur = next;
+        cur_col = next_col;
+    }
+    // if end of line is whitespace, don't stop the cursor
+    if cur != CharKind::Space && cur_col.saturating_sub(start_col) >= 1 {
+        return Some(cur_col);
+    }
+    None
+}
+
 pub fn find_word_start_backward(line: &str, start_col: usize) -> Option<usize> {
     let idx = line
         .char_indices()
