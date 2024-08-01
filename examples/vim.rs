@@ -338,6 +338,7 @@ impl Vim {
                         ctrl: false,
                         ..
                     } if self.mode == Mode::Visual => {
+                        textarea.move_cursor(CursorMove::Forward); // Vim's text selection is inclusive
                         textarea.copy();
                         return Transition::Mode(Mode::Normal);
                     }
@@ -346,6 +347,7 @@ impl Vim {
                         ctrl: false,
                         ..
                     } if self.mode == Mode::Visual => {
+                        textarea.move_cursor(CursorMove::Forward); // Vim's text selection is inclusive
                         textarea.cut();
                         return Transition::Mode(Mode::Normal);
                     }
@@ -354,6 +356,7 @@ impl Vim {
                         ctrl: false,
                         ..
                     } if self.mode == Mode::Visual => {
+                        textarea.move_cursor(CursorMove::Forward); // Vim's text selection is inclusive
                         textarea.cut();
                         return Transition::Mode(Mode::Insert);
                     }
