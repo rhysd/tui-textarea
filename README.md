@@ -95,7 +95,7 @@ cargo run --example popup_placeholder
 
 Popup textarea with a placeholder text.
 
-<img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/placepop.gif" width=539 height=220 alt="popup textarea with placeholder example">
+<img src="https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/placepop.gif" width=446 height=220 alt="popup textarea with placeholder example">
 
 ### [`password`](./examples/password.rs)
 
