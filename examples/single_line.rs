@@ -16,12 +16,18 @@ fn validate(textarea: &mut TextArea) -> bool {
         textarea.set_block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_style(Color::LightRed)
                 .title(format!("ERROR: {}", err)),
         );
         false
     } else {
         textarea.set_style(Style::default().fg(Color::LightGreen));
-        textarea.set_block(Block::default().borders(Borders::ALL).title("OK"));
+        textarea.set_block(
+            Block::default()
+                .border_style(Color::LightGreen)
+                .borders(Borders::ALL)
+                .title("OK"),
+        );
         true
     }
 }
