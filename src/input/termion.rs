@@ -17,6 +17,7 @@ impl From<KeyEvent> for Input {
     fn from(key: KeyEvent) -> Self {
         let mut ctrl = false;
         let mut alt = false;
+        let mut shift = false;
         let key = match key {
             KeyEvent::Char('\n' | '\r') => Key::Enter,
             KeyEvent::Char(c) => Key::Char(c),
@@ -30,9 +31,57 @@ impl From<KeyEvent> for Input {
             }
             KeyEvent::Backspace => Key::Backspace,
             KeyEvent::Left => Key::Left,
+            KeyEvent::ShiftLeft => {
+                shift = true;
+                Key::Left
+            }
+            KeyEvent::AltLeft => {
+                alt = true;
+                Key::Left
+            }
+            KeyEvent::CtrlLeft => {
+                ctrl = true;
+                Key::Left
+            }
             KeyEvent::Right => Key::Right,
+            KeyEvent::ShiftRight => {
+                shift = true;
+                Key::Right
+            }
+            KeyEvent::AltRight => {
+                alt = true;
+                Key::Right
+            }
+            KeyEvent::CtrlRight => {
+                ctrl = true;
+                Key::Right
+            }
             KeyEvent::Up => Key::Up,
+            KeyEvent::ShiftUp => {
+                shift = true;
+                Key::Up
+            }
+            KeyEvent::AltUp => {
+                alt = true;
+                Key::Up
+            }
+            KeyEvent::CtrlUp => {
+                ctrl = true;
+                Key::Up
+            }
             KeyEvent::Down => Key::Down,
+            KeyEvent::ShiftDown => {
+                shift = true;
+                Key::Down
+            }
+            KeyEvent::AltDown => {
+                alt = true;
+                Key::Down
+            }
+            KeyEvent::CtrlDown => {
+                ctrl = true;
+                Key::Down
+            }
             KeyEvent::Home => Key::Home,
             KeyEvent::End => Key::End,
             KeyEvent::PageUp => Key::PageUp,
@@ -48,7 +97,7 @@ impl From<KeyEvent> for Input {
             key,
             ctrl,
             alt,
-            shift: false,
+            shift,
         }
     }
 }
@@ -106,6 +155,9 @@ mod tests {
             (KeyEvent::F(1), input(Key::F(1), false, false, false)),
             (KeyEvent::BackTab, input(Key::Tab, false, false, false)),
             (KeyEvent::Null, input(Key::Null, false, false, false)),
+            (KeyEvent::ShiftDown, input(Key::Down, false, false, true)),
+            (KeyEvent::AltUp, input(Key::Up, false, true, false)),
+            (KeyEvent::CtrlLeft, input(Key::Left, true, false, false)),
         ] {
             assert_eq!(Input::from(from), to, "{:?} -> {:?}", from, to);
         }
