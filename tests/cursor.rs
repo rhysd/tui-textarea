@@ -286,7 +286,7 @@ fn word_end() {
     for (lines, positions) in [
         (
             &[
-                "aaa !!! bbb", // Consective punctuations are a word
+                "aaa !!! bbb", // Consecutive punctuations are a word
             ][..],
             &[(0, 2), (0, 6), (0, 10)][..],
         ),

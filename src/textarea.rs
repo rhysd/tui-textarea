@@ -1648,7 +1648,7 @@ impl<'a> TextArea<'a> {
     /// ```
     #[deprecated(
         since = "0.5.3",
-        note = "calling this method is no longer neccessary on rendering a textarea. pass &TextArea reference to `Frame::render_widget` method call directly"
+        note = "calling this method is no longer necessary on rendering a textarea. pass &TextArea reference to `Frame::render_widget` method call directly"
     )]
     pub fn widget(&'a self) -> impl Widget + 'a {
         self
@@ -2362,7 +2362,7 @@ impl<'a> TextArea<'a> {
 mod tests {
     use super::*;
 
-    // Seaparate tests for tui-rs support
+    // Separate tests for tui-rs support
     #[test]
     fn scroll() {
         use crate::ratatui::buffer::Buffer;

@@ -115,9 +115,9 @@ impl<'a> TextArea<'a> {
 
     fn scroll_top_col(&self, prev_top: u16, width: u16) -> u16 {
         let mut cursor = self.cursor().1 as u16;
+        // Adjust the cursor position due to the width of line number.
         if self.line_number_style().is_some() {
-            // Adjust the cursor position due to the width of line number. `+ 2` for margins
-            let lnum = num_digits(self.lines().len()) as u16 + 2;
+            let lnum = num_digits(self.lines().len()) as u16 + 2; // `+ 2` for margins
             if cursor <= lnum {
                 cursor *= 2; // Smoothly slide the line number into the screen on scrolling left
             } else {
@@ -155,7 +155,7 @@ impl Widget for &TextArea<'_> {
         if let Some(b) = self.block() {
             text_area = b.inner(area);
             // ratatui does not need `clone()` call because `Block` implements `WidgetRef` and `&T` implements `Widget`
-            // where `T: Widget`. So `b.render` internally calls `b.render_ref` and it doesn't move out `self`.
+            // where `T: WidgetRef`. So `b.render` internally calls `b.render_ref` and it doesn't move out `self`.
             #[cfg(feature = "tuirs")]
             let b = b.clone();
             b.render(area, buf)

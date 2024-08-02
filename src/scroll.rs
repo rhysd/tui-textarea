@@ -1,6 +1,7 @@
 use crate::widget::Viewport;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+
 /// Specify how to scroll the textarea.
 ///
 /// This type is marked as `#[non_exhaustive]` since more variations may be supported in the future. Note that the cursor will
@@ -188,7 +189,7 @@ impl From<(i16, i16)> for Scrolling {
 mod tests {
     use super::*;
 
-    // Seaparate tests for tui-rs support
+    // Separate tests for tui-rs support
     #[test]
     fn delta() {
         use crate::ratatui::buffer::Buffer;

@@ -373,7 +373,7 @@ impl CursorMove {
 
 #[cfg(test)]
 mod tests {
-    // Seaparate tests for tui-rs support
+    // Separate tests for tui-rs support
     #[test]
     fn in_viewport() {
         use crate::ratatui::buffer::Buffer;
