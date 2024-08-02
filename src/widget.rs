@@ -80,8 +80,18 @@ impl Viewport {
     }
 }
 
+#[inline]
+fn next_scroll_top(prev_top: u16, cursor: u16, len: u16) -> u16 {
+    if cursor < prev_top {
+        cursor
+    } else if prev_top + len <= cursor {
+        cursor + 1 - len
+    } else {
+        prev_top
+    }
+}
+
 impl<'a> TextArea<'a> {
-    #[inline]
     fn text_widget(&'a self, top_row: usize, height: usize) -> Text<'a> {
         let lines_len = self.lines().len();
         let lnum_len = num_digits(lines_len);
@@ -93,11 +103,28 @@ impl<'a> TextArea<'a> {
         Text::from(lines)
     }
 
-    #[inline]
     fn placeholder_widget(&'a self) -> Text<'a> {
         let cursor = Span::styled(" ", self.cursor_style);
         let text = Span::raw(self.placeholder.as_str());
         Text::from(Line::from(vec![cursor, text]))
+    }
+
+    fn scroll_top_row(&self, prev_top: u16, height: u16) -> u16 {
+        next_scroll_top(prev_top, self.cursor().0 as u16, height)
+    }
+
+    fn scroll_top_col(&self, prev_top: u16, width: u16) -> u16 {
+        let mut cursor = self.cursor().1 as u16;
+        if self.line_number_style().is_some() {
+            // Adjust the cursor position due to the width of line number. `+ 2` for margins
+            let lnum = num_digits(self.lines().len()) as u16 + 2;
+            if cursor <= lnum {
+                cursor *= 2; // Smoothly slide the line number into the screen on scrolling left
+            } else {
+                cursor += lnum; // The cursor position is shifted by the line number part
+            };
+        }
+        next_scroll_top(prev_top, cursor, width)
     }
 }
 
@@ -109,20 +136,9 @@ impl Widget for &TextArea<'_> {
             area
         };
 
-        fn next_scroll_top(prev_top: u16, cursor: u16, length: u16) -> u16 {
-            if cursor < prev_top {
-                cursor
-            } else if prev_top + length <= cursor {
-                cursor + 1 - length
-            } else {
-                prev_top
-            }
-        }
-
-        let cursor = self.cursor();
         let (top_row, top_col) = self.viewport.scroll_top();
-        let top_row = next_scroll_top(top_row, cursor.0 as u16, height);
-        let top_col = next_scroll_top(top_col, cursor.1 as u16, width);
+        let top_row = self.scroll_top_row(top_row, height);
+        let top_col = self.scroll_top_col(top_col, width);
 
         let (text, style) = if !self.placeholder.is_empty() && self.is_empty() {
             (self.placeholder_widget(), self.placeholder_style)
@@ -138,7 +154,11 @@ impl Widget for &TextArea<'_> {
             .alignment(self.alignment());
         if let Some(b) = self.block() {
             text_area = b.inner(area);
-            b.clone().render(area, buf)
+            // ratatui does not need `clone()` call because `Block` implements `WidgetRef` and `&T` implements `Widget`
+            // where `T: Widget`. So `b.render` internally calls `b.render_ref` and it doesn't move out `self`.
+            #[cfg(feature = "tuirs")]
+            let b = b.clone();
+            b.render(area, buf)
         }
         if top_col != 0 {
             inner = inner.scroll((0, top_col));
