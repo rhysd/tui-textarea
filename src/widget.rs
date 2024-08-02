@@ -92,7 +92,6 @@ fn next_scroll_top(prev_top: u16, cursor: u16, len: u16) -> u16 {
 }
 
 impl<'a> TextArea<'a> {
-    #[inline]
     fn text_widget(&'a self, top_row: usize, height: usize) -> Text<'a> {
         let lines_len = self.lines().len();
         let lnum_len = num_digits(lines_len);
@@ -104,7 +103,6 @@ impl<'a> TextArea<'a> {
         Text::from(lines)
     }
 
-    #[inline]
     fn placeholder_widget(&'a self) -> Text<'a> {
         let cursor = Span::styled(" ", self.cursor_style);
         let text = Span::raw(self.placeholder.as_str());
@@ -156,7 +154,11 @@ impl Widget for &TextArea<'_> {
             .alignment(self.alignment());
         if let Some(b) = self.block() {
             text_area = b.inner(area);
-            b.clone().render(area, buf)
+            // ratatui does not need `clone()` call because `Block` implements `WidgetRef` and `&T` implements `Widget`
+            // where `T: Widget`. So `b.render` internally calls `b.render_ref` and it doesn't move out `self`.
+            #[cfg(feature = "tuirs")]
+            let b = b.clone();
+            b.render(area, buf)
         }
         if top_col != 0 {
             inner = inner.scroll((0, top_col));
