@@ -20,7 +20,9 @@ impl From<KeyEvent> for Input {
             | KeyEvent::CtrlUp
             | KeyEvent::CtrlRight
             | KeyEvent::CtrlDown
-            | KeyEvent::CtrlLeft => (true, false, false),
+            | KeyEvent::CtrlLeft
+            | KeyEvent::CtrlHome
+            | KeyEvent::CtrlEnd => (true, false, false),
             KeyEvent::Alt(_)
             | KeyEvent::AltUp
             | KeyEvent::AltRight
@@ -47,8 +49,8 @@ impl From<KeyEvent> for Input {
             KeyEvent::Down | KeyEvent::CtrlDown | KeyEvent::AltDown | KeyEvent::ShiftDown => {
                 Key::Down
             }
-            KeyEvent::Home => Key::Home,
-            KeyEvent::End => Key::End,
+            KeyEvent::Home | KeyEvent::CtrlHome => Key::Home,
+            KeyEvent::End | KeyEvent::CtrlEnd => Key::End,
             KeyEvent::PageUp => Key::PageUp,
             KeyEvent::PageDown => Key::PageDown,
             KeyEvent::BackTab => Key::Tab,
@@ -123,6 +125,7 @@ mod tests {
             (KeyEvent::ShiftDown, input(Key::Down, false, false, true)),
             (KeyEvent::AltUp, input(Key::Up, false, true, false)),
             (KeyEvent::CtrlLeft, input(Key::Left, true, false, false)),
+            (KeyEvent::CtrlHome, input(Key::Home, true, false, false)),
         ] {
             assert_eq!(Input::from(from), to, "{:?} -> {:?}", from, to);
         }
