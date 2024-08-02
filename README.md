@@ -211,10 +211,8 @@ loop {
     term.draw(|f| {
         // Get `ratatui::layout::Rect` where the editor should be rendered
         let rect = ...;
-        // `TextArea::widget` builds a widget to render the editor with tui
-        let widget = textarea.widget();
-        // Render the widget in terminal screen
-        f.render_widget(widget, rect);
+        // Render the textarea in terminal screen
+        f.render_widget(&textarea, rect);
     })?;
 
     if let Event::Key(key) = read()? {
@@ -234,8 +232,7 @@ println!("Lines: {:?}", textarea.lines());
 `TextArea` is an instance to manage the editor state. By default, it disables line numbers and highlights cursor line
 with underline.
 
-`TextArea::widget()` builds a widget to render the current state of the editor. Create the widget and render it on each
-tick of event loop.
+`&TextArea` reference implements ratatui's `Widget` trait. Render it on every tick of event loop.
 
 `TextArea::input()` receives inputs from tui backends. The method can take key events from backends such as
 `crossterm::event::KeyEvent` or `termion::event::Key` directly if the features are enabled. The method handles default
@@ -440,7 +437,7 @@ tui-textarea = { version = "*", features = ["search"] }
 
 ### Single-line input like `<input>` in HTML
 
-To use `TextArea` for single-line input widget like `<input>` in HTML, ignore all key mappings which inserts newline.
+To use `TextArea` for a single-line input widget like `<input>` in HTML, ignore all key mappings which inserts newline.
 
 ```rust,ignore
 use crossterm::event::{Event, read};
@@ -628,9 +625,8 @@ loop {
     term.draw(|f| {
         let rects = ...;
 
-        for (editor, rect) in editors.iter_mut().zip(rects.into_iter()) {
-            let widget = editor.widget();
-            f.render_widget(widget, rect);
+        for (editor, rect) in editors.iter().zip(rects.into_iter()) {
+            f.render_widget(editor, rect);
         }
     })?;
 

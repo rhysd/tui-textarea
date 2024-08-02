@@ -54,8 +54,7 @@ fn main() -> io::Result<()> {
         term.draw(|f| {
             let chunks = layout.split(f.size());
             for (textarea, chunk) in textarea.iter().zip(chunks.iter()) {
-                let widget = textarea.widget();
-                f.render_widget(widget, *chunk);
+                f.render_widget(textarea, *chunk);
             }
         })?;
         match crossterm::event::read()?.into() {

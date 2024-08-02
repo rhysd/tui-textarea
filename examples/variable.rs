@@ -34,7 +34,7 @@ fn main() -> io::Result<()> {
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Length(height), Constraint::Min(0)])
                 .split(f.size());
-            f.render_widget(textarea.widget(), chunks[0]);
+            f.render_widget(&textarea, chunks[0]);
         })?;
         match crossterm::event::read()?.into() {
             Input { key: Key::Esc, .. } => break,

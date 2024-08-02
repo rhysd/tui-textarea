@@ -38,7 +38,7 @@ fn main() -> io::Result<()> {
     textarea.set_placeholder_text("prompt message");
     loop {
         term.draw(|f| {
-            f.render_widget(textarea.widget(), area);
+            f.render_widget(&textarea, area);
         })?;
         match crossterm::event::read()?.into() {
             Input { key: Key::Esc, .. } => break,

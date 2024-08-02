@@ -9,7 +9,7 @@ use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
 use crate::util::{spaces, Pos};
-use crate::widget::{Renderer, Viewport};
+use crate::widget::Viewport;
 use crate::word::{find_word_exclusive_end_forward, find_word_start_backward};
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
@@ -55,13 +55,18 @@ impl fmt::Display for YankText {
     }
 }
 
-/// A type to manage state of textarea.
+/// A type to manage state of textarea. These are some important methods:
 ///
-/// [`TextArea::default`] creates an empty textarea. [`TextArea::new`] creates a textarea with given text lines.
-/// [`TextArea::from`] creates a textarea from an iterator of lines. [`TextArea::input`] handles key input.
-/// [`TextArea::widget`] builds a widget to render. And [`TextArea::lines`] returns line texts.
+/// - [`TextArea::default`] creates an empty textarea.
+/// - [`TextArea::new`] creates a textarea with given text lines.
+/// - [`TextArea::from`] creates a textarea from an iterator of lines.
+/// - [`TextArea::input`] handles key input.
+/// - [`TextArea::lines`] returns line texts.
 /// ```
 /// use tui_textarea::{TextArea, Input, Key};
+/// use ratatui::backend::CrosstermBackend;
+/// use ratatui::layout::{Constraint, Direction, Layout};
+/// use ratatui::Terminal;
 ///
 /// let mut textarea = TextArea::default();
 ///
@@ -69,11 +74,34 @@ impl fmt::Display for YankText {
 /// let input = Input { key: Key::Char('a'), ctrl: false, alt: false, shift: false };
 /// textarea.input(input);
 ///
-/// // Get widget to render.
-/// let widget = textarea.widget();
-///
 /// // Get lines as String.
 /// println!("Lines: {:?}", textarea.lines());
+/// ```
+///
+/// It implements [`ratatui::widgets::Widget`] trait so it can be rendered to a
+/// terminal screen via [`ratatui::terminal::Frame::render_widget`] method.
+/// ```no_run
+/// use ratatui::backend::CrosstermBackend;
+/// use ratatui::layout::{Constraint, Direction, Layout};
+/// use ratatui::Terminal;
+/// use tui_textarea::TextArea;
+///
+/// let mut textarea = TextArea::default();
+///
+/// let layout = Layout::default()
+///     .direction(Direction::Vertical)
+///     .constraints([Constraint::Min(1)].as_ref());
+/// let backend = CrosstermBackend::new(std::io::stdout());
+/// let mut term = Terminal::new(backend).unwrap();
+///
+/// loop {
+///     term.draw(|f| {
+///         let chunks = layout.split(f.size());
+///         f.render_widget(&textarea, chunks[0]);
+///     }).unwrap();
+///
+///     // ...
+/// }
 /// ```
 #[derive(Clone, Debug)]
 pub struct TextArea<'a> {
@@ -1589,32 +1617,41 @@ impl<'a> TextArea<'a> {
 
     /// Build a ratatui (or tui-rs) widget to render the current state of the textarea. The widget instance returned
     /// from this method can be rendered with [`ratatui::terminal::Frame::render_widget`].
+    ///
+    /// This method was deprecated at v0.5.3 and is no longer necessary. Instead you can directly pass `&TextArea`
+    /// reference to the `Frame::render_widget` method call.
     /// ```no_run
-    /// use ratatui::backend::CrosstermBackend;
-    /// use ratatui::layout::{Constraint, Direction, Layout};
-    /// use ratatui::Terminal;
-    /// use tui_textarea::TextArea;
+    /// # use ratatui::layout::Rect;
+    /// # use ratatui::Terminal;
+    /// # use ratatui::widgets::Widget as _;
+    /// # use ratatui::backend::CrosstermBackend;
+    /// # use tui_textarea::TextArea;
+    /// #
+    /// # let backend = CrosstermBackend::new(std::io::stdout());
+    /// # let mut term = Terminal::new(backend).unwrap();
+    /// # let textarea = TextArea::default();
+    /// #
+    /// # #[allow(deprecated)]
+    /// # term.draw(|f| {
+    /// #   let rect = Rect {
+    /// #       x: 0,
+    /// #       y: 0,
+    /// #       width: 24,
+    /// #       height: 8,
+    /// #   };
+    /// // v0.5.2 or earlier
+    /// f.render_widget(textarea.widget(), rect);
     ///
-    /// let mut textarea = TextArea::default();
-    ///
-    /// let layout = Layout::default()
-    ///     .direction(Direction::Vertical)
-    ///     .constraints([Constraint::Min(1)].as_ref());
-    /// let backend = CrosstermBackend::new(std::io::stdout());
-    /// let mut term = Terminal::new(backend).unwrap();
-    ///
-    /// loop {
-    ///     term.draw(|f| {
-    ///         let chunks = layout.split(f.size());
-    ///         let widget = textarea.widget();
-    ///         f.render_widget(widget, chunks[0]);
-    ///     }).unwrap();
-    ///
-    ///     // ...
-    /// }
+    /// // v0.5.3 or later
+    /// f.render_widget(&textarea, rect);
+    /// # }).unwrap();
     /// ```
+    #[deprecated(
+        since = "0.5.3",
+        note = "calling this method is no longer neccessary on rendering a textarea. pass &TextArea reference to `Frame::render_widget` method call directly"
+    )]
     pub fn widget(&'a self) -> impl Widget + 'a {
-        Renderer::new(self)
+        self
     }
 
     /// Set the style of textarea. By default, textarea is not styled.
@@ -2277,7 +2314,7 @@ impl<'a> TextArea<'a> {
     /// ```
     /// # use ratatui::buffer::Buffer;
     /// # use ratatui::layout::Rect;
-    /// # use ratatui::widgets::Widget;
+    /// # use ratatui::widgets::Widget as _;
     /// use tui_textarea::TextArea;
     ///
     /// // Let's say terminal height is 8.
@@ -2287,7 +2324,7 @@ impl<'a> TextArea<'a> {
     /// # // Call `render` at least once to populate terminal size
     /// # let r = Rect { x: 0, y: 0, width: 24, height: 8 };
     /// # let mut b = Buffer::empty(r.clone());
-    /// # textarea.widget().render(r, &mut b);
+    /// # textarea.render(r, &mut b);
     ///
     /// // Scroll down by 15 lines. Since terminal height is 8, cursor will go out
     /// // the viewport.
@@ -2330,7 +2367,7 @@ mod tests {
     fn scroll() {
         use crate::ratatui::buffer::Buffer;
         use crate::ratatui::layout::Rect;
-        use crate::ratatui::widgets::Widget;
+        use crate::ratatui::widgets::Widget as _;
 
         let mut textarea: TextArea = (0..20).map(|i| i.to_string()).collect();
         let r = Rect {
@@ -2340,7 +2377,7 @@ mod tests {
             height: 8,
         };
         let mut b = Buffer::empty(r);
-        textarea.widget().render(r, &mut b);
+        textarea.render(r, &mut b);
 
         textarea.scroll((15, 0));
         assert_eq!(textarea.cursor(), (15, 0));

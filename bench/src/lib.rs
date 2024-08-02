@@ -116,7 +116,6 @@ pub trait TerminalExt {
 impl TerminalExt for Terminal<DummyBackend> {
     #[inline]
     fn draw_textarea(&mut self, textarea: &TextArea<'_>) {
-        self.draw(|f| f.render_widget(textarea.widget(), f.size()))
-            .unwrap();
+        self.draw(|f| f.render_widget(textarea, f.size())).unwrap();
     }
 }

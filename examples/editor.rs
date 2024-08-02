@@ -188,13 +188,12 @@ impl<'a> Editor<'a> {
                 let chunks = layout.split(f.size());
 
                 if search_height > 0 {
-                    f.render_widget(self.search.textarea.widget(), chunks[0]);
+                    f.render_widget(&self.search.textarea, chunks[0]);
                 }
 
                 let buffer = &self.buffers[self.current];
                 let textarea = &buffer.textarea;
-                let widget = textarea.widget();
-                f.render_widget(widget, chunks[1]);
+                f.render_widget(&textarea, chunks[1]);
 
                 // Render status line
                 let modified = if buffer.modified { " [modified]" } else { "" };

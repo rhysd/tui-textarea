@@ -22,8 +22,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // The event loop
     loop {
         term.draw(|f| {
-            let widget = textarea.widget();
-            f.render_widget(widget, f.size());
+            f.render_widget(&textarea, f.size());
         })?;
 
         if let Some(input) = term

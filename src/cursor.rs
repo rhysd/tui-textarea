@@ -233,7 +233,7 @@ pub enum CursorMove {
     /// ```
     /// # use ratatui::buffer::Buffer;
     /// # use ratatui::layout::Rect;
-    /// # use ratatui::widgets::Widget;
+    /// # use ratatui::widgets::Widget as _;
     /// use tui_textarea::{TextArea, CursorMove};
     ///
     /// // Let's say terminal height is 8.
@@ -244,7 +244,7 @@ pub enum CursorMove {
     /// # // Call `render` at least once to populate terminal size
     /// # let r = Rect { x: 0, y: 0, width: 24, height: 8 };
     /// # let mut b = Buffer::empty(r.clone());
-    /// # textarea.widget().render(r, &mut b);
+    /// # textarea.render(r, &mut b);
     ///
     /// // Move cursor to the end of lines (line 20). It is outside the viewport (line 1 to line 8)
     /// textarea.move_cursor(CursorMove::Bottom);
@@ -378,7 +378,7 @@ mod tests {
     fn in_viewport() {
         use crate::ratatui::buffer::Buffer;
         use crate::ratatui::layout::Rect;
-        use crate::ratatui::widgets::Widget;
+        use crate::ratatui::widgets::Widget as _;
         use crate::{CursorMove, TextArea};
 
         let mut textarea: TextArea = (0..20).map(|i| i.to_string()).collect();
@@ -389,7 +389,7 @@ mod tests {
             height: 8,
         };
         let mut b = Buffer::empty(r);
-        textarea.widget().render(r, &mut b);
+        textarea.render(r, &mut b);
 
         textarea.move_cursor(CursorMove::Bottom);
         assert_eq!(textarea.cursor(), (19, 0));

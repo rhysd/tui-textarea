@@ -31,8 +31,7 @@ fn main() -> io::Result<()> {
     loop {
         term.draw(|f| {
             let chunks = layout.split(f.size());
-            let widget = textarea.widget();
-            f.render_widget(widget, chunks[0]);
+            f.render_widget(&textarea, chunks[0]);
         })?;
 
         match crossterm::event::read()?.into() {

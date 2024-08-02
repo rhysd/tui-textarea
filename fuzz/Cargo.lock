@@ -453,7 +453,7 @@ dependencies = [
 
 [[package]]
 name = "tui-textarea"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "arbitrary",
  "crossterm",
