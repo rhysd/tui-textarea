@@ -80,14 +80,18 @@ impl Viewport {
     }
 }
 
-impl<'a> TextArea<'a> {
-    fn lnum_width(&self) -> u8 {
-        if self.line_number_style().is_none() {
-            return 0;
-        }
-        num_digits(self.lines().len()) + 2
+#[inline]
+fn next_scroll_top(prev_top: u16, cursor: u16, len: u16) -> u16 {
+    if cursor < prev_top {
+        cursor
+    } else if prev_top + len <= cursor {
+        cursor + 1 - len
+    } else {
+        prev_top
     }
+}
 
+impl<'a> TextArea<'a> {
     #[inline]
     fn text_widget(&'a self, top_row: usize, height: usize) -> Text<'a> {
         let lines_len = self.lines().len();
@@ -106,6 +110,24 @@ impl<'a> TextArea<'a> {
         let text = Span::raw(self.placeholder.as_str());
         Text::from(Line::from(vec![cursor, text]))
     }
+
+    fn scroll_top_row(&self, prev_top: u16, height: u16) -> u16 {
+        next_scroll_top(prev_top, self.cursor().0 as u16, height)
+    }
+
+    fn scroll_top_col(&self, prev_top: u16, width: u16) -> u16 {
+        let mut cursor = self.cursor().1 as u16;
+        if self.line_number_style().is_some() {
+            // Adjust the cursor position due to the width of line number. `+ 2` for margins
+            let lnum = num_digits(self.lines().len()) as u16 + 2;
+            if cursor <= lnum {
+                cursor *= 2; // Smoothly slide the line number into the screen on scrolling left
+            } else {
+                cursor += lnum; // The cursor position is shifted by the line number part
+            };
+        }
+        next_scroll_top(prev_top, cursor, width)
+    }
 }
 
 impl Widget for &TextArea<'_> {
@@ -116,21 +138,9 @@ impl Widget for &TextArea<'_> {
             area
         };
 
-        fn next_scroll_top(prev_top: u16, cursor: u16, length: u16) -> u16 {
-            if cursor < prev_top {
-                cursor
-            } else if prev_top + length <= cursor {
-                cursor + 1 - length
-            } else {
-                prev_top
-            }
-        }
-
-        let cursor = self.cursor();
         let (top_row, top_col) = self.viewport.scroll_top();
-        let top_row = next_scroll_top(top_row, cursor.0 as u16, height);
-        let scroll_width = width.saturating_sub(self.lnum_width() as _);
-        let top_col = next_scroll_top(top_col, cursor.1 as u16, scroll_width);
+        let top_row = self.scroll_top_row(top_row, height);
+        let top_col = self.scroll_top_col(top_col, width);
 
         let (text, style) = if !self.placeholder.is_empty() && self.is_empty() {
             (self.placeholder_widget(), self.placeholder_style)
