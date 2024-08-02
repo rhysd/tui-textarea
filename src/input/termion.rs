@@ -15,71 +15,36 @@ impl From<Event> for Input {
 impl From<KeyEvent> for Input {
     /// Convert [`termion::event::Key`] into [`Input`].
     fn from(key: KeyEvent) -> Self {
-        let mut ctrl = false;
-        let mut alt = false;
-        let mut shift = false;
+        let (ctrl, alt, shift) = match key {
+            KeyEvent::Ctrl(_)
+            | KeyEvent::CtrlUp
+            | KeyEvent::CtrlRight
+            | KeyEvent::CtrlDown
+            | KeyEvent::CtrlLeft => (true, false, false),
+            KeyEvent::Alt(_)
+            | KeyEvent::AltUp
+            | KeyEvent::AltRight
+            | KeyEvent::AltDown
+            | KeyEvent::AltLeft => (false, true, false),
+            KeyEvent::ShiftUp
+            | KeyEvent::ShiftRight
+            | KeyEvent::ShiftDown
+            | KeyEvent::ShiftLeft => (false, false, true),
+            _ => (false, false, false),
+        };
+
         let key = match key {
             KeyEvent::Char('\n' | '\r') => Key::Enter,
-            KeyEvent::Char(c) => Key::Char(c),
-            KeyEvent::Ctrl(c) => {
-                ctrl = true;
-                Key::Char(c)
-            }
-            KeyEvent::Alt(c) => {
-                alt = true;
-                Key::Char(c)
-            }
+            KeyEvent::Char(c) | KeyEvent::Ctrl(c) | KeyEvent::Alt(c) => Key::Char(c),
             KeyEvent::Backspace => Key::Backspace,
-            KeyEvent::Left => Key::Left,
-            KeyEvent::ShiftLeft => {
-                shift = true;
+            KeyEvent::Left | KeyEvent::CtrlLeft | KeyEvent::AltLeft | KeyEvent::ShiftLeft => {
                 Key::Left
             }
-            KeyEvent::AltLeft => {
-                alt = true;
-                Key::Left
-            }
-            KeyEvent::CtrlLeft => {
-                ctrl = true;
-                Key::Left
-            }
-            KeyEvent::Right => Key::Right,
-            KeyEvent::ShiftRight => {
-                shift = true;
+            KeyEvent::Right | KeyEvent::CtrlRight | KeyEvent::AltRight | KeyEvent::ShiftRight => {
                 Key::Right
             }
-            KeyEvent::AltRight => {
-                alt = true;
-                Key::Right
-            }
-            KeyEvent::CtrlRight => {
-                ctrl = true;
-                Key::Right
-            }
-            KeyEvent::Up => Key::Up,
-            KeyEvent::ShiftUp => {
-                shift = true;
-                Key::Up
-            }
-            KeyEvent::AltUp => {
-                alt = true;
-                Key::Up
-            }
-            KeyEvent::CtrlUp => {
-                ctrl = true;
-                Key::Up
-            }
-            KeyEvent::Down => Key::Down,
-            KeyEvent::ShiftDown => {
-                shift = true;
-                Key::Down
-            }
-            KeyEvent::AltDown => {
-                alt = true;
-                Key::Down
-            }
-            KeyEvent::CtrlDown => {
-                ctrl = true;
+            KeyEvent::Up | KeyEvent::CtrlUp | KeyEvent::AltUp | KeyEvent::ShiftUp => Key::Up,
+            KeyEvent::Down | KeyEvent::CtrlDown | KeyEvent::AltDown | KeyEvent::ShiftDown => {
                 Key::Down
             }
             KeyEvent::Home => Key::Home,
