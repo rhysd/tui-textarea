@@ -81,6 +81,13 @@ impl Viewport {
 }
 
 impl<'a> TextArea<'a> {
+    fn lnum_width(&self) -> u8 {
+        if self.line_number_style().is_none() {
+            return 0;
+        }
+        num_digits(self.lines().len()) + 2
+    }
+
     #[inline]
     fn text_widget(&'a self, top_row: usize, height: usize) -> Text<'a> {
         let lines_len = self.lines().len();
@@ -122,7 +129,8 @@ impl Widget for &TextArea<'_> {
         let cursor = self.cursor();
         let (top_row, top_col) = self.viewport.scroll_top();
         let top_row = next_scroll_top(top_row, cursor.0 as u16, height);
-        let top_col = next_scroll_top(top_col, cursor.1 as u16, width);
+        let scroll_width = width.saturating_sub(self.lnum_width() as _);
+        let top_col = next_scroll_top(top_col, cursor.1 as u16, scroll_width);
 
         let (text, style) = if !self.placeholder.is_empty() && self.is_empty() {
             (self.placeholder_widget(), self.placeholder_style)
