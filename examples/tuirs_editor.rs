@@ -195,7 +195,7 @@ impl<'a> Editor<'a> {
 
                 let buffer = &self.buffers[self.current];
                 let textarea = &buffer.textarea;
-                f.render_widget(&textarea, chunks[1]);
+                f.render_widget(textarea, chunks[1]);
 
                 // Render status line
                 let modified = if buffer.modified { " [modified]" } else { "" };
