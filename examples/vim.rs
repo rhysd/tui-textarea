@@ -116,14 +116,12 @@ impl Vim {
                         key: Key::Char('e'),
                         ctrl: false,
                         ..
-                    } if matches!(self.mode, Mode::Operator(_)) => {
-                        textarea.move_cursor(CursorMove::WordForward) // `e` behaves like `w` in operator-pending mode
+                    } => {
+                        textarea.move_cursor(CursorMove::WordEnd);
+                        if matches!(self.mode, Mode::Operator(_)) {
+                            textarea.move_cursor(CursorMove::Forward); // Include the text under the cursor
+                        }
                     }
-                    Input {
-                        key: Key::Char('e'),
-                        ctrl: false,
-                        ..
-                    } => textarea.move_cursor(CursorMove::WordEnd),
                     Input {
                         key: Key::Char('b'),
                         ctrl: false,
