@@ -14,6 +14,13 @@ impl From<Event> for Input {
 
 impl From<KeyEvent> for Input {
     /// Convert [`termion::event::Key`] into [`Input`].
+    ///
+    /// termion does not provide a way to get Shift key's state. Instead termion passes key inputs as-is. For example,
+    /// when 'Shift + A' is pressed with US keyboard, termion passes `termion::event::Key::Char('A')`. We cannot know
+    /// how the 'A' character was input.
+    ///
+    /// So the `shift` field of the returned `Input` instance is always `false` except for combinations with arrow keys.
+    /// For example, `termion::event::Key::Char('A')` is converted to `Input { key: Key::Char('A'), shift: false, .. }`.
     fn from(key: KeyEvent) -> Self {
         let (ctrl, alt, shift) = match key {
             KeyEvent::Ctrl(_)
