@@ -1,3 +1,50 @@
+<a name="v0.5.3"></a>
+# [v0.5.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.3) - 03 Aug 2024
+
+- `&TextArea` now implements `Widget` trait. ([#78](https://github.com/rhysd/tui-textarea/issues/78))
+  - Now the reference can be passed to `ratatui::terminal::Frame::render_widget` method call directly.
+    ```rust
+    // v0.5.2 or earlier
+    f.render_widget(textarea.widget(), rect);
+
+    // v0.5.3 or later
+    f.render_widget(&textarea, rect);
+    ```
+  - This means that `TextArea::widget` method is no longer necessary. To maintain the compatibility the method is not removed but using it starts to report a deprecation warning from v0.5.3.
+- Fix a cursor can leave the viewport on horizontal scroll when line number is displayed. ([#77](https://github.com/rhysd/tui-textarea/issues/77))
+- Support some key combinations added at termion v4 for `termion` feature. ([#68](https://github.com/rhysd/tui-textarea/issues/68))
+  - `termion::event::Key::CtrlLeft`
+  - `termion::event::Key::CtrlRight`
+  - `termion::event::Key::CtrlUp`
+  - `termion::event::Key::CtrlDown`
+  - `termion::event::Key::CtrlHome`
+  - `termion::event::Key::CtrlEnd`
+  - `termion::event::Key::AltLeft`
+  - `termion::event::Key::AltRight`
+  - `termion::event::Key::AltUp`
+  - `termion::event::Key::AltDown`
+  - `termion::event::Key::ShiftLeft`
+  - `termion::event::Key::ShiftRight`
+  - `termion::event::Key::ShiftUp`
+  - `termion::event::Key::ShiftDown`
+- Improve `vim` example's Vim emulation.
+  - Fix the range of text selection on `e` mapping in operator-pending mode. ([#76](https://github.com/rhysd/tui-textarea/issues/76))
+  - Fix the text selection on `y`, `d`, `c` mappings in visual mode is not inclusive.
+
+[Changes][v0.5.3]
+
+
+<a name="v0.5.2"></a>
+# [v0.5.2](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.2) - 01 Aug 2024
+
+- Do not hide a cursor when a placeholder text is printed. ([#73](https://github.com/rhysd/tui-textarea/issues/73), thanks [@kyu08](https://github.com/kyu08))
+  - ![demo](https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/placepop.gif)
+- Add [`CursorMove::WordEnd`](https://docs.rs/tui-textarea/0.5.2/tui_textarea/enum.CursorMove.html#variant.WordEnd) which moves a cursor to the end of the next word inclusively. ([#75](https://github.com/rhysd/tui-textarea/issues/75), thanks [@achristmascarl](https://github.com/achristmascarl))
+  - The behavior is similar to `e` mapping of Vim in normal mode. [`vim` example](https://github.com/rhysd/tui-textarea/blob/main/examples/vim.rs) implements the mapping for demonstration.
+
+[Changes][v0.5.2]
+
+
 <a name="v0.5.1"></a>
 # [v0.5.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.1) - 12 Jul 2024
 
@@ -347,6 +394,8 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.5.3]: https://github.com/rhysd/tui-textarea/compare/v0.5.2...v0.5.3
+[v0.5.2]: https://github.com/rhysd/tui-textarea/compare/v0.5.1...v0.5.2
 [v0.5.1]: https://github.com/rhysd/tui-textarea/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/rhysd/tui-textarea/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/rhysd/tui-textarea/compare/v0.3.1...v0.4.0
