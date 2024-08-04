@@ -151,3 +151,20 @@ impl Search {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn matches() {
+        let mut s = Search::default();
+        s.set_pattern("fo+").unwrap();
+
+        let m: Vec<_> = s.matches("fo foo bar fooo").unwrap().collect();
+        assert_eq!(m, [(0, 2), (3, 6), (11, 15)]);
+
+        s.set_pattern("").unwrap();
+        assert!(s.matches("fo foo bar fooo").is_none());
+    }
+}
