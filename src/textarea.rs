@@ -2006,18 +2006,19 @@ impl<'a> TextArea<'a> {
     /// Get the current selection start position. 0-base character-wise (row, col) selection start position.
     /// ```
     /// use tui_textarea::TextArea;
+    /// use tui_textarea::CursorMove;
     ///
-    /// let mut textarea = TextArea::default();
+    /// let mut textarea = TextArea::from(["abc"]);
     /// assert_eq!(textarea.selection_start(), None);
-
-    /// textarea.insert_char('a');
-    /// textarea.insert_newline();
-    /// textarea.insert_char('b');
     ///
     /// textarea.start_selection();
     /// assert_eq!(textarea.selection_start(), Some((0, 0)));
+    ///
     /// textarea.move_cursor(CursorMove::Forward);
     /// assert_eq!(textarea.selection_start(), Some((0, 0)));
+    ///
+    /// textarea.cancel_selection();
+    /// assert_eq!(textarea.selection_start(), None);
     /// ```
     pub fn selection_start(&self) -> Option<(usize, usize)> {
         self.selection_start
