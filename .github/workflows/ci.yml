@@ -31,7 +31,7 @@ jobs:
         if: ${{ matrix.os != 'windows-latest' }}
       - run: cargo test --no-default-features --features=no-backend,search -- --skip .rs
       - run: cargo test --no-default-features --features=tuirs-no-backend,search -- --skip .rs
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
