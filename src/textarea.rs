@@ -1402,7 +1402,7 @@ impl<'a> TextArea<'a> {
         self.select_style
     }
 
-    fn selection_range(&self) -> Option<(Pos, Pos)> {
+    fn selection_range_(&self) -> Option<(Pos, Pos)> {
         let (sr, sc) = self.selection_start?;
         let (er, ec) = self.cursor;
         let (so, eo) = (self.line_offset(sr, sc), self.line_offset(er, ec));
@@ -1416,7 +1416,7 @@ impl<'a> TextArea<'a> {
     }
 
     fn take_selection_range(&mut self) -> Option<(Pos, Pos)> {
-        let range = self.selection_range();
+        let range = self.selection_range_();
         self.cancel_selection();
         range
     }
@@ -1580,7 +1580,7 @@ impl<'a> TextArea<'a> {
             hl.search(matches, self.search.style);
         }
 
-        if let Some((start, end)) = self.selection_range() {
+        if let Some((start, end)) = self.selection_range_() {
             hl.selection(row, start.row, start.offset, end.row, end.offset);
         }
 
@@ -2003,25 +2003,32 @@ impl<'a> TextArea<'a> {
         self.cursor
     }
 
-    /// Get the current selection start position. 0-base character-wise (row, col) selection start position.
+    /// Get the current selection range. A tuple (selection_start, cursor) of 0-base character-wise (row, col)
+    /// positions. The selection start position will always come first, even when it is ahead of
+    /// the cursor.
     /// ```
     /// use tui_textarea::TextArea;
     /// use tui_textarea::CursorMove;
     ///
     /// let mut textarea = TextArea::from(["abc"]);
-    /// assert_eq!(textarea.selection_start(), None);
+    /// assert_eq!(textarea.selection_range(), None);
     ///
     /// textarea.start_selection();
-    /// assert_eq!(textarea.selection_start(), Some((0, 0)));
+    /// assert_eq!(textarea.selection_range(), Some(((0, 0), (0, 0))));
     ///
     /// textarea.move_cursor(CursorMove::Forward);
-    /// assert_eq!(textarea.selection_start(), Some((0, 0)));
+    /// assert_eq!(textarea.selection_range(), Some(((0, 0), (0, 1))));
     ///
     /// textarea.cancel_selection();
-    /// assert_eq!(textarea.selection_start(), None);
+    /// assert_eq!(textarea.selection_range(), None);
+    ///
+    /// textarea.start_selection();
+    /// textarea.move_cursor(CursorMove::Back);
+    /// assert_eq!(textarea.selection_range(), Some(((0, 1), (0, 0))));
     /// ```
-    pub fn selection_start(&self) -> Option<(usize, usize)> {
+    pub fn selection_range(&self) -> Option<((usize, usize), (usize, usize))> {
         self.selection_start
+            .map(|selection_start| (selection_start, self.cursor))
     }
 
     /// Set text alignment. When [`Alignment::Center`] or [`Alignment::Right`] is set, line number is automatically
