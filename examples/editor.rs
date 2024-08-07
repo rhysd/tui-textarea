@@ -185,7 +185,7 @@ impl<'a> Editor<'a> {
                 );
 
             self.term.draw(|f| {
-                let chunks = layout.split(f.size());
+                let chunks = layout.split(f.area());
 
                 if search_height > 0 {
                     f.render_widget(&self.search.textarea, chunks[0]);

@@ -3,7 +3,7 @@
 
 use ratatui::backend::{Backend, WindowSize};
 use ratatui::buffer::Cell;
-use ratatui::layout::{Rect, Size};
+use ratatui::layout::{Position, Size};
 use ratatui::Terminal;
 use std::io;
 use tui_textarea::TextArea;
@@ -75,10 +75,8 @@ impl Backend for DummyBackend {
     }
 
     #[inline]
-    fn size(&self) -> io::Result<Rect> {
-        Ok(Rect {
-            x: 0,
-            y: 0,
+    fn size(&self) -> io::Result<Size> {
+        Ok(Size {
             width: self.width,
             height: self.height,
         })
@@ -102,6 +100,19 @@ impl Backend for DummyBackend {
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
+
+    #[inline]
+    fn get_cursor_position(&mut self) -> io::Result<Position> {
+        let (x, y) = self.cursor;
+        Ok(Position { x, y })
+    }
+
+    #[inline]
+    fn set_cursor_position<P: Into<Position>>(&mut self, position: P) -> io::Result<()> {
+        let Position { x, y } = position.into();
+        self.cursor = (x, y);
+        Ok(())
+    }
 }
 
 #[inline]
@@ -116,6 +127,6 @@ pub trait TerminalExt {
 impl TerminalExt for Terminal<DummyBackend> {
     #[inline]
     fn draw_textarea(&mut self, textarea: &TextArea<'_>) {
-        self.draw(|f| f.render_widget(textarea, f.size())).unwrap();
+        self.draw(|f| f.render_widget(textarea, f.area())).unwrap();
     }
 }

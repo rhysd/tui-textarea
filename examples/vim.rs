@@ -417,7 +417,7 @@ fn main() -> io::Result<()> {
     let mut vim = Vim::new(Mode::Normal);
 
     loop {
-        term.draw(|f| f.render_widget(&textarea, f.size()))?;
+        term.draw(|f| f.render_widget(&textarea, f.area()))?;
 
         vim = match vim.transition(crossterm::event::read()?.into(), &mut textarea) {
             Transition::Mode(mode) if vim.mode != mode => {

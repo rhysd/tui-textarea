@@ -15,8 +15,8 @@ use tui::text::Spans as Line;
 // instance. In the case, the TextArea instance cannot be accessed from any other objects since it is mutablly
 // borrowed.
 //
-// `ratatui::terminal::Frame::render_stateful_widget` would be an assumed way to render a stateful widget. But at this
-// point we stick with using `ratatui::terminal::Frame::render_widget` because it is simpler API. Users don't need to
+// `ratatui::Frame::render_stateful_widget` would be an assumed way to render a stateful widget. But at this
+// point we stick with using `ratatui::Frame::render_widget` because it is simpler API. Users don't need to
 // manage states of textarea instances separately.
 // https://docs.rs/ratatui/latest/ratatui/terminal/struct.Frame.html#method.render_stateful_widget
 #[derive(Default, Debug)]

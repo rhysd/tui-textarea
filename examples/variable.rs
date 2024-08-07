@@ -33,7 +33,7 @@ fn main() -> io::Result<()> {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Length(height), Constraint::Min(0)])
-                .split(f.size());
+                .split(f.area());
             f.render_widget(&textarea, chunks[0]);
         })?;
         match crossterm::event::read()?.into() {

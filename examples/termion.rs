@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             Event::Tick => {}
         }
         term.draw(|f| {
-            f.render_widget(&textarea, f.size());
+            f.render_widget(&textarea, f.area());
         })?;
     }
 

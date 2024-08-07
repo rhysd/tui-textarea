@@ -30,7 +30,7 @@ fn main() -> io::Result<()> {
 
     loop {
         term.draw(|f| {
-            let chunks = layout.split(f.size());
+            let chunks = layout.split(f.area());
             f.render_widget(&textarea, chunks[0]);
         })?;
 

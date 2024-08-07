@@ -52,7 +52,7 @@ fn main() -> io::Result<()> {
 
     loop {
         term.draw(|f| {
-            let chunks = layout.split(f.size());
+            let chunks = layout.split(f.area());
             for (textarea, chunk) in textarea.iter().zip(chunks.iter()) {
                 f.render_widget(textarea, *chunk);
             }
