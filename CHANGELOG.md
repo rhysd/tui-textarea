@@ -1,3 +1,13 @@
+<a name="v0.6.0"></a>
+# [v0.6.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.6.0) - 07 Aug 2024
+
+- **BREAKING:** Update [ratatui](https://ratatui.rs/) crate dependency from v0.27 to [v0.28](https://github.com/ratatui-org/ratatui/releases/tag/v0.28.0).
+- **BREAKING:** Update [crossterm](https://crates.io/crates/crossterm) crate dependency from v0.27 to v0.28 because ratatui crate depends on the new version.
+  - Note: If you use tui crate, crossterm crate dependency remains at v0.25.
+
+[Changes][v0.6.0]
+
+
 <a name="v0.5.3"></a>
 # [v0.5.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.3) - 03 Aug 2024
 
@@ -27,6 +37,7 @@
   - `termion::event::Key::ShiftRight`
   - `termion::event::Key::ShiftUp`
   - `termion::event::Key::ShiftDown`
+- Fix the border color is not applied in `single_line` example. ([#79](https://github.com/rhysd/tui-textarea/issues/79), thanks [@fmorroni](https://github.com/fmorroni))
 - Improve `vim` example's Vim emulation.
   - Fix the range of text selection on `e` mapping in operator-pending mode. ([#76](https://github.com/rhysd/tui-textarea/issues/76))
   - Fix the text selection on `y`, `d`, `c` mappings in visual mode is not inclusive.
@@ -394,6 +405,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.6.0]: https://github.com/rhysd/tui-textarea/compare/v0.5.3...v0.6.0
 [v0.5.3]: https://github.com/rhysd/tui-textarea/compare/v0.5.2...v0.5.3
 [v0.5.2]: https://github.com/rhysd/tui-textarea/compare/v0.5.1...v0.5.2
 [v0.5.1]: https://github.com/rhysd/tui-textarea/compare/v0.5.0...v0.5.1
