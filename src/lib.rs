@@ -31,6 +31,12 @@ use crossterm;
 #[cfg(feature = "tuirs-crossterm")]
 use crossterm_025 as crossterm;
 
+#[cfg(feature = "termion")]
+#[allow(clippy::single_component_path_imports)]
+use termion;
+#[cfg(feature = "tuirs-termion")]
+use termion_15 as termion;
+
 pub use cursor::CursorMove;
 pub use input::{Input, Key};
 pub use scroll::Scrolling;

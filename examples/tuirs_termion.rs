@@ -1,3 +1,6 @@
+// Use `termion` v1.5 for `tui` backend.
+use termion_15 as termion;
+
 use std::error::Error;
 use std::io;
 use std::sync::mpsc;
@@ -6,7 +9,7 @@ use std::time::Duration;
 use termion::event::Event as TermEvent;
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::IntoRawMode;
-use termion::screen::IntoAlternateScreen;
+use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
 use tui::widgets::{Block, Borders};
 use tui::Terminal;
@@ -18,8 +21,9 @@ enum Event {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let stdout = io::stdout().into_raw_mode()?.into_alternate_screen()?;
+    let stdout = io::stdout().into_raw_mode()?;
     let stdout = MouseTerminal::from(stdout);
+    let stdout = AlternateScreen::from(stdout);
     let backend = TermionBackend::new(stdout);
     let mut term = Terminal::new(backend)?;
 

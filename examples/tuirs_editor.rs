@@ -1,3 +1,4 @@
+// Use `crossterm` v0.25 for `tui` backend.
 use crossterm_025 as crossterm;
 
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};

@@ -27,7 +27,7 @@ no-backend = ["ratatui"]
 # Features to use tui-rs
 tuirs = ["dep:tui"]
 tuirs-crossterm = ["tuirs", "dep:crossterm-025", "tui/crossterm"]
-tuirs-termion = ["tuirs", "dep:termion", "tui/termion"]
+tuirs-termion = ["tuirs", "dep:termion-15", "tui/termion"]
 tuirs-no-backend = ["tuirs"]
 # Other optional features
 search = ["dep:regex"]
@@ -40,6 +40,7 @@ crossterm-025 = { package = "crossterm", version = "0.25", optional = true }
 ratatui = { version = "0.28", default-features = false, optional = true }
 regex = { version = "1", optional = true }
 termion = { version = "4.0", optional = true }
+termion-15 = { package = "termion", version = "1.5", optional = true }
 termwiz = { version = "0.22.0", optional = true }
 tui = { version = "0.19", default-features = false, optional = true }
 unicode-width = "0.1.11"

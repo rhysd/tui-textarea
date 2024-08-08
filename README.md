@@ -192,8 +192,9 @@ Note that [ratatui][] support and [tui-rs][] support are exclusive. When you use
 [ratatui][] support by `default-features = false`.
 
 In addition to above dependencies, you also need to install [crossterm][] or [termion][] or [termwiz][] to initialize
-your application and to receive key inputs. Note that version of [crossterm][] crate is different between [ratatui][]
-and [tui-rs][]. Please select the correct version.
+your application and to receive key inputs. Note that version of [crossterm][] crate and [termion][] crate are different
+between [ratatui][] and [tui-rs][]. Please select the same dependency version. For example, [tui-rs][] depends on
+[crossterm][] v0.2.5 or [termion][] v1.5 where both crates are older than [ratatui][]'s dependencies.
 
 ## Minimal Usage
 
