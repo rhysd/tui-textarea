@@ -1430,7 +1430,7 @@ impl<'a> TextArea<'a> {
         self.select_style
     }
 
-    fn selection_range_(&self) -> Option<(Pos, Pos)> {
+    fn selection_positions(&self) -> Option<(Pos, Pos)> {
         let (sr, sc) = self.selection_start?;
         let (er, ec) = self.cursor;
         let (so, eo) = (self.line_offset(sr, sc), self.line_offset(er, ec));
@@ -1443,8 +1443,8 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    fn take_selection_range(&mut self) -> Option<(Pos, Pos)> {
-        let range = self.selection_range_();
+    fn take_selection_positions(&mut self) -> Option<(Pos, Pos)> {
+        let range = self.selection_positions();
         self.cancel_selection();
         range
     }
@@ -1468,7 +1468,7 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.lines(), ["Hello World"]); // Text does not change
     /// ```
     pub fn copy(&mut self) {
-        if let Some((start, end)) = self.take_selection_range() {
+        if let Some((start, end)) = self.take_selection_positions() {
             if start.row == end.row {
                 self.yank = self.lines[start.row][start.offset..end.offset]
                     .to_string()
@@ -1506,7 +1506,7 @@ impl<'a> TextArea<'a> {
     }
 
     fn delete_selection(&mut self, should_yank: bool) -> bool {
-        if let Some((s, e)) = self.take_selection_range() {
+        if let Some((s, e)) = self.take_selection_positions() {
             self.delete_range(s, e, should_yank);
             return true;
         }
@@ -1608,7 +1608,7 @@ impl<'a> TextArea<'a> {
             hl.search(matches, self.search.style);
         }
 
-        if let Some((start, end)) = self.selection_range_() {
+        if let Some((start, end)) = self.selection_positions() {
             hl.selection(row, start.row, start.offset, end.row, end.offset);
         }
 
@@ -2040,14 +2040,21 @@ impl<'a> TextArea<'a> {
         self.cursor
     }
 
-    /// Get the current selection range. A tuple (selection_start, cursor) of 0-base character-wise (row, col)
-    /// positions. The selection start position will always come first, even when it is ahead of
-    /// the cursor.
+    /// Get the current selection range as a pair of the start position and the end position. The range is bounded
+    /// inclusively below and exclusively above. The positions are 0-base character-wise (row, col) values.
+    /// The first element of the pair is always smaller than the second one even when it is ahead of the cursor.
+    /// When no text is selected, this method returns `None`.
     /// ```
     /// use tui_textarea::TextArea;
     /// use tui_textarea::CursorMove;
     ///
-    /// let mut textarea = TextArea::from(["abc"]);
+    /// let mut textarea = TextArea::from([
+    ///     "aaa",
+    ///     "bbb",
+    ///     "ccc",
+    /// ]);
+    ///
+    /// // It returns `None` when the text selection is not ongoing
     /// assert_eq!(textarea.selection_range(), None);
     ///
     /// textarea.start_selection();
@@ -2056,16 +2063,25 @@ impl<'a> TextArea<'a> {
     /// textarea.move_cursor(CursorMove::Forward);
     /// assert_eq!(textarea.selection_range(), Some(((0, 0), (0, 1))));
     ///
-    /// textarea.cancel_selection();
-    /// assert_eq!(textarea.selection_range(), None);
+    /// textarea.move_cursor(CursorMove::Down);
+    /// assert_eq!(textarea.selection_range(), Some(((0, 0), (1, 1))));
     ///
+    /// // Start selection at (1, 1)
+    /// textarea.cancel_selection();
     /// textarea.start_selection();
+    ///
+    /// // The first element of the pair is always smaller than the second one
     /// textarea.move_cursor(CursorMove::Back);
-    /// assert_eq!(textarea.selection_range(), Some(((0, 1), (0, 0))));
+    /// assert_eq!(textarea.selection_range(), Some(((1, 0), (1, 1))));
     /// ```
     pub fn selection_range(&self) -> Option<((usize, usize), (usize, usize))> {
-        self.selection_start
-            .map(|selection_start| (selection_start, self.cursor))
+        self.selection_start.map(|pos| {
+            if pos > self.cursor {
+                (self.cursor, pos)
+            } else {
+                (pos, self.cursor)
+            }
+        })
     }
 
     /// Set text alignment. When [`Alignment::Center`] or [`Alignment::Right`] is set, line number is automatically
