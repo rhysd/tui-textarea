@@ -1,3 +1,30 @@
+<a name="v0.6.1"></a>
+# [v0.6.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.6.1) - 08 Aug 2024
+
+- Add [`TextArea::selection_range`](https://docs.rs/tui-textarea/latest/tui_textarea/struct.TextArea.html#method.selection_range) method to get the range of the current selection. Please read the document for more details. ([#81](https://github.com/rhysd/tui-textarea/issues/81), thanks [@achristmascarl](https://github.com/achristmascarl))
+  ```rust
+  let mut textarea = TextArea::from(["aaa"]);
+
+  // It returns `None` when the text selection is not ongoing
+  assert_eq!(textarea.selection_range(), None);
+
+  textarea.start_selection();
+  assert_eq!(textarea.selection_range(), Some(((0, 0), (0, 0))));
+
+  textarea.move_cursor(CursorMove::Forward);
+  assert_eq!(textarea.selection_range(), Some(((0, 0), (0, 1))));
+
+  // The first element of the pair is always smaller than the second one.
+  textarea.start_selection();
+  textarea.move_cursor(CursorMove::Back);
+  assert_eq!(textarea.selection_range(), Some(((0, 0), (0, 1))));
+  ```
+- Fix depending on the incorrect version of termion crate when `tuirs-termion` feature is enabled. Since tui crate depends on older version of termion crate v1.5.6, tui-textarea should depend on the same version but actually it depended on the latest version v4.0.0.
+  - If you use tui-textarea with tui crate and termion crate, please ensure that your project also depends on termion v1.5. Otherwise your project accidentally depends on multiple versions of termion crate.
+
+[Changes][v0.6.1]
+
+
 <a name="v0.6.0"></a>
 # [v0.6.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.6.0) - 07 Aug 2024
 
@@ -405,6 +432,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.6.1]: https://github.com/rhysd/tui-textarea/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/rhysd/tui-textarea/compare/v0.5.3...v0.6.0
 [v0.5.3]: https://github.com/rhysd/tui-textarea/compare/v0.5.2...v0.5.3
 [v0.5.2]: https://github.com/rhysd/tui-textarea/compare/v0.5.1...v0.5.2
