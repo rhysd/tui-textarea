@@ -1529,6 +1529,43 @@ fn test_paste_while_selection() {
     assert!(!t.is_selecting());
 }
 
+#[test]
+fn test_selection_range() {
+    #[rustfmt::skip]
+    let mut t = TextArea::from([
+        "あいうえお",
+        "Hello",
+        "🐶🐱🐰🐮🐹",
+    ]);
+
+    assert_eq!(t.selection_range(), None);
+
+    for (from, to) in [
+        ((0, 0), (0, 0)),
+        ((2, 5), (2, 5)),
+        ((0, 2), (2, 3)),
+        ((2, 1), (0, 4)),
+        ((0, 0), (2, 5)),
+        ((2, 5), (0, 0)),
+    ] {
+        let (x, y) = from;
+        t.move_cursor(CursorMove::Jump(x as _, y as _));
+
+        t.start_selection();
+
+        let (x, y) = to;
+        t.move_cursor(CursorMove::Jump(x as _, y as _));
+
+        let have = t.selection_range().unwrap();
+        let want = if from <= to { (from, to) } else { (to, from) };
+        assert_eq!(have, want, "selection from {from:?} to {to:?}");
+
+        t.cancel_selection();
+        let range = t.selection_range();
+        assert_eq!(range, None, "selection from {from:?} to {to:?}");
+    }
+}
+
 struct DeleteTester(&'static [&'static str], fn(&mut TextArea) -> bool);
 impl DeleteTester {
     fn test(&self, before: (usize, usize), after: (usize, usize, &[&str], &str)) {
