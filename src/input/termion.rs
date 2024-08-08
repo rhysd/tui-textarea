@@ -158,9 +158,13 @@ mod tests {
             (KeyEvent::F(1), input(Key::F(1), false, false, false)),
             (KeyEvent::BackTab, input(Key::Tab, false, false, false)),
             (KeyEvent::Null, input(Key::Null, false, false, false)),
+            #[cfg(feature = "termion")]
             (KeyEvent::ShiftDown, input(Key::Down, false, false, true)),
+            #[cfg(feature = "termion")]
             (KeyEvent::AltUp, input(Key::Up, false, true, false)),
+            #[cfg(feature = "termion")]
             (KeyEvent::CtrlLeft, input(Key::Left, true, false, false)),
+            #[cfg(feature = "termion")]
             (KeyEvent::CtrlHome, input(Key::Home, true, false, false)),
         ] {
             assert_eq!(Input::from(from), to, "{:?} -> {:?}", from, to);
