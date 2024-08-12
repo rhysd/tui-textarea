@@ -149,8 +149,7 @@ ratatui = "*"
 tui-textarea = "*"
 ```
 
-If you need text search with regular expressions, enable `search` feature. It adds [regex crate][regex] crate as
-dependency.
+If you need text search with regular expressions, enable `search` feature. It adds [regex crate][regex] as dependency.
 
 ```toml
 [dependencies]
@@ -158,7 +157,8 @@ ratatui = "*"
 tui-textarea = { version = "*", features = ["search"] }
 ```
 
-If you're using ratatui with [termion][] or [termwiz][], enable respective feature instead of `crossterm` feature.
+If you're using ratatui with [termion][] or [termwiz][], enable the `termion` or `termwiz` feature instead of
+`crossterm` feature.
 
 ```toml
 [dependencies]
@@ -192,9 +192,10 @@ Note that [ratatui][] support and [tui-rs][] support are exclusive. When you use
 [ratatui][] support by `default-features = false`.
 
 In addition to above dependencies, you also need to install [crossterm][] or [termion][] or [termwiz][] to initialize
-your application and to receive key inputs. Note that version of [crossterm][] crate and [termion][] crate are different
-between [ratatui][] and [tui-rs][]. Please select the same dependency version. For example, [tui-rs][] depends on
-[crossterm][] v0.2.5 or [termion][] v1.5 where both crates are older than [ratatui][]'s dependencies.
+your application and to receive key inputs. Note that the dependency versions of [crossterm][] crate and [termion][]
+crate differ between [ratatui][] and [tui-rs][]. Please make sure to use the same version that matches the package you
+are using. For example, [tui-rs][] depends on [crossterm][] v0.2.5 or [termion][] v1.5 where both crates are older than
+[ratatui][]'s dependencies.
 
 ## Minimal Usage
 
