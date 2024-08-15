@@ -32,6 +32,7 @@ tuirs-no-backend = ["tuirs"]
 # Other optional features
 search = ["dep:regex"]
 serde = ["dep:serde"]
+arbitrary = ["dep:arbitrary"]
 
 [dependencies]
 arbitrary = { version = "1", features = ["derive"], optional = true }
