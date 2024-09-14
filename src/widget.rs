@@ -93,12 +93,13 @@ fn next_scroll_top(prev_top: u16, cursor: u16, len: u16) -> u16 {
 
 impl<'a> TextArea<'a> {
     fn text_widget(&'a self, top_row: usize, height: usize) -> Text<'a> {
+        let width = self.viewport.rect().2;
         let lines_len = self.lines().len();
         let lnum_len = num_digits(lines_len);
         let bottom_row = cmp::min(top_row + height, lines_len);
         let mut lines = Vec::with_capacity(bottom_row - top_row);
         for (i, line) in self.lines()[top_row..bottom_row].iter().enumerate() {
-            lines.push(self.line_spans(line.as_str(), top_row + i, lnum_len));
+            lines.push(self.line_spans(line.as_str(), top_row + i, lnum_len, width));
         }
         Text::from(lines)
     }

@@ -113,6 +113,7 @@ pub struct TextArea<'a> {
     hard_tab_indent: bool,
     history: History,
     cursor_line_style: Style,
+    cursor_line_fullwidth: bool,
     line_number_style: Option<Style>,
     pub(crate) viewport: Viewport,
     pub(crate) cursor_style: Style,
@@ -218,6 +219,7 @@ impl<'a> TextArea<'a> {
             hard_tab_indent: false,
             history: History::new(50),
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
+            cursor_line_fullwidth: false,
             line_number_style: None,
             viewport: Viewport::default(),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
@@ -1586,13 +1588,21 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Line<'b> {
+    pub(crate) fn line_spans<'b>(
+        &'b self,
+        line: &'b str,
+        row: usize,
+        lnum_len: u8,
+        width: u16,
+    ) -> Line<'b> {
         let mut hl = LineHighlighter::new(
             line,
             self.cursor_style,
+            self.cursor_line_fullwidth,
             self.tab_len,
             self.mask,
             self.select_style,
+            width,
         );
 
         if let Some(style) = self.line_number_style {
@@ -1812,6 +1822,26 @@ impl<'a> TextArea<'a> {
     /// Get the style of cursor line. By default it is styled with underline.
     pub fn cursor_line_style(&self) -> Style {
         self.cursor_line_style
+    }
+
+    /// Update the style of line at cursor to fill the entire line. By default, the cursor line style covers text only.
+    /// ```
+    /// use ratatui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// let style = Style::default().fg(Color::Red);
+    /// textarea.set_cursor_line_fullwidth();
+    /// assert_eq!(textarea.cursor_line_fullwodth(), true));
+    /// ```
+    pub fn set_cursor_line_fullwidth(&mut self) {
+        self.cursor_line_fullwidth = true;
+    }
+
+    /// Get true of the cursor line will be highlighted on full width
+    pub fn cursor_line_fullwidth(&self) -> bool {
+        self.cursor_line_fullwidth
     }
 
     /// Set the style of line number. By setting the style with this method, line numbers are drawn in textarea, meant
