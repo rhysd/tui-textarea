@@ -26,3 +26,11 @@ It allows inclusive selection to be displayed properly.
 ```rust
 textarea.set_cursor_hidden();
 ```
+
+## Inclusive selection
+
+With this option on, the selection includes the char under cursor. Used eg for vim mode.
+
+```rust
+textarea.set_selection_inclusive();
+```

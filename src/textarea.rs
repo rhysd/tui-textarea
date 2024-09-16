@@ -127,6 +127,7 @@ pub struct TextArea<'a> {
     mask: Option<char>,
     selection_start: Option<(usize, usize)>,
     select_style: Style,
+    selection_inclusive: bool,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -234,6 +235,7 @@ impl<'a> TextArea<'a> {
             mask: None,
             selection_start: None,
             select_style: Style::default().bg(Color::LightBlue),
+            selection_inclusive: false,
         }
     }
 
@@ -1434,9 +1436,38 @@ impl<'a> TextArea<'a> {
         self.select_style
     }
 
+    /// Defines if the selection includes the char under cursor.
+    /// ```
+    /// use tui_textarea::TextArea;
+    /// use ratatui::style::{Style, Color};
+    ///
+    /// let mut textarea = TextArea::default();
+    /// textarea.set_selection_inclusive();
+    ///
+    /// assert_eq!(textarea.selection_inclusive(), true);
+    /// ```
+    pub fn set_selection_inclusive(&mut self) {
+        self.selection_inclusive = true;
+    }
+
+    /// Returns true if the selection includes char under cursor.
+    pub fn selection_inclusive(&self) -> bool {
+        self.selection_inclusive
+    }
+
     fn selection_positions(&self) -> Option<(Pos, Pos)> {
         let (sr, sc) = self.selection_start?;
-        let (er, ec) = self.cursor;
+        let (er, ec) = if self.selection_inclusive {
+            if let Some(cursor) =
+                CursorMove::Forward.next_cursor(self.cursor, self.lines(), &self.viewport)
+            {
+                cursor
+            } else {
+                self.cursor
+            }
+        } else {
+            self.cursor
+        };
         let (so, eo) = (self.line_offset(sr, sc), self.line_offset(er, ec));
         let s = Pos::new(sr, sc, so);
         let e = Pos::new(er, ec, eo);
