@@ -114,6 +114,7 @@ pub struct TextArea<'a> {
     history: History,
     cursor_line_style: Style,
     cursor_line_fullwidth: bool,
+    cursor_hidden: bool,
     line_number_style: Option<Style>,
     pub(crate) viewport: Viewport,
     pub(crate) cursor_style: Style,
@@ -220,6 +221,7 @@ impl<'a> TextArea<'a> {
             history: History::new(50),
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
             cursor_line_fullwidth: false,
+            cursor_hidden: false,
             line_number_style: None,
             viewport: Viewport::default(),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
@@ -1603,6 +1605,7 @@ impl<'a> TextArea<'a> {
             self.mask,
             self.select_style,
             width,
+            self.cursor_hidden,
         );
 
         if let Some(style) = self.line_number_style {
@@ -1842,6 +1845,26 @@ impl<'a> TextArea<'a> {
     /// Get true of the cursor line will be highlighted on full width
     pub fn cursor_line_fullwidth(&self) -> bool {
         self.cursor_line_fullwidth
+    }
+
+    /// No cursor draw. By default cursor is hidden when styled same as cursor_line. With this option on, it is not printed.
+    /// ```
+    /// use ratatui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// let style = Style::default().fg(Color::Red);
+    /// textarea.set_cursor_hidden();
+    /// assert_eq!(textarea.cursor_hidden(), true));
+    /// ```
+    pub fn set_cursor_hidden(&mut self) {
+        self.cursor_hidden = true;
+    }
+
+    /// Get true of the cursor is hidden
+    pub fn cursor_hidden(&self) -> bool {
+        self.cursor_hidden
     }
 
     /// Set the style of line number. By setting the style with this method, line numbers are drawn in textarea, meant

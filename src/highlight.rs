@@ -109,6 +109,7 @@ pub struct LineHighlighter<'a> {
     current_line: bool,
     current_line_style: Style,
     width: u16,
+    cursor_hidden: bool,
 }
 
 impl<'a> LineHighlighter<'a> {
@@ -120,6 +121,7 @@ impl<'a> LineHighlighter<'a> {
         mask: Option<char>,
         select_style: Style,
         width: u16,
+        cursor_hidden: bool,
     ) -> Self {
         Self {
             line,
@@ -136,6 +138,7 @@ impl<'a> LineHighlighter<'a> {
             current_line: false,
             current_line_style: Style::default(),
             width,
+            cursor_hidden,
         }
     }
 
@@ -149,9 +152,11 @@ impl<'a> LineHighlighter<'a> {
         self.current_line = true;
         self.current_line_style = style;
         if let Some((start, c)) = self.line.char_indices().nth(cursor_col) {
-            self.boundaries
-                .push((Boundary::Cursor(self.cursor_style), start));
-            self.boundaries.push((Boundary::End, start + c.len_utf8()));
+            if !self.cursor_hidden {
+                self.boundaries
+                    .push((Boundary::Cursor(self.cursor_style), start));
+                self.boundaries.push((Boundary::End, start + c.len_utf8()));
+            }
         } else {
             self.cursor_at_end = true;
         }
@@ -214,6 +219,7 @@ impl<'a> LineHighlighter<'a> {
             current_line,
             current_line_style,
             width,
+            cursor_hidden,
         } = self;
         let mut builder = DisplayTextBuilder::new(tab_len, mask);
 
@@ -406,7 +412,7 @@ mod tests {
         ];
         for test in tests {
             let (line, want) = test;
-            let lh = LineHighlighter::new(line, CUR, false, 4, None, SEL, 50);
+            let lh = LineHighlighter::new(line, CUR, false, 4, None, SEL, 50, false);
             assert_spans(lh, want, test);
         }
     }
@@ -425,7 +431,7 @@ mod tests {
 
         for test in tests {
             let (line, col, want) = test;
-            let mut lh = LineHighlighter::new(line, CUR, false, 4, None, SEL, 50);
+            let mut lh = LineHighlighter::new(line, CUR, false, 4, None, SEL, 50, false);
             lh.cursor_line(col, LINE);
             assert_spans(lh, want, test);
         }
@@ -440,7 +446,7 @@ mod tests {
         ];
         for test in tests {
             let (row, len, want) = test;
-            let mut lh = LineHighlighter::new("", CUR, false, 4, None, SEL, 50);
+            let mut lh = LineHighlighter::new("", CUR, false, 4, None, SEL, 50, false);
             lh.line_number(row, len, LNUM);
             assert_spans(lh, want, test);
         }
@@ -505,7 +511,7 @@ mod tests {
 
         for test in tests {
             let (line, matches, want) = test;
-            let mut lh = LineHighlighter::new(line, CUR, false, 4, None, SEL, 50);
+            let mut lh = LineHighlighter::new(line, CUR, false, 4, None, SEL, 50, false);
             lh.search(matches.iter().copied(), SEARCH);
             assert_spans(lh, want, test);
         }
@@ -545,7 +551,7 @@ mod tests {
 
         for test in tests {
             let (line, (row, start_row, start_off, end_row, end_off), want) = test;
-            let mut lh = LineHighlighter::new(line, CUR, false, 4, None, SEL, 50);
+            let mut lh = LineHighlighter::new(line, CUR, false, 4, None, SEL, 50, false);
             lh.selection(row, start_row, start_off, end_row, end_off);
             assert_spans(lh, want, test);
         }
@@ -557,7 +563,7 @@ mod tests {
             (
                 "cursor on selection",
                 {
-                    let mut lh = LineHighlighter::new("abcde", CUR, false, 4, None, SEL, 50);
+                    let mut lh = LineHighlighter::new("abcde", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(2, LINE);
                     lh.selection(0, 0, 1, 0, 4);
                     lh
@@ -568,7 +574,8 @@ mod tests {
             (
                 "cursor + selection + search",
                 {
-                    let mut lh = LineHighlighter::new("abcdefg", CUR, false, 4, None, SEL, 50);
+                    let mut lh =
+                        LineHighlighter::new("abcdefg", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(3, LINE);
                     lh.selection(0, 0, 2, 0, 5);
                     lh.search([(1, 2), (5, 6)].into_iter(), SEARCH);
@@ -587,7 +594,7 @@ mod tests {
             (
                 "selection + cursor at end",
                 {
-                    let mut lh = LineHighlighter::new("ab", CUR, false, 4, None, SEL, 50);
+                    let mut lh = LineHighlighter::new("ab", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(2, LINE);
                     lh.selection(0, 0, 1, 2, 0);
                     lh
@@ -597,7 +604,7 @@ mod tests {
             (
                 "cursor at start of selection",
                 {
-                    let mut lh = LineHighlighter::new("abcd", CUR, false, 4, None, SEL, 50);
+                    let mut lh = LineHighlighter::new("abcd", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(1, LINE);
                     lh.selection(0, 0, 1, 0, 3);
                     lh
@@ -607,7 +614,7 @@ mod tests {
             (
                 "cursor at end of selection",
                 {
-                    let mut lh = LineHighlighter::new("abcd", CUR, false, 4, None, SEL, 50);
+                    let mut lh = LineHighlighter::new("abcd", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(2, LINE);
                     lh.selection(0, 0, 1, 0, 3);
                     lh
@@ -617,7 +624,7 @@ mod tests {
             (
                 "cursor covers selection",
                 {
-                    let mut lh = LineHighlighter::new("abc", CUR, false, 4, None, SEL, 50);
+                    let mut lh = LineHighlighter::new("abc", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(1, LINE);
                     lh.selection(0, 0, 1, 0, 2);
                     lh
