@@ -34,3 +34,10 @@ With this option on, the selection includes the char under cursor. Used eg for v
 ```rust
 textarea.set_selection_inclusive();
 ```
+
+## Additional `CursorMove` movements
+
+- `HeadNonSpace`: Move cursor to the first non space character of line.
+- `WordSpacingForward`: Move cursor forward by one WORD. Word boundary appears at spaces.
+- `WordSpacingEnd`: Move cursor forward to the next end of WORD. WORD boundary appears at spaces.
+- `WordSpacingBack`: Move cursor backward by one WORD. WORD boundary appears at spaces.
