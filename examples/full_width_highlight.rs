@@ -22,7 +22,7 @@ fn main() -> io::Result<()> {
     textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
-            .title("Crossterm Minimal Example"),
+            .title("Crossterm FullWidth Cursor Line Example"),
     );
 
     loop {
