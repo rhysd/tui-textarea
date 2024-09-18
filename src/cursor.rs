@@ -4,6 +4,7 @@ use crate::word::{
     find_word_start_forward, find_wordspacing_inclusive_end_forward,
     find_wordspacing_start_backward, find_wordspacing_start_forward,
 };
+use crate::wordwrap::{self, TextWrapMode};
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
 #[cfg(feature = "serde")]
@@ -317,6 +318,7 @@ impl CursorMove {
         (row, col): (usize, usize),
         lines: &[String],
         viewport: &Viewport,
+        textwrap: &Option<TextWrapMode>,
     ) -> Option<(usize, usize)> {
         use CursorMove::*;
 
@@ -334,9 +336,17 @@ impl CursorMove {
                 Some((row, lines[row].chars().count()))
             }
             Back => Some((row, col - 1)),
+            Up if textwrap.is_some() => {
+                let (_, _, width, _) = viewport.rect();
+                wordwrap::go_up(lines, row, col, width as usize, textwrap.as_ref().unwrap())
+            }
             Up => {
                 let row = row.checked_sub(1)?;
                 Some((row, fit_col(col, &lines[row])))
+            }
+            Down if textwrap.is_some() => {
+                let (_, _, width, _) = viewport.rect();
+                wordwrap::go_down(lines, row, col, width as usize, textwrap.as_ref().unwrap())
             }
             Down => Some((row + 1, fit_col(col, lines.get(row + 1)?))),
             Head => Some((row, 0)),
@@ -348,10 +358,10 @@ impl CursorMove {
                 }
             }
             End => Some((row, lines[row].chars().count())),
-            Top => Some((0, fit_col(col, &lines[0]))),
+            Top => Some((0, 0)),
             Bottom => {
                 let row = lines.len() - 1;
-                Some((row, fit_col(col, &lines[row])))
+                Some((row, lines[row].chars().count()))
             }
             WordEnd => {
                 // `+ 1` for not accepting the current cursor position
@@ -429,12 +439,19 @@ impl CursorMove {
                     let line = &lines[row];
                     let is_empty = line.is_empty();
                     if !is_empty && prev_is_empty {
-                        return Some((row, fit_col(col, line)));
+                        return Some((row, 0));
+                        // return Some((row, fit_col(col, line)));
                     }
                     prev_is_empty = is_empty;
                 }
                 let row = lines.len() - 1;
-                Some((row, fit_col(col, &lines[row])))
+                Some((row, lines[row].chars().count()))
+                // if textwrap.is_some() {
+                //     let (_, _, width, _) = viewport.rect();
+                //     Some((row, fit_col(col % width as usize, &lines[row])))
+                // } else {
+                //     Some((row, fit_col(col, &lines[row])))
+                // }
             }
             ParagraphBack => {
                 let row = row.checked_sub(1)?;
@@ -442,11 +459,15 @@ impl CursorMove {
                 for row in (0..row).rev() {
                     let is_empty = lines[row].is_empty();
                     if is_empty && !prev_is_empty {
-                        return Some((row + 1, fit_col(col, &lines[row + 1])));
+                        let row = row + 1;
+                        return Some((row, 0));
+                        // return Some((row, lines[row].chars().count()));
+                        // return Some((row + 1, fit_col(col, &lines[row + 1])));
                     }
                     prev_is_empty = is_empty;
                 }
-                Some((0, fit_col(col, &lines[0])))
+                Some((0, 0))
+                // Some((0, fit_col(col, &lines[0])))
             }
             Jump(row, col) => {
                 let row = cmp::min(*row as usize, lines.len() - 1);
@@ -454,6 +475,7 @@ impl CursorMove {
                 Some((row, col))
             }
             InViewport => {
+                // TODO: review wordwrap
                 let (row_top, col_top, row_bottom, col_bottom) = viewport.position();
 
                 let row = row.clamp(row_top as usize, row_bottom as usize);

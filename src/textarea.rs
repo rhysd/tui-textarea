@@ -11,6 +11,7 @@ use crate::search::Search;
 use crate::util::{spaces, Pos};
 use crate::widget::Viewport;
 use crate::word::{find_word_exclusive_end_forward, find_word_start_backward};
+use crate::{wordwrap, TextWrapMode};
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
 use std::cmp::Ordering;
@@ -128,6 +129,8 @@ pub struct TextArea<'a> {
     selection_start: Option<(usize, usize)>,
     select_style: Style,
     selection_inclusive: bool,
+    textwrap: Option<TextWrapMode>,
+    // pub(crate) wordwrap_lines: usize,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -236,6 +239,8 @@ impl<'a> TextArea<'a> {
             selection_start: None,
             select_style: Style::default().bg(Color::LightBlue),
             selection_inclusive: false,
+            textwrap: None,
+            // wordwrap_lines: 0,
         }
     }
 
@@ -1408,6 +1413,34 @@ impl<'a> TextArea<'a> {
             .unwrap_or(line.len())
     }
 
+    /// Set textwrap
+    pub fn set_textwrap(&mut self, mode: TextWrapMode) {
+        self.textwrap = Some(mode);
+    }
+
+    /// Checks textwrap
+    pub fn has_textwrap(&self) -> bool {
+        self.textwrap.is_some()
+    }
+
+    /// Get textwrap
+    pub fn textwrap(&self) -> Option<TextWrapMode> {
+        self.textwrap.clone()
+    }
+
+    pub fn textwrap_lines(&self) -> usize {
+        match &self.textwrap {
+            Some(mode) => {
+                let (_, _, width, _) = self.viewport.rect();
+                if width == 0 {
+                    return 0;
+                }
+                wordwrap::count_lines(&self.lines, width as usize, mode)
+            }
+            None => self.lines.len(),
+        }
+    }
+
     /// Set the style used for text selection. The default style is light blue.
     /// ```
     /// use tui_textarea::TextArea;
@@ -1458,9 +1491,12 @@ impl<'a> TextArea<'a> {
     fn selection_positions(&self) -> Option<(Pos, Pos)> {
         let (sr, sc) = self.selection_start?;
         let (er, ec) = if self.selection_inclusive {
-            if let Some(cursor) =
-                CursorMove::Forward.next_cursor(self.cursor, self.lines(), &self.viewport)
-            {
+            if let Some(cursor) = CursorMove::Forward.next_cursor(
+                self.cursor,
+                self.lines(),
+                &self.viewport,
+                &self.textwrap,
+            ) {
                 cursor
             } else {
                 self.cursor
@@ -1565,7 +1601,9 @@ impl<'a> TextArea<'a> {
     }
 
     fn move_cursor_with_shift(&mut self, m: CursorMove, shift: bool) {
-        if let Some(cursor) = m.next_cursor(self.cursor, &self.lines, &self.viewport) {
+        if let Some(cursor) =
+            m.next_cursor(self.cursor, &self.lines, &self.viewport, &self.textwrap)
+        {
             if shift {
                 if self.selection_start.is_none() {
                     self.start_selection();
@@ -1627,7 +1665,9 @@ impl<'a> TextArea<'a> {
         row: usize,
         lnum_len: u8,
         width: u16,
-    ) -> Line<'b> {
+        total_rows: &mut usize,
+        cursor_row: &mut usize,
+    ) -> Vec<Line<'b>> {
         let mut hl = LineHighlighter::new(
             line,
             self.cursor_style,
@@ -1639,6 +1679,7 @@ impl<'a> TextArea<'a> {
             self.cursor_hidden,
         );
 
+        // TODO
         if let Some(style) = self.line_number_style {
             hl.line_number(row, lnum_len, style);
         }
@@ -1653,10 +1694,18 @@ impl<'a> TextArea<'a> {
         }
 
         if let Some((start, end)) = self.selection_positions() {
-            hl.selection(row, start.row, start.offset, end.row, end.offset);
+            hl.selection(row, start, end);
+            // hl.selection(row, start.row, start.offset, end.row, end.offset);
         }
 
-        hl.into_spans()
+        let (spans, has_cursor) = hl.into_spans(&self.textwrap);
+
+        if let Some(c) = has_cursor {
+            *cursor_row = *total_rows + c + 1;
+        }
+        *total_rows += spans.len();
+
+        spans
     }
 
     /// Build a ratatui (or tui-rs) widget to render the current state of the textarea. The widget instance returned

@@ -20,9 +20,24 @@ impl Search {
     pub fn matches<'a>(
         &'a self,
         line: &'a str,
-    ) -> Option<impl Iterator<Item = (usize, usize)> + 'a> {
+    ) -> Option<impl Iterator<Item = ((usize, usize), (usize, usize))> + 'a> {
         let pat = self.pat.as_ref()?;
-        let matches = pat.find_iter(line).map(|m| (m.start(), m.end()));
+        let matches = pat.find_iter(line).map(|m| {
+            let start_char = line
+                .char_indices()
+                .enumerate()
+                .find(|(_, (pos_byte, _))| *pos_byte == m.start())
+                .map(|(pos, _)| pos)
+                .unwrap_or(m.start());
+            let end_char = line
+                .char_indices()
+                .enumerate()
+                .find(|(_, (pos_byte, _))| *pos_byte == m.end())
+                .map(|(pos, _)| pos)
+                .unwrap_or(m.end());
+
+            ((m.start(), m.end()), (start_char, end_char))
+        });
         Some(matches)
     }
 
@@ -162,7 +177,10 @@ mod tests {
         s.set_pattern("fo+").unwrap();
 
         let m: Vec<_> = s.matches("fo foo bar fooo").unwrap().collect();
-        assert_eq!(m, [(0, 2), (3, 6), (11, 15)]);
+        assert_eq!(
+            m,
+            [((0, 2), (0, 2)), ((3, 6), (3, 6)), ((11, 15), (11, 15))]
+        );
 
         s.set_pattern("").unwrap();
         assert!(s.matches("fo foo bar fooo").is_none());

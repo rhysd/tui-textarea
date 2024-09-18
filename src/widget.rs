@@ -92,16 +92,38 @@ fn next_scroll_top(prev_top: u16, cursor: u16, len: u16) -> u16 {
 }
 
 impl<'a> TextArea<'a> {
-    fn text_widget(&'a self, top_row: usize, height: usize) -> Text<'a> {
-        let width = self.viewport.rect().2;
+    fn text_widget(&'a self, top_row: usize, height: usize, width: usize) -> (Text<'a>, usize) {
+        // let width = self.viewport.rect().2;
+        // if width == 0 {
+        //     return Text::from(vec![]);
+        // }
         let lines_len = self.lines().len();
         let lnum_len = num_digits(lines_len);
+        // TODO SHOULD BE OPTIMIZED
         let bottom_row = cmp::min(top_row + height, lines_len);
-        let mut lines = Vec::with_capacity(bottom_row - top_row);
+        let mut lines = vec![];
+        let mut cursor_row = 0;
+        let mut total_rows = 0;
+        // let mut lines = Vec::with_capacity(bottom_row - top_row);
         for (i, line) in self.lines()[top_row..bottom_row].iter().enumerate() {
-            lines.push(self.line_spans(line.as_str(), top_row + i, lnum_len, width));
+            lines.append(&mut self.line_spans(
+                line.as_str(),
+                top_row + i,
+                lnum_len,
+                width as u16,
+                &mut total_rows,
+                &mut cursor_row,
+            ));
+            // lines.push(self.line_spans(line.as_str(), top_row + i, lnum_len, width));
         }
-        Text::from(lines)
+        // lines.remove(0);
+        // lines.insert(0, Line::raw(format!("{cursor_row}/{total_rows}")));
+        while cursor_row > top_row + height {
+            lines.remove(0);
+            cursor_row -= 1;
+        }
+        // self.set_wordwrap()
+        (Text::from(lines), total_rows)
     }
 
     fn placeholder_widget(&'a self) -> Text<'a> {
@@ -131,7 +153,9 @@ impl<'a> TextArea<'a> {
 
 impl Widget for &TextArea<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let Rect { width, height, .. } = if let Some(b) = self.block() {
+        let Rect {
+            mut width, height, ..
+        } = if let Some(b) = self.block() {
             b.inner(area)
         } else {
             area
@@ -139,12 +163,29 @@ impl Widget for &TextArea<'_> {
 
         let (top_row, top_col) = self.viewport.scroll_top();
         let top_row = self.scroll_top_row(top_row, height);
-        let top_col = self.scroll_top_col(top_col, width);
-
-        let (text, style) = if !self.placeholder.is_empty() && self.is_empty() {
-            (self.placeholder_widget(), self.placeholder_style)
+        let top_col = if self.has_textwrap() {
+            0
         } else {
-            (self.text_widget(top_row as _, height as _), self.style())
+            self.scroll_top_col(top_col, width)
+        };
+        // let top_col = self.scroll_top_col(top_col, width);
+        // let top_col = 0;
+
+        if self.line_number_style().is_some() {
+            let vl = num_digits(self.lines().len());
+            width -= vl as u16;
+            width -= 2; // margin
+        }
+
+        let (text, style, _rows) = if !self.placeholder.is_empty() && self.is_empty() {
+            (
+                self.placeholder_widget(),
+                self.placeholder_style,
+                self.placeholder_text().lines().count() as u16,
+            )
+        } else {
+            let (text, rows) = self.text_widget(top_row as _, height as _, width as _);
+            (text, self.style(), rows as u16)
         };
 
         // To get fine control over the text color and the surrrounding block they have to be rendered separately
@@ -164,6 +205,8 @@ impl Widget for &TextArea<'_> {
         if top_col != 0 {
             inner = inner.scroll((0, top_col));
         }
+
+        // self.set_wordwrap();
 
         // Store scroll top position for rendering on the next tick
         self.viewport.store(top_row, top_col, width, height);

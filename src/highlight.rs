@@ -1,6 +1,8 @@
 use crate::ratatui::style::Style;
 use crate::ratatui::text::Span;
-use crate::util::{num_digits, spaces};
+use crate::util::{num_digits, spaces, Pos};
+use crate::wordwrap::compute_slices;
+use crate::wordwrap::TextWrapMode;
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
 use std::borrow::Cow;
@@ -96,8 +98,8 @@ impl DisplayTextBuilder {
 
 pub struct LineHighlighter<'a> {
     line: &'a str,
-    spans: Vec<Span<'a>>,
-    boundaries: Vec<(Boundary, usize)>, // TODO: Consider smallvec
+    // spans: Vec<Span<'a>>,
+    boundaries: Vec<(Boundary, usize, usize)>, // TODO: Consider smallvec
     style_begin: Style,
     cursor_at_end: bool,
     cursor_style: Style,
@@ -110,8 +112,10 @@ pub struct LineHighlighter<'a> {
     current_line_style: Style,
     width: u16,
     cursor_hidden: bool,
+    line_number: Option<(Span<'a>, Span<'a>)>,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl<'a> LineHighlighter<'a> {
     pub fn new(
         line: &'a str,
@@ -125,7 +129,7 @@ impl<'a> LineHighlighter<'a> {
     ) -> Self {
         Self {
             line,
-            spans: vec![],
+            // spans: vec![],
             boundaries: vec![],
             style_begin: Style::default(),
             cursor_at_end: false,
@@ -139,13 +143,16 @@ impl<'a> LineHighlighter<'a> {
             current_line_style: Style::default(),
             width,
             cursor_hidden,
+            line_number: None,
         }
     }
 
     pub fn line_number(&mut self, row: usize, lnum_len: u8, style: Style) {
         let pad = spaces(lnum_len - num_digits(row + 1) + 1);
-        self.spans
-            .push(Span::styled(format!("{}{} ", pad, row + 1), style));
+        let span = Span::styled(format!("{}{} ", pad, row + 1), style);
+        let pad = spaces(lnum_len + 1);
+        let empty_span = Span::raw(format!("{} ", pad));
+        self.line_number = Some((span, empty_span));
     }
 
     pub fn cursor_line(&mut self, cursor_col: usize, style: Style) {
@@ -154,8 +161,9 @@ impl<'a> LineHighlighter<'a> {
         if let Some((start, c)) = self.line.char_indices().nth(cursor_col) {
             if !self.cursor_hidden {
                 self.boundaries
-                    .push((Boundary::Cursor(self.cursor_style), start));
-                self.boundaries.push((Boundary::End, start + c.len_utf8()));
+                    .push((Boundary::Cursor(self.cursor_style), start, cursor_col));
+                self.boundaries
+                    .push((Boundary::End, start + c.len_utf8(), cursor_col + 1));
             }
         } else {
             self.cursor_at_end = true;
@@ -164,49 +172,52 @@ impl<'a> LineHighlighter<'a> {
     }
 
     #[cfg(feature = "search")]
-    pub fn search(&mut self, matches: impl Iterator<Item = (usize, usize)>, style: Style) {
-        for (start, end) in matches {
-            if start != end {
-                self.boundaries.push((Boundary::Search(style), start));
-                self.boundaries.push((Boundary::End, end));
+    pub fn search(
+        &mut self,
+        matches: impl Iterator<Item = ((usize, usize), (usize, usize))>,
+        style: Style,
+    ) {
+        for ((start_byte, end_byte), (start_char, end_char)) in matches {
+            if start_byte != end_byte {
+                // TODO for wordwrap
+                self.boundaries
+                    .push((Boundary::Search(style), start_byte, start_char));
+                self.boundaries.push((Boundary::End, end_byte, end_char));
             }
         }
     }
 
-    pub fn selection(
-        &mut self,
-        current_row: usize,
-        start_row: usize,
-        start_off: usize,
-        end_row: usize,
-        end_off: usize,
-    ) {
-        let (start, end) = if current_row == start_row {
-            if start_row == end_row {
-                (start_off, end_off)
+    pub fn selection(&mut self, current_row: usize, start: Pos, end: Pos) {
+        let ((start_off, end_off), (start_col, end_col)) = if current_row == start.row {
+            if start.row == end.row {
+                ((start.offset, end.offset), (start.col, end.col))
             } else {
                 self.select_at_end = true;
-                (start_off, self.line.len())
+                (
+                    (start.offset, self.line.len()),
+                    (start.col, self.line.chars().count()),
+                )
             }
-        } else if current_row == end_row {
-            (0, end_off)
-        } else if start_row < current_row && current_row < end_row {
+        } else if current_row == end.row {
+            ((0, end.offset), (0, end.col))
+        } else if start.row < current_row && current_row < end.row {
             self.select_at_end = true;
-            (0, self.line.len())
+            ((0, self.line.len()), (0, self.line.chars().count()))
         } else {
             return;
         };
-        if start != end {
+        if start_off != end_off {
             self.boundaries
-                .push((Boundary::Select(self.select_style), start));
-            self.boundaries.push((Boundary::End, end));
+                .push((Boundary::Select(self.select_style), start_off, start_col));
+            self.boundaries.push((Boundary::End, end_off, end_col));
         }
     }
 
-    pub fn into_spans(self) -> Line<'a> {
+    pub fn into_spans(self, textwrap: &Option<TextWrapMode>) -> (Vec<Line<'a>>, Option<usize>) {
+        #[allow(unused_variables)]
         let Self {
             line,
-            mut spans,
+            // mut spans,
             mut boundaries,
             tab_len,
             style_begin,
@@ -220,70 +231,292 @@ impl<'a> LineHighlighter<'a> {
             current_line_style,
             width,
             cursor_hidden,
+            line_number,
         } = self;
-        let mut builder = DisplayTextBuilder::new(tab_len, mask);
 
-        if boundaries.is_empty() {
-            let built = builder.build(line);
-            if !built.is_empty() {
-                spans.push(Span::styled(built, style_begin));
-            }
-            if cursor_at_end {
-                spans.push(Span::styled(" ", cursor_style));
-            } else if select_at_end {
-                spans.push(Span::styled(" ", select_style));
-            }
-
-            if cursor_line_fullwidth && current_line {
-                let len = width - line.chars().count() as u16;
-                let empty = (0..len).map(|_| " ").collect::<String>();
-                spans.push(Span::styled(empty, current_line_style));
-            }
-
-            return Line::from(spans);
+        if width == 0 {
+            return (vec![], current_line.then(|| 0));
         }
 
-        boundaries.sort_unstable_by(|(l, i), (r, j)| match i.cmp(j) {
+        let slices = match textwrap {
+            Some(mode) => compute_slices(line, width as usize, mode),
+            // Some(mode) => match mode {
+            //     TextWrapMode::Width => compute_slices(line, width as usize),
+            //     TextWrapMode::Word => compute_slices_words(line, width as usize, true),
+            //     TextWrapMode::WORD => compute_slices_words(line, width as usize, false),
+            // },
+            None => vec![((0, line.chars().count()), (0, line.len()))],
+        };
+        // let slices = compute_slices(wordwrap, width as usize, line);
+        // let slices = compute_slices_words(textwrap, width as usize, line);
+
+        boundaries.sort_unstable_by(|(l, i, _), (r, j, _)| match i.cmp(j) {
             Ordering::Equal => l.cmp(r),
             o => o,
         });
 
-        let mut style = style_begin;
-        let mut start = 0;
-        let mut stack = vec![];
+        let mut cursor_row = 0;
 
-        for (next_boundary, end) in boundaries {
-            if start < end {
-                spans.push(Span::styled(builder.build(&line[start..end]), style));
+        let mut lines = vec![];
+        // let mut last_style = style_begin;
+        let mut stack: Vec<Style> = vec![];
+        let mut first_line_number = true;
+        let mut last_line_number = false;
+        for (i, (slice_chars, slice_bytes)) in slices.iter().enumerate() {
+            if i == slices.len() - 1 {
+                last_line_number = true;
             }
-
-            style = if let Some(s) = next_boundary.style() {
-                stack.push(style);
-                s
-            } else {
-                stack.pop().unwrap_or(style_begin)
-            };
-            start = end;
+            let (line, has_cursor) = into_spans_line(
+                line,
+                *slice_chars,
+                *slice_bytes,
+                &mut boundaries,
+                style_begin,
+                // last_style,
+                cursor_at_end,
+                cursor_style,
+                cursor_line_fullwidth,
+                tab_len,
+                mask,
+                select_at_end,
+                select_style,
+                current_line,
+                current_line_style,
+                width,
+                &mut stack, // wordwrap,
+                &line_number,
+                first_line_number,
+                last_line_number,
+            );
+            first_line_number = false;
+            lines.push(line);
+            // last_style = style;
+            if has_cursor {
+                cursor_row = i;
+            }
         }
 
-        if start != line.len() {
-            spans.push(Span::styled(builder.build(&line[start..]), style));
+        (lines, current_line.then(|| cursor_row))
+    }
+}
+
+// fn compute_slices_words(
+//     wordwrap: bool,
+//     width: usize,
+//     line: &str,
+// ) -> Vec<((usize, usize), (usize, usize))> {
+//     if wordwrap {
+//         // let t = bwrap::Wrapper::new(line, width, )
+
+//         let mut wrapper = bwrap::EasyWrapper::new(line, width).unwrap();
+//         let wrapped = wrapper
+//             .wrap_use_style(bwrap::WrapStyle::MayBrk(None, None))
+//             .unwrap();
+
+//         let wrapped = bwrap::wrap!(line, width);
+//         println!("{:?}", wrapped);
+//         return vec![];
+//         // let wrapped_text = wrapped.lines();
+
+//         // let wrapped_text = textwrap::wrap(line, width);
+
+//         // textwrap::wrap(
+//         //     line,
+//         //     textwrap::Options::new(width).line_ending(textwrap::LineEnding::LF),
+//         // );
+
+//         let mut start_byte = 0;
+//         let mut start_char = 0;
+
+//         let lines = wrapped.lines();
+//         // let count = lines.count();
+
+//         let mut slices = vec![];
+//         for (index, part) in lines.into_iter().enumerate() {
+//             // for (index, part) in wrapped_text.iter().enumerate() {
+//             let mut end_char = part.chars().count() + start_char;
+//             let mut end_byte = part.len() + start_byte;
+//             // if index != wrapped_text.len() - 1 {
+//             // // if index != wrapped_text.len() - 1 {
+//             //     end_char += 1;
+//             //     end_byte += 1;
+//             // }
+//             slices.push(((start_char, end_char), (start_byte, end_byte)));
+//             start_byte = end_byte;
+//             start_char = end_char;
+//         }
+
+//         // println!("{:?}", slices);
+
+//         // let full_lines_count = line.chars().count() / width;
+
+//         // let mut slices = vec![];
+//         // for i in 0..full_lines_count {
+//         //     let offset = i * width;
+//         //     let (first, _) = line.char_indices().skip(offset).take(1).last().unwrap();
+//         //     let (last, _) = line
+//         //         .char_indices()
+//         //         .skip(offset + width)
+//         //         .take(1)
+//         //         .last()
+//         //         .unwrap_or((line.len(), ' '));
+//         //     slices.push(((offset, offset + width), (first, last)));
+//         // }
+//         // if line.is_empty() {
+//         //     slices.push(((0, 0), (0, 0)));
+//         // } else if line.chars().count() % width != 0 {
+//         //     let offset = full_lines_count * width;
+//         //     let (first, _) = line.char_indices().skip(offset).take(1).last().unwrap();
+//         //     slices.push(((offset, line.chars().count()), (first, line.len())));
+//         // } else {
+//         //     let c = line.chars().count();
+//         //     let l = line.len();
+//         //     slices.push(((c, c), (l, l)));
+//         // }
+//         slices
+//     } else {
+//         vec![((0, line.chars().count()), (0, line.len()))]
+//     }
+// }
+
+#[allow(clippy::too_many_arguments)]
+fn into_spans_line<'a>(
+    line: &'a str,
+    slice_chars: (usize, usize),
+    slice_bytes: (usize, usize),
+    boundaries: &mut [(Boundary, usize, usize)], // TODO: Consider smallvec
+    style_begin: Style,
+    // last_style: Style,
+    cursor_at_end: bool,
+    cursor_style: Style,
+    cursor_line_fullwidth: bool,
+    tab_len: u8,
+    mask: Option<char>,
+    select_at_end: bool,
+    select_style: Style,
+    current_line: bool,
+    current_line_style: Style,
+    width: u16,
+    stack: &mut Vec<Style>,
+    line_number: &Option<(Span<'a>, Span<'a>)>,
+    first_line_number: bool,
+    last_line_number: bool,
+) -> (Line<'a>, bool) {
+    let mut spans: Vec<Span<'a>> = vec![];
+    let mut builder = DisplayTextBuilder::new(tab_len, mask);
+
+    let cline = if slice_bytes.0 != slice_bytes.1 {
+        &line[slice_bytes.0..slice_bytes.1]
+    } else {
+        ""
+    };
+
+    if let Some((span, empty_span)) = line_number {
+        if first_line_number {
+            spans.push(span.clone());
+        } else {
+            spans.push(empty_span.clone());
+        }
+    }
+
+    if boundaries.is_empty() {
+        let built = builder.build(cline);
+        if !built.is_empty() {
+            spans.push(Span::styled(built, style_begin));
         }
 
-        if cursor_at_end {
+        let mut has_cursor = false;
+
+        // TODO CHECK IF NEEDS TO BE REVIEWED FOR CURSORHIDE ENHANCEMENT
+        if last_line_number && cursor_at_end {
+            has_cursor = true;
             spans.push(Span::styled(" ", cursor_style));
         } else if select_at_end {
             spans.push(Span::styled(" ", select_style));
         }
 
-        if cursor_line_fullwidth {
-            let len = width - line.chars().count() as u16;
+        if cursor_line_fullwidth && current_line {
+            let len = width.saturating_sub(cline.chars().count() as u16);
             let empty = (0..len).map(|_| " ").collect::<String>();
             spans.push(Span::styled(empty, current_line_style));
         }
 
-        Line::from(spans)
+        return (Line::from(spans), has_cursor);
     }
+
+    let mut has_cursor = false;
+
+    // boundaries.sort_unstable_by(|(l, i, _), (r, j, _)| match i.cmp(j) {
+    //     Ordering::Equal => l.cmp(r),
+    //     o => o,
+    // });
+
+    // let mut style = last_style;
+    // let mut style = style_begin;
+    // let mut style = stack.last().cloned().unwrap_or(style_begin);
+    let mut style = stack.pop().unwrap_or(style_begin);
+    // spans.push(Span::raw(format!("{:?}", style)));
+    let mut start = slice_bytes.0;
+    // let mut stack = vec![];
+
+    for (next_boundary, end_byte, end_char) in boundaries {
+        if *end_char < slice_chars.0 {
+            continue;
+        }
+
+        let end = (*end_byte).min(slice_bytes.1);
+
+        if start < end {
+            spans.push(Span::styled(builder.build(&line[start..end]), style));
+            if style.eq(&cursor_style) {
+                has_cursor = true;
+            }
+            if let Boundary::Cursor(_) = next_boundary {
+                has_cursor = true;
+            }
+        }
+
+        start = end;
+        if end >= slice_bytes.1 {
+            stack.push(style);
+            break;
+        }
+        // if start < *end {
+        //     spans.push(Span::styled(builder.build(&line[start..*end]), style));
+        // }
+        style = if let Some(s) = next_boundary.style() {
+            stack.push(style);
+            s
+        } else {
+            stack.pop().unwrap_or(style_begin)
+        };
+    }
+
+    if start < slice_bytes.1 {
+        spans.push(Span::styled(
+            builder.build(&line[start..slice_bytes.1]),
+            style,
+        ));
+    }
+    // if start != line.len() {
+    //     spans.push(Span::styled(builder.build(&line[start..]), style));
+    // }
+
+    if last_line_number && cursor_at_end {
+        has_cursor = true;
+        spans.push(Span::styled(" ", cursor_style));
+    } else if select_at_end {
+        spans.push(Span::styled(" ", select_style));
+    }
+
+    if cursor_line_fullwidth {
+        let len = width.saturating_sub(cline.chars().count() as u16);
+        let empty = (0..len).map(|_| " ").collect::<String>();
+        spans.push(Span::styled(empty, current_line_style));
+    }
+
+    (Line::from(spans), has_cursor)
+    // (Line::from(spans), style)
 }
 
 // Tests for spans don't work with tui-rs
@@ -386,7 +619,7 @@ mod tests {
     }
 
     fn assert_spans<T: Debug>(lh: LineHighlighter, want: &[(&str, Style)], context: T) {
-        let line = lh.into_spans();
+        let line = &lh.into_spans(&None).0[0]; // TODO
         let have = line
             .spans
             .iter()
@@ -456,10 +689,10 @@ mod tests {
     #[test]
     fn into_spans_search() {
         let tests = [
-            ("abcde", &[(0, 5)][..], &[("abcde", SEARCH)][..]),
+            ("abcde", &[((0, 5), (0, 5))][..], &[("abcde", SEARCH)][..]),
             (
                 "abcde",
-                &[(0, 1), (2, 3), (4, 5)][..],
+                &[((0, 1), (0, 1)), ((2, 3), (2, 3)), ((4, 5), (4, 5))][..],
                 &[
                     ("a", SEARCH),
                     ("b", DEFAULT),
@@ -470,7 +703,7 @@ mod tests {
             ),
             (
                 "abcde",
-                &[(1, 2), (3, 4)][..],
+                &[((1, 2), (1, 2)), ((3, 4), (3, 4))][..],
                 &[
                     ("a", DEFAULT),
                     ("b", SEARCH),
@@ -481,13 +714,13 @@ mod tests {
             ),
             (
                 "abcde",
-                &[(0, 2), (2, 4), (4, 5)][..],
+                &[((0, 2), (0, 2)), ((2, 4), (2, 4)), ((4, 5), (4, 5))][..],
                 &[("ab", SEARCH), ("cd", SEARCH), ("e", SEARCH)][..],
             ),
-            ("abcde", &[(1, 1)][..], &[("abcde", DEFAULT)][..]),
+            ("abcde", &[((1, 1), (1, 1))][..], &[("abcde", DEFAULT)][..]),
             (
                 "あいうえお",
-                &[(0, 3), (6, 9), (12, 15)][..],
+                &[((0, 3), (0, 1)), ((6, 9), (2, 3)), ((12, 15), (4, 5))][..],
                 &[
                     ("あ", SEARCH),
                     ("い", DEFAULT),
@@ -498,7 +731,7 @@ mod tests {
             ),
             (
                 "\ta\tb\t",
-                &[(0, 1), (2, 3), (3, 4)][..],
+                &[((0, 1), (0, 1)), ((2, 3), (2, 3)), ((3, 4), (3, 4))][..],
                 &[
                     ("    ", SEARCH),
                     ("a", DEFAULT),
@@ -552,7 +785,20 @@ mod tests {
         for test in tests {
             let (line, (row, start_row, start_off, end_row, end_off), want) = test;
             let mut lh = LineHighlighter::new(line, CUR, false, 4, None, SEL, 50, false);
-            lh.selection(row, start_row, start_off, end_row, end_off);
+            // lh.selection(row, start_row, start_off, end_row, end_off);
+            lh.selection(
+                row,
+                Pos {
+                    row: start_row,
+                    col: start_off,
+                    offset: start_off,
+                },
+                Pos {
+                    row: end_row,
+                    col: end_off,
+                    offset: end_off,
+                },
+            );
             assert_spans(lh, want, test);
         }
     }
@@ -565,7 +811,20 @@ mod tests {
                 {
                     let mut lh = LineHighlighter::new("abcde", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(2, LINE);
-                    lh.selection(0, 0, 1, 0, 4);
+                    lh.selection(
+                        0,
+                        Pos {
+                            row: 0,
+                            col: 1,
+                            offset: 1,
+                        },
+                        Pos {
+                            row: 0,
+                            col: 4,
+                            offset: 4,
+                        },
+                    );
+                    // lh.selection(0, 0, 1, 0, 4);
                     lh
                 },
                 &[("a", LINE), ("b", SEL), ("c", CUR), ("d", SEL), ("e", LINE)][..],
@@ -577,8 +836,21 @@ mod tests {
                     let mut lh =
                         LineHighlighter::new("abcdefg", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(3, LINE);
-                    lh.selection(0, 0, 2, 0, 5);
-                    lh.search([(1, 2), (5, 6)].into_iter(), SEARCH);
+                    // lh.selection(0, 0, 2, 0, 5);
+                    lh.selection(
+                        0,
+                        Pos {
+                            row: 0,
+                            col: 2,
+                            offset: 2,
+                        },
+                        Pos {
+                            row: 0,
+                            col: 5,
+                            offset: 5,
+                        },
+                    );
+                    lh.search([((1, 2), (1, 2)), ((5, 6), (5, 6))].into_iter(), SEARCH);
                     lh
                 },
                 &[
@@ -596,7 +868,20 @@ mod tests {
                 {
                     let mut lh = LineHighlighter::new("ab", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(2, LINE);
-                    lh.selection(0, 0, 1, 2, 0);
+                    // lh.selection(0, 0, 1, 2, 0);
+                    lh.selection(
+                        0,
+                        Pos {
+                            row: 0,
+                            col: 1,
+                            offset: 1,
+                        },
+                        Pos {
+                            row: 2,
+                            col: 0,
+                            offset: 0,
+                        },
+                    );
                     lh
                 },
                 &[("a", LINE), ("b", SEL), (" ", CUR)][..],
@@ -606,7 +891,20 @@ mod tests {
                 {
                     let mut lh = LineHighlighter::new("abcd", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(1, LINE);
-                    lh.selection(0, 0, 1, 0, 3);
+                    // lh.selection(0, 0, 1, 0, 3);
+                    lh.selection(
+                        0,
+                        Pos {
+                            row: 0,
+                            col: 1,
+                            offset: 1,
+                        },
+                        Pos {
+                            row: 0,
+                            col: 3,
+                            offset: 3,
+                        },
+                    );
                     lh
                 },
                 &[("a", LINE), ("b", CUR), ("c", SEL), ("d", LINE)][..],
@@ -616,7 +914,20 @@ mod tests {
                 {
                     let mut lh = LineHighlighter::new("abcd", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(2, LINE);
-                    lh.selection(0, 0, 1, 0, 3);
+                    // lh.selection(0, 0, 1, 0, 3);
+                    lh.selection(
+                        0,
+                        Pos {
+                            row: 0,
+                            col: 1,
+                            offset: 1,
+                        },
+                        Pos {
+                            row: 0,
+                            col: 3,
+                            offset: 3,
+                        },
+                    );
                     lh
                 },
                 &[("a", LINE), ("b", SEL), ("c", CUR), ("d", LINE)][..],
@@ -626,7 +937,20 @@ mod tests {
                 {
                     let mut lh = LineHighlighter::new("abc", CUR, false, 4, None, SEL, 50, false);
                     lh.cursor_line(1, LINE);
-                    lh.selection(0, 0, 1, 0, 2);
+                    // lh.selection(0, 0, 1, 0, 2);
+                    lh.selection(
+                        0,
+                        Pos {
+                            row: 0,
+                            col: 1,
+                            offset: 1,
+                        },
+                        Pos {
+                            row: 0,
+                            col: 2,
+                            offset: 2,
+                        },
+                    );
                     lh
                 },
                 &[("a", LINE), ("b", CUR), ("c", LINE)][..],

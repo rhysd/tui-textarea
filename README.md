@@ -3,9 +3,13 @@ zeka-tui-textarea
 
 Fork of [tui-textarea](https://github.com/rhysd/tui-textarea)
 
-Used for zeka
+Used for zeka. Please use original library.
 
-Small changes to library:
+- Needs tests
+- Needs optimization
+- Needs refactoring
+
+Changes to library:
 
 ## Full line highlight of cursor line
 
@@ -41,3 +45,17 @@ textarea.set_selection_inclusive();
 - `WordSpacingForward`: Move cursor forward by one WORD. Word boundary appears at spaces.
 - `WordSpacingEnd`: Move cursor forward to the next end of WORD. WORD boundary appears at spaces.
 - `WordSpacingBack`: Move cursor backward by one WORD. WORD boundary appears at spaces.
+
+## TextWrap
+
+Adds three text wraping modes
+
+- `TextWrapMode::Width` => text wrap at textarea width without looking at words
+- `TextWrapMode::Word` => text wrap at words separated by whitespace and punctuations
+- `TextWrapMode::WORD` => text wrap at words separated by whitespace only
+
+```rust
+textarea.set_textwrap(TextWrapMode::Word);
+```
+
+Note that this is not optimized and simple word wraping algorithm. Note also that I changed `CursorMove::Top`, `CursorMove::Bottom`, `CursorMove::ParagraphForward`, `CursorMove::ParagraphBack` to move cursor to start or end of line.
