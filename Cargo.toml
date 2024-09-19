@@ -47,6 +47,7 @@ tui = { version = "0.19", default-features = false, optional = true }
 unicode-width = "0.1.11"
 serde = { version = "1", optional = true , features = ["derive"] }
 
+
 [[example]]
 name = "minimal"
 required-features = ["crossterm"]
@@ -99,6 +100,30 @@ required-features = ["tuirs-crossterm", "search"]
 name = "tuirs_termion"
 required-features = ["tuirs-termion"]
 
+[[example]]
+name = "full_width_highlight"
+required-features = ["crossterm"]
+
+[[example]]
+name = "wordwrap"
+required-features = ["crossterm"]
+
+[[example]]
+name = "helix_light"
+required-features = ["crossterm" ]
+
+[[example]]
+name = "search"
+required-features = ["crossterm"]
+
+[[example]]
+name = "line_numbers_wordwrap"
+required-features = ["crossterm"]
+
+[[example]]
+name = "variable_wordwrap"
+required-features = ["crossterm"]
+
 [workspace]
 members = ["bench"]
 
@@ -107,6 +132,7 @@ lto = "thin"
 
 [dev-dependencies]
 serde_json = "1.0.120"
+arboard = "3.3.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

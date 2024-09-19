@@ -8,7 +8,7 @@ use crate::ratatui::widgets::{Block, Widget};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
-use crate::util::{spaces, Pos};
+use crate::util::{num_digits, spaces, Pos};
 use crate::widget::Viewport;
 use crate::word::{find_word_exclusive_end_forward, find_word_start_backward};
 use crate::{wordwrap, TextWrapMode};
@@ -1666,7 +1666,7 @@ impl<'a> TextArea<'a> {
         lnum_len: u8,
         width: u16,
         total_rows: &mut usize,
-        cursor_row: &mut usize,
+        scursor: &mut (usize, usize),
     ) -> Vec<Line<'b>> {
         let mut hl = LineHighlighter::new(
             line,
@@ -1698,10 +1698,11 @@ impl<'a> TextArea<'a> {
             // hl.selection(row, start.row, start.offset, end.row, end.offset);
         }
 
-        let (spans, has_cursor) = hl.into_spans(&self.textwrap);
+        let (spans, screen_cursor) = hl.into_spans(&self.textwrap);
 
-        if let Some(c) = has_cursor {
-            *cursor_row = *total_rows + c + 1;
+        if let Some(c) = screen_cursor {
+            scursor.0 = *total_rows + c.0 + 1;
+            scursor.1 = c.1;
         }
         *total_rows += spans.len();
 
@@ -1914,9 +1915,8 @@ impl<'a> TextArea<'a> {
     ///
     /// let mut textarea = TextArea::default();
     ///
-    /// let style = Style::default().fg(Color::Red);
     /// textarea.set_cursor_line_fullwidth();
-    /// assert_eq!(textarea.cursor_line_fullwodth(), true));
+    /// assert_eq!(textarea.cursor_line_fullwidth(), true);
     /// ```
     pub fn set_cursor_line_fullwidth(&mut self) {
         self.cursor_line_fullwidth = true;
@@ -1934,9 +1934,8 @@ impl<'a> TextArea<'a> {
     ///
     /// let mut textarea = TextArea::default();
     ///
-    /// let style = Style::default().fg(Color::Red);
     /// textarea.set_cursor_hidden();
-    /// assert_eq!(textarea.cursor_hidden(), true));
+    /// assert_eq!(textarea.cursor_hidden(), true);
     /// ```
     pub fn set_cursor_hidden(&mut self) {
         self.cursor_hidden = true;
@@ -2157,6 +2156,8 @@ impl<'a> TextArea<'a> {
     }
 
     /// Get the current cursor position. 0-base character-wise (row, col) cursor position.
+    /// This function always gives cursor position in the string, not at screen.
+    /// Use `screen_cursor` function to retrieve the cursor position at screen.
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -2171,6 +2172,50 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn cursor(&self) -> (usize, usize) {
         self.cursor
+    }
+
+    /// Get the current cursor position as per seen on screen. 0-base character-wise (row, col) cursor position.
+    /// Can be used to display cursor from outside the textarea (see helix_light example).
+    ///
+    /// **WARNING !**
+    /// Viewport needs to be initialized for a correct returned value
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// assert_eq!(textarea.screen_cursor(), (0, 0));
+    ///
+    /// textarea.insert_char('a');
+    /// textarea.insert_newline();
+    /// textarea.insert_char('b');
+    ///
+    /// assert_eq!(textarea.screen_cursor(), (0, 0));
+    ///
+    /// // Init viewport by rendering at least once
+    ///
+    /// use ratatui::buffer::Buffer;
+    /// use ratatui::layout::Rect;
+    /// use ratatui::widgets::Widget as _;
+    ///
+    /// let r = Rect { x: 0, y: 0, width: 24, height: 8 };
+    /// let mut b = Buffer::empty(r.clone());
+    /// textarea.render(r, &mut b);
+    ///
+    /// assert_eq!(textarea.screen_cursor(), (1, 1));
+    /// ```
+    pub fn screen_cursor(&self) -> (usize, usize) {
+        let row = self.viewport.row().saturating_sub(1);
+        let col = self.viewport.col();
+        let (_, left, _, _) = self.viewport.rect();
+        // self.block
+
+        let lnum_len = if self.line_number_style.is_some() {
+            2 + num_digits(self.lines.len())
+        } else {
+            0
+        };
+        (row, col - left as usize + lnum_len as usize)
     }
 
     /// Get the current selection range as a pair of the start position and the end position. The range is bounded

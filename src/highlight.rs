@@ -1,8 +1,8 @@
 use crate::ratatui::style::Style;
 use crate::ratatui::text::Span;
 use crate::util::{num_digits, spaces, Pos};
-use crate::wordwrap::compute_slices;
 use crate::wordwrap::TextWrapMode;
+use crate::wordwrap::{compute_slices, get_cursor_col};
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
 use std::borrow::Cow;
@@ -104,6 +104,7 @@ pub struct LineHighlighter<'a> {
     cursor_at_end: bool,
     cursor_style: Style,
     cursor_line_fullwidth: bool,
+    cursor_col: usize,
     tab_len: u8,
     mask: Option<char>,
     select_at_end: bool,
@@ -135,6 +136,7 @@ impl<'a> LineHighlighter<'a> {
             cursor_at_end: false,
             cursor_style,
             cursor_line_fullwidth,
+            cursor_col: 0,
             tab_len,
             mask,
             select_at_end: false,
@@ -158,6 +160,7 @@ impl<'a> LineHighlighter<'a> {
     pub fn cursor_line(&mut self, cursor_col: usize, style: Style) {
         self.current_line = true;
         self.current_line_style = style;
+        self.cursor_col = cursor_col;
         if let Some((start, c)) = self.line.char_indices().nth(cursor_col) {
             if !self.cursor_hidden {
                 self.boundaries
@@ -213,7 +216,10 @@ impl<'a> LineHighlighter<'a> {
         }
     }
 
-    pub fn into_spans(self, textwrap: &Option<TextWrapMode>) -> (Vec<Line<'a>>, Option<usize>) {
+    pub fn into_spans(
+        self,
+        textwrap: &Option<TextWrapMode>,
+    ) -> (Vec<Line<'a>>, Option<(usize, usize)>) {
         #[allow(unused_variables)]
         let Self {
             line,
@@ -223,6 +229,7 @@ impl<'a> LineHighlighter<'a> {
             style_begin,
             cursor_style,
             cursor_line_fullwidth,
+            cursor_col,
             cursor_at_end,
             mask,
             select_at_end,
@@ -235,7 +242,7 @@ impl<'a> LineHighlighter<'a> {
         } = self;
 
         if width == 0 {
-            return (vec![], current_line.then(|| 0));
+            return (vec![], current_line.then(|| (0, 0)));
         }
 
         let slices = match textwrap {
@@ -255,7 +262,9 @@ impl<'a> LineHighlighter<'a> {
             o => o,
         });
 
-        let mut cursor_row = 0;
+        // let mut screen_cursor;
+        // let mut screen_cursor = (0, 0);
+        // let mut cursor_row = 0;
 
         let mut lines = vec![];
         // let mut last_style = style_begin;
@@ -266,7 +275,7 @@ impl<'a> LineHighlighter<'a> {
             if i == slices.len() - 1 {
                 last_line_number = true;
             }
-            let (line, has_cursor) = into_spans_line(
+            let line = into_spans_line(
                 line,
                 *slice_chars,
                 *slice_bytes,
@@ -291,12 +300,25 @@ impl<'a> LineHighlighter<'a> {
             first_line_number = false;
             lines.push(line);
             // last_style = style;
-            if has_cursor {
-                cursor_row = i;
-            }
+            // if has_cursor {
+            //     cursor_row = i;
+            // }
+            // if let Some(c) = cursor {
+            //     // eprintln!("{c}");
+            //     screen_cursor = (i, c);
+            // }
         }
 
-        (lines, current_line.then(|| cursor_row))
+        // if textwrap.is_none() {
+        //     screen_cursor.1 = cursor_col;
+        // }
+        let screen_cursor = if let Some(mode) = textwrap {
+            get_cursor_col(line, cursor_col, width as usize, mode).unwrap_or((0, 0))
+        } else {
+            (0, cursor_col)
+        };
+
+        (lines, current_line.then(|| screen_cursor))
     }
 }
 
@@ -401,7 +423,7 @@ fn into_spans_line<'a>(
     line_number: &Option<(Span<'a>, Span<'a>)>,
     first_line_number: bool,
     last_line_number: bool,
-) -> (Line<'a>, bool) {
+) -> Line<'a> {
     let mut spans: Vec<Span<'a>> = vec![];
     let mut builder = DisplayTextBuilder::new(tab_len, mask);
 
@@ -425,11 +447,12 @@ fn into_spans_line<'a>(
             spans.push(Span::styled(built, style_begin));
         }
 
-        let mut has_cursor = false;
+        // let mut has_cursor = None;
 
         // TODO CHECK IF NEEDS TO BE REVIEWED FOR CURSORHIDE ENHANCEMENT
         if last_line_number && cursor_at_end {
-            has_cursor = true;
+            // has_cursor = true;
+            // has_cursor = Some(cline.chars().count());
             spans.push(Span::styled(" ", cursor_style));
         } else if select_at_end {
             spans.push(Span::styled(" ", select_style));
@@ -440,11 +463,13 @@ fn into_spans_line<'a>(
             let empty = (0..len).map(|_| " ").collect::<String>();
             spans.push(Span::styled(empty, current_line_style));
         }
-
-        return (Line::from(spans), has_cursor);
+        // eprintln!("no boundaries");
+        // eprintln!("{:?}", has_cursor);
+        return Line::from(spans);
     }
 
-    let mut has_cursor = false;
+    // let mut has_cursor = None;
+    // let mut has_cursor = false;
 
     // boundaries.sort_unstable_by(|(l, i, _), (r, j, _)| match i.cmp(j) {
     //     Ordering::Equal => l.cmp(r),
@@ -469,10 +494,16 @@ fn into_spans_line<'a>(
         if start < end {
             spans.push(Span::styled(builder.build(&line[start..end]), style));
             if style.eq(&cursor_style) {
-                has_cursor = true;
+                // has_cursor = Some(3);
+                // has_cursor = Some(*end_char);
+                // has_cursor = Some(slice_chars.0 + *end_char);
+                // has_cursor = true;
             }
             if let Boundary::Cursor(_) = next_boundary {
-                has_cursor = true;
+                // has_cursor = Some(3);
+                // has_cursor = Some(*end_char);
+                // has_cursor = Some(slice_chars.0 + *end_char);
+                // has_cursor = true;
             }
         }
 
@@ -503,7 +534,8 @@ fn into_spans_line<'a>(
     // }
 
     if last_line_number && cursor_at_end {
-        has_cursor = true;
+        // has_cursor = true;
+        // has_cursor = Some(cline.chars().count());
         spans.push(Span::styled(" ", cursor_style));
     } else if select_at_end {
         spans.push(Span::styled(" ", select_style));
@@ -515,7 +547,7 @@ fn into_spans_line<'a>(
         spans.push(Span::styled(empty, current_line_style));
     }
 
-    (Line::from(spans), has_cursor)
+    Line::from(spans)
     // (Line::from(spans), style)
 }
 

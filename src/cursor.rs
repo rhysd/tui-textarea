@@ -101,7 +101,7 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (0, 3));
     /// ```
     End,
-    /// Move cursor to the top of lines.
+    /// Move cursor to the top of lines, head of top line.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -113,14 +113,14 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (0, 0));
     /// ```
     Top,
-    /// Move cursor to the bottom of lines.
+    /// Move cursor to the bottom of lines, last character.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
     /// let mut textarea = TextArea::from(["a", "b", "c"]);
     ///
     /// textarea.move_cursor(CursorMove::Bottom);
-    /// assert_eq!(textarea.cursor(), (2, 0));
+    /// assert_eq!(textarea.cursor(), (2, 1));
     /// ```
     Bottom,
     /// Move cursor forward by one word. Word boundary appears at spaces, punctuations, and others. For example
@@ -303,11 +303,11 @@ pub enum CursorMove {
     ///
     /// // Move cursor to the end of lines (line 20). It is outside the viewport (line 1 to line 8)
     /// textarea.move_cursor(CursorMove::Bottom);
-    /// assert_eq!(textarea.cursor(), (19, 0));
+    /// assert_eq!(textarea.cursor(), (19, 2));
     ///
     /// // Cursor is moved to line 8 to enter the viewport
     /// textarea.move_cursor(CursorMove::InViewport);
-    /// assert_eq!(textarea.cursor(), (7, 0));
+    /// assert_eq!(textarea.cursor(), (7, 1));
     /// ```
     InViewport,
 }
@@ -475,13 +475,24 @@ impl CursorMove {
                 Some((row, col))
             }
             InViewport => {
-                // TODO: review wordwrap
                 let (row_top, col_top, row_bottom, col_bottom) = viewport.position();
+                let (_, _, width, _) = viewport.rect();
+
+                let clines = if textwrap.is_some() {
+                    wordwrap::count_lines(lines, width as usize, textwrap.as_ref().unwrap())
+                } else {
+                    lines.len()
+                };
 
                 let row = row.clamp(row_top as usize, row_bottom as usize);
-                let row = cmp::min(row, lines.len() - 1);
+                let row = cmp::min(row, clines - 1);
+                // let row = cmp::min(row, lines.len() - 1);
                 let col = col.clamp(col_top as usize, col_bottom as usize);
-                let col = fit_col(col, &lines[row]);
+                let col = if textwrap.is_some() {
+                    0
+                } else {
+                    fit_col(col, &lines[row])
+                };
 
                 Some((row, col))
             }
@@ -510,9 +521,9 @@ mod tests {
         textarea.render(r, &mut b);
 
         textarea.move_cursor(CursorMove::Bottom);
-        assert_eq!(textarea.cursor(), (19, 0));
+        assert_eq!(textarea.cursor(), (19, 2));
 
         textarea.move_cursor(CursorMove::InViewport);
-        assert_eq!(textarea.cursor(), (7, 0));
+        assert_eq!(textarea.cursor(), (7, 1));
     }
 }

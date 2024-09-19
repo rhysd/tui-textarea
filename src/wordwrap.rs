@@ -14,6 +14,35 @@ fn fit_col_width(col: usize, line: &str, width: usize) -> usize {
     std::cmp::min(col, line.chars().count() % width) + (line.chars().count() / width) * width
 }
 
+#[allow(clippy::type_complexity)]
+fn get_pos(
+    slices: &[((usize, usize), (usize, usize))],
+    col: usize,
+) -> Option<(usize, usize, usize)> {
+    slices
+        .iter()
+        .enumerate()
+        .find(|(i, ((start_char, end_char), _))| {
+            if *i == slices.len() - 1 {
+                col >= *start_char && col <= *end_char
+            } else {
+                col >= *start_char && col < *end_char
+            }
+        })
+        .map(|(i, ((start_char, end_char), _))| (i, *start_char, *end_char))
+}
+
+pub fn get_cursor_col(
+    line: &str,
+    col: usize,
+    width: usize,
+    mode: &TextWrapMode,
+) -> Option<(usize, usize)> {
+    let slices = compute_slices(line, width, mode);
+    let (row, start_char, _) = get_pos(&slices, col)?;
+    Some((row, col - start_char))
+}
+
 pub fn count_lines(lines: &[String], width: usize, mode: &TextWrapMode) -> usize {
     let mut count = 0;
     for line in lines {
@@ -58,17 +87,18 @@ fn go_down_words(
     let line = &lines[row];
     let slices = compute_slices_words(line, width, punctuation);
 
-    let (current_line, start_char, end_char) = slices
-        .iter()
-        .enumerate()
-        .find(|(i, ((start_char, end_char), _))| {
-            if *i == slices.len() - 1 {
-                col >= *start_char && col <= *end_char
-            } else {
-                col >= *start_char && col < *end_char
-            }
-        })
-        .map(|(i, ((start_char, end_char), _))| (i, *start_char, *end_char))?;
+    let (current_line, start_char, end_char) = get_pos(&slices, col)?;
+    // let (current_line, start_char, end_char) = slices
+    //     .iter()
+    //     .enumerate()
+    //     .find(|(i, ((start_char, end_char), _))| {
+    //         if *i == slices.len() - 1 {
+    //             col >= *start_char && col <= *end_char
+    //         } else {
+    //             col >= *start_char && col < *end_char
+    //         }
+    //     })
+    //     .map(|(i, ((start_char, end_char), _))| (i, *start_char, *end_char))?;
 
     if current_line == slices.len() - 1 {
         let row = row + 1;
@@ -136,17 +166,18 @@ fn go_up_words(
     let line = &lines[row];
     let slices = compute_slices_words(line, width, punctuation);
 
-    let (current_line, start_char) = slices
-        .iter()
-        .enumerate()
-        .find(|(i, ((start_char, end_char), _))| {
-            if *i == slices.len() - 1 {
-                col >= *start_char && col <= *end_char
-            } else {
-                col >= *start_char && col < *end_char
-            }
-        })
-        .map(|(i, ((start_char, _), _))| (i, *start_char))?;
+    let (current_line, start_char, _) = get_pos(&slices, col)?;
+    // let (current_line, start_char) = slices
+    //     .iter()
+    //     .enumerate()
+    //     .find(|(i, ((start_char, end_char), _))| {
+    //         if *i == slices.len() - 1 {
+    //             col >= *start_char && col <= *end_char
+    //         } else {
+    //             col >= *start_char && col < *end_char
+    //         }
+    //     })
+    //     .map(|(i, ((start_char, _), _))| (i, *start_char))?;
 
     if current_line == 0 {
         let row = row.checked_sub(1)?;

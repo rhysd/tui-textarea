@@ -5,7 +5,7 @@ Fork of [tui-textarea](https://github.com/rhysd/tui-textarea)
 
 Used for zeka. Please use original library.
 
-- Needs tests
+- Needs unit tests and tests
 - Needs optimization
 - Needs refactoring
 
@@ -16,6 +16,8 @@ Changes to library:
 With this option on, the cursor line will be highlighted for the full width of the textarea.
 
 ```rust
+use tui_textarea::TextArea;
+let mut textarea = TextArea::default();
 textarea.set_cursor_line_fullwidth();
 ```
 
@@ -28,6 +30,8 @@ With this option on, cursor is not drawed at all.
 It allows inclusive selection to be displayed properly.
 
 ```rust
+use tui_textarea::TextArea;
+let mut textarea = TextArea::default();
 textarea.set_cursor_hidden();
 ```
 
@@ -36,6 +40,8 @@ textarea.set_cursor_hidden();
 With this option on, the selection includes the char under cursor. Used eg for vim mode.
 
 ```rust
+use tui_textarea::TextArea;
+let mut textarea = TextArea::default();
 textarea.set_selection_inclusive();
 ```
 
@@ -51,11 +57,27 @@ textarea.set_selection_inclusive();
 Adds three text wraping modes
 
 - `TextWrapMode::Width` => text wrap at textarea width without looking at words
-- `TextWrapMode::Word` => text wrap at words separated by whitespace and punctuations
+- `TextWrapMode::Word` => text wrap at words separated by whitespace or punctuations
 - `TextWrapMode::WORD` => text wrap at words separated by whitespace only
 
 ```rust
+use tui_textarea::TextArea;
+use tui_textarea::TextWrapMode;
+let mut textarea = TextArea::default();
 textarea.set_textwrap(TextWrapMode::Word);
 ```
 
-Note that this is not optimized and simple word wraping algorithm. Note also that I changed `CursorMove::Top`, `CursorMove::Bottom`, `CursorMove::ParagraphForward`, `CursorMove::ParagraphBack` to move cursor to start or end of line.
+Note that this is not optimized and uses a simple word wraping algorithm.
+
+**IMPORTANT**: Note also that I changed `CursorMove::Top`, `CursorMove::Bottom`, `CursorMove::ParagraphForward`, `CursorMove::ParagraphBack` to move cursor to start or end of line.
+
+## Helix light example
+
+Beeing an fan of [helix editor](https://helix-editor.com/), I tried to replicate the main commands from helix keymaps, as well as the overall look. This is not a perfect equivalent but looks OK to me.
+
+- movements
+- changes and inserts
+- selections
+- minor goto mode
+
+See file `examples/helix_light.rs` for details.

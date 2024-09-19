@@ -85,15 +85,15 @@ pub enum Scrolling {
     ///
     /// // Go to the last line at first
     /// textarea.move_cursor(CursorMove::Bottom);
-    /// assert_eq!(textarea.cursor(), (19, 0));
+    /// assert_eq!(textarea.cursor(), (19, 2));
     /// # // Call `render` to populate terminal size
     /// # textarea.render(r.clone(), &mut b);
     ///
     /// // Scroll up by one page (8 lines)
     /// textarea.scroll(Scrolling::PageUp);
-    /// assert_eq!(textarea.cursor(), (11, 0));
+    /// assert_eq!(textarea.cursor(), (11, 2));
     /// textarea.scroll(Scrolling::PageUp);
-    /// assert_eq!(textarea.cursor(), (7, 0)); // Reached top of the textarea
+    /// assert_eq!(textarea.cursor(), (7, 1)); // Reached top of the textarea
     /// ```
     PageUp,
     /// Scroll down the textarea by half of the page.
@@ -141,15 +141,15 @@ pub enum Scrolling {
     ///
     /// // Go to the last line at first
     /// textarea.move_cursor(CursorMove::Bottom);
-    /// assert_eq!(textarea.cursor(), (19, 0));
+    /// assert_eq!(textarea.cursor(), (19, 2));
     /// # // Call `render` to populate terminal size
     /// # textarea.render(r.clone(), &mut b);
     ///
     /// // Scroll up by half-page (4 lines)
     /// textarea.scroll(Scrolling::HalfPageUp);
-    /// assert_eq!(textarea.cursor(), (15, 0));
+    /// assert_eq!(textarea.cursor(), (15, 2));
     /// textarea.scroll(Scrolling::HalfPageUp);
-    /// assert_eq!(textarea.cursor(), (11, 0));
+    /// assert_eq!(textarea.cursor(), (11, 2));
     /// ```
     HalfPageUp,
 }
