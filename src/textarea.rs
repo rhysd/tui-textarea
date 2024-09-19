@@ -8,9 +8,10 @@ use crate::ratatui::widgets::{Block, Widget};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
-use crate::util::{spaces, Pos};
+use crate::util::{num_digits, spaces, Pos};
 use crate::widget::Viewport;
 use crate::word::{find_word_exclusive_end_forward, find_word_start_backward};
+use crate::{wordwrap, TextWrapMode};
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
 use std::cmp::Ordering;
@@ -113,6 +114,8 @@ pub struct TextArea<'a> {
     hard_tab_indent: bool,
     history: History,
     cursor_line_style: Style,
+    cursor_line_fullwidth: bool,
+    cursor_hidden: bool,
     line_number_style: Option<Style>,
     pub(crate) viewport: Viewport,
     pub(crate) cursor_style: Style,
@@ -125,6 +128,9 @@ pub struct TextArea<'a> {
     mask: Option<char>,
     selection_start: Option<(usize, usize)>,
     select_style: Style,
+    selection_inclusive: bool,
+    textwrap: Option<TextWrapMode>,
+    // pub(crate) wordwrap_lines: usize,
 }
 
 /// Convert any iterator whose elements can be converted into [`String`] into [`TextArea`]. Each [`String`] element is
@@ -218,6 +224,8 @@ impl<'a> TextArea<'a> {
             hard_tab_indent: false,
             history: History::new(50),
             cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
+            cursor_line_fullwidth: false,
+            cursor_hidden: false,
             line_number_style: None,
             viewport: Viewport::default(),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
@@ -230,6 +238,9 @@ impl<'a> TextArea<'a> {
             mask: None,
             selection_start: None,
             select_style: Style::default().bg(Color::LightBlue),
+            selection_inclusive: false,
+            textwrap: None,
+            // wordwrap_lines: 0,
         }
     }
 
@@ -1402,6 +1413,34 @@ impl<'a> TextArea<'a> {
             .unwrap_or(line.len())
     }
 
+    /// Set textwrap
+    pub fn set_textwrap(&mut self, mode: TextWrapMode) {
+        self.textwrap = Some(mode);
+    }
+
+    /// Checks textwrap
+    pub fn has_textwrap(&self) -> bool {
+        self.textwrap.is_some()
+    }
+
+    /// Get textwrap
+    pub fn textwrap(&self) -> Option<TextWrapMode> {
+        self.textwrap.clone()
+    }
+
+    pub fn textwrap_lines(&self) -> usize {
+        match &self.textwrap {
+            Some(mode) => {
+                let (_, _, width, _) = self.viewport.rect();
+                if width == 0 {
+                    return 0;
+                }
+                wordwrap::count_lines(&self.lines, width as usize, mode)
+            }
+            None => self.lines.len(),
+        }
+    }
+
     /// Set the style used for text selection. The default style is light blue.
     /// ```
     /// use tui_textarea::TextArea;
@@ -1430,9 +1469,41 @@ impl<'a> TextArea<'a> {
         self.select_style
     }
 
+    /// Defines if the selection includes the char under cursor.
+    /// ```
+    /// use tui_textarea::TextArea;
+    /// use ratatui::style::{Style, Color};
+    ///
+    /// let mut textarea = TextArea::default();
+    /// textarea.set_selection_inclusive();
+    ///
+    /// assert_eq!(textarea.selection_inclusive(), true);
+    /// ```
+    pub fn set_selection_inclusive(&mut self) {
+        self.selection_inclusive = true;
+    }
+
+    /// Returns true if the selection includes char under cursor.
+    pub fn selection_inclusive(&self) -> bool {
+        self.selection_inclusive
+    }
+
     fn selection_positions(&self) -> Option<(Pos, Pos)> {
         let (sr, sc) = self.selection_start?;
-        let (er, ec) = self.cursor;
+        let (er, ec) = if self.selection_inclusive {
+            if let Some(cursor) = CursorMove::Forward.next_cursor(
+                self.cursor,
+                self.lines(),
+                &self.viewport,
+                &self.textwrap,
+            ) {
+                cursor
+            } else {
+                self.cursor
+            }
+        } else {
+            self.cursor
+        };
         let (so, eo) = (self.line_offset(sr, sc), self.line_offset(er, ec));
         let s = Pos::new(sr, sc, so);
         let e = Pos::new(er, ec, eo);
@@ -1530,7 +1601,9 @@ impl<'a> TextArea<'a> {
     }
 
     fn move_cursor_with_shift(&mut self, m: CursorMove, shift: bool) {
-        if let Some(cursor) = m.next_cursor(self.cursor, &self.lines, &self.viewport) {
+        if let Some(cursor) =
+            m.next_cursor(self.cursor, &self.lines, &self.viewport, &self.textwrap)
+        {
             if shift {
                 if self.selection_start.is_none() {
                     self.start_selection();
@@ -1586,15 +1659,27 @@ impl<'a> TextArea<'a> {
         }
     }
 
-    pub(crate) fn line_spans<'b>(&'b self, line: &'b str, row: usize, lnum_len: u8) -> Line<'b> {
+    pub(crate) fn line_spans<'b>(
+        &'b self,
+        line: &'b str,
+        row: usize,
+        lnum_len: u8,
+        width: u16,
+        total_rows: &mut usize,
+        scursor: &mut (usize, usize),
+    ) -> Vec<Line<'b>> {
         let mut hl = LineHighlighter::new(
             line,
             self.cursor_style,
+            self.cursor_line_fullwidth,
             self.tab_len,
             self.mask,
             self.select_style,
+            width,
+            self.cursor_hidden,
         );
 
+        // TODO
         if let Some(style) = self.line_number_style {
             hl.line_number(row, lnum_len, style);
         }
@@ -1609,10 +1694,19 @@ impl<'a> TextArea<'a> {
         }
 
         if let Some((start, end)) = self.selection_positions() {
-            hl.selection(row, start.row, start.offset, end.row, end.offset);
+            hl.selection(row, start, end);
+            // hl.selection(row, start.row, start.offset, end.row, end.offset);
         }
 
-        hl.into_spans()
+        let (spans, screen_cursor) = hl.into_spans(&self.textwrap);
+
+        if let Some(c) = screen_cursor {
+            scursor.0 = *total_rows + c.0 + 1;
+            scursor.1 = c.1;
+        }
+        *total_rows += spans.len();
+
+        spans
     }
 
     /// Build a ratatui (or tui-rs) widget to render the current state of the textarea. The widget instance returned
@@ -1812,6 +1906,44 @@ impl<'a> TextArea<'a> {
     /// Get the style of cursor line. By default it is styled with underline.
     pub fn cursor_line_style(&self) -> Style {
         self.cursor_line_style
+    }
+
+    /// Update the style of line at cursor to fill the entire line. By default, the cursor line style covers text only.
+    /// ```
+    /// use ratatui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.set_cursor_line_fullwidth();
+    /// assert_eq!(textarea.cursor_line_fullwidth(), true);
+    /// ```
+    pub fn set_cursor_line_fullwidth(&mut self) {
+        self.cursor_line_fullwidth = true;
+    }
+
+    /// Get true of the cursor line will be highlighted on full width
+    pub fn cursor_line_fullwidth(&self) -> bool {
+        self.cursor_line_fullwidth
+    }
+
+    /// No cursor draw. By default cursor is hidden when styled same as cursor_line. With this option on, it is not printed.
+    /// ```
+    /// use ratatui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    ///
+    /// textarea.set_cursor_hidden();
+    /// assert_eq!(textarea.cursor_hidden(), true);
+    /// ```
+    pub fn set_cursor_hidden(&mut self) {
+        self.cursor_hidden = true;
+    }
+
+    /// Get true of the cursor is hidden
+    pub fn cursor_hidden(&self) -> bool {
+        self.cursor_hidden
     }
 
     /// Set the style of line number. By setting the style with this method, line numbers are drawn in textarea, meant
@@ -2024,6 +2156,8 @@ impl<'a> TextArea<'a> {
     }
 
     /// Get the current cursor position. 0-base character-wise (row, col) cursor position.
+    /// This function always gives cursor position in the string, not at screen.
+    /// Use `screen_cursor` function to retrieve the cursor position at screen.
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -2038,6 +2172,50 @@ impl<'a> TextArea<'a> {
     /// ```
     pub fn cursor(&self) -> (usize, usize) {
         self.cursor
+    }
+
+    /// Get the current cursor position as per seen on screen. 0-base character-wise (row, col) cursor position.
+    /// Can be used to display cursor from outside the textarea (see helix_light example).
+    ///
+    /// **WARNING !**
+    /// Viewport needs to be initialized for a correct returned value
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// assert_eq!(textarea.screen_cursor(), (0, 0));
+    ///
+    /// textarea.insert_char('a');
+    /// textarea.insert_newline();
+    /// textarea.insert_char('b');
+    ///
+    /// assert_eq!(textarea.screen_cursor(), (0, 0));
+    ///
+    /// // Init viewport by rendering at least once
+    ///
+    /// use ratatui::buffer::Buffer;
+    /// use ratatui::layout::Rect;
+    /// use ratatui::widgets::Widget as _;
+    ///
+    /// let r = Rect { x: 0, y: 0, width: 24, height: 8 };
+    /// let mut b = Buffer::empty(r.clone());
+    /// textarea.render(r, &mut b);
+    ///
+    /// assert_eq!(textarea.screen_cursor(), (1, 1));
+    /// ```
+    pub fn screen_cursor(&self) -> (usize, usize) {
+        let row = self.viewport.row().saturating_sub(1);
+        let col = self.viewport.col();
+        let (_, left, _, _) = self.viewport.rect();
+        // self.block
+
+        let lnum_len = if self.line_number_style.is_some() {
+            2 + num_digits(self.lines.len())
+        } else {
+            0
+        };
+        (row, col - left as usize + lnum_len as usize)
     }
 
     /// Get the current selection range as a pair of the start position and the end position. The range is bounded

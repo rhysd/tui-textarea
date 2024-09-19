@@ -413,11 +413,17 @@ fn main() -> io::Result<()> {
     };
 
     textarea.set_block(Mode::Normal.block());
+    // textarea.set_wordwrap();
     textarea.set_cursor_style(Mode::Normal.cursor_style());
     let mut vim = Vim::new(Mode::Normal);
 
     loop {
-        term.draw(|f| f.render_widget(&textarea, f.area()))?;
+        term.draw(|f| {
+            let mut area = f.area();
+            area.width = 20;
+            area.height = 20;
+            f.render_widget(&textarea, area)
+        })?;
 
         vim = match vim.transition(crossterm::event::read()?.into(), &mut textarea) {
             Transition::Mode(mode) if vim.mode != mode => {

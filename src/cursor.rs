@@ -1,7 +1,10 @@
 use crate::widget::Viewport;
 use crate::word::{
-    find_word_inclusive_end_forward, find_word_start_backward, find_word_start_forward,
+    find_first_non_space, find_word_inclusive_end_forward, find_word_start_backward,
+    find_word_start_forward, find_wordspacing_inclusive_end_forward,
+    find_wordspacing_start_backward, find_wordspacing_start_forward,
 };
+use crate::wordwrap::{self, TextWrapMode};
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
 #[cfg(feature = "serde")]
@@ -77,6 +80,17 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (0, 0));
     /// ```
     Head,
+    /// Move cursor to the first non space character of line.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["  abc"]);
+    ///
+    /// textarea.move_cursor(CursorMove::End);
+    /// textarea.move_cursor(CursorMove::HeadNonSpace);
+    /// assert_eq!(textarea.cursor(), (0, 2));
+    /// ```
+    HeadNonSpace,
     /// Move cursor to the end of line. When the cursor is at the end of line, it moves to the head of next line.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
@@ -87,7 +101,7 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (0, 3));
     /// ```
     End,
-    /// Move cursor to the top of lines.
+    /// Move cursor to the top of lines, head of top line.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
@@ -99,14 +113,14 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (0, 0));
     /// ```
     Top,
-    /// Move cursor to the bottom of lines.
+    /// Move cursor to the bottom of lines, last character.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
     ///
     /// let mut textarea = TextArea::from(["a", "b", "c"]);
     ///
     /// textarea.move_cursor(CursorMove::Bottom);
-    /// assert_eq!(textarea.cursor(), (2, 0));
+    /// assert_eq!(textarea.cursor(), (2, 1));
     /// ```
     Bottom,
     /// Move cursor forward by one word. Word boundary appears at spaces, punctuations, and others. For example
@@ -123,6 +137,18 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (0, 8));
     /// ```
     WordForward,
+    /// Move cursor forward by one WORD. WORD boundary appears at spaces.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["aaa bbb ccc"]);
+    ///
+    /// textarea.move_cursor(CursorMove::WordSpacingForward);
+    /// assert_eq!(textarea.cursor(), (0, 4));
+    /// textarea.move_cursor(CursorMove::WordSpacingForward);
+    /// assert_eq!(textarea.cursor(), (0, 8));
+    /// ```
+    WordSpacingForward,
     /// Move cursor forward to the next end of word. Word boundary appears at spaces, punctuations, and others. For example
     /// `fn foo(a)` consists of words `fn`, `foo`, `(`, `a`, `)`. When the cursor is at the end of line, it moves to the
     /// end of the first word of the next line. This is similar to the 'e' mapping of Vim in normal mode.
@@ -150,6 +176,20 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (2, 3));      // At the end of 'ddd'
     /// ```
     WordEnd,
+    /// Move cursor forward to the next end of WORD. WORD boundary appears at spaces.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["aaa bbb [[[ccc]]]"]);
+    ///
+    /// textarea.move_cursor(CursorMove::WordSpacingEnd);
+    /// assert_eq!(textarea.cursor(), (0, 2));      // At the end of 'aaa'
+    /// textarea.move_cursor(CursorMove::WordSpacingEnd);
+    /// assert_eq!(textarea.cursor(), (0, 6));      // At the end of 'bbb'
+    /// textarea.move_cursor(CursorMove::WordSpacingEnd);
+    /// assert_eq!(textarea.cursor(), (0, 16));     // At the end of ']]]'
+    /// ```
+    WordSpacingEnd,
     /// Move cursor backward by one word.  Word boundary appears at spaces, punctuations, and others. For example
     /// `fn foo(a)` consists of words `fn`, `foo`, `(`, `a`, `)`.When the cursor is at the head of line, it moves to
     /// the end of previous line.
@@ -167,6 +207,21 @@ pub enum CursorMove {
     /// assert_eq!(textarea.cursor(), (0, 0));
     /// ```
     WordBack,
+    /// Move cursor backward by one WORD. WORD boundary appears at spaces.
+    /// ```
+    /// use tui_textarea::{TextArea, CursorMove};
+    ///
+    /// let mut textarea = TextArea::from(["aaa bbb ccc"]);
+    ///
+    /// textarea.move_cursor(CursorMove::End);
+    /// textarea.move_cursor(CursorMove::WordSpacingBack);
+    /// assert_eq!(textarea.cursor(), (0, 8));
+    /// textarea.move_cursor(CursorMove::WordSpacingBack);
+    /// assert_eq!(textarea.cursor(), (0, 4));
+    /// textarea.move_cursor(CursorMove::WordSpacingBack);
+    /// assert_eq!(textarea.cursor(), (0, 0));
+    /// ```
+    WordSpacingBack,
     /// Move cursor down by one paragraph. Paragraph is a chunk of non-empty lines. Cursor moves to the first line of paragraph.
     /// ```
     /// use tui_textarea::{TextArea, CursorMove};
@@ -248,11 +303,11 @@ pub enum CursorMove {
     ///
     /// // Move cursor to the end of lines (line 20). It is outside the viewport (line 1 to line 8)
     /// textarea.move_cursor(CursorMove::Bottom);
-    /// assert_eq!(textarea.cursor(), (19, 0));
+    /// assert_eq!(textarea.cursor(), (19, 2));
     ///
     /// // Cursor is moved to line 8 to enter the viewport
     /// textarea.move_cursor(CursorMove::InViewport);
-    /// assert_eq!(textarea.cursor(), (7, 0));
+    /// assert_eq!(textarea.cursor(), (7, 1));
     /// ```
     InViewport,
 }
@@ -263,6 +318,7 @@ impl CursorMove {
         (row, col): (usize, usize),
         lines: &[String],
         viewport: &Viewport,
+        textwrap: &Option<TextWrapMode>,
     ) -> Option<(usize, usize)> {
         use CursorMove::*;
 
@@ -280,17 +336,32 @@ impl CursorMove {
                 Some((row, lines[row].chars().count()))
             }
             Back => Some((row, col - 1)),
+            Up if textwrap.is_some() => {
+                let (_, _, width, _) = viewport.rect();
+                wordwrap::go_up(lines, row, col, width as usize, textwrap.as_ref().unwrap())
+            }
             Up => {
                 let row = row.checked_sub(1)?;
                 Some((row, fit_col(col, &lines[row])))
             }
+            Down if textwrap.is_some() => {
+                let (_, _, width, _) = viewport.rect();
+                wordwrap::go_down(lines, row, col, width as usize, textwrap.as_ref().unwrap())
+            }
             Down => Some((row + 1, fit_col(col, lines.get(row + 1)?))),
             Head => Some((row, 0)),
+            HeadNonSpace => {
+                if let Some(col) = find_first_non_space(&lines[row]) {
+                    Some((row, col))
+                } else {
+                    Some((row, 0))
+                }
+            }
             End => Some((row, lines[row].chars().count())),
-            Top => Some((0, fit_col(col, &lines[0]))),
+            Top => Some((0, 0)),
             Bottom => {
                 let row = lines.len() - 1;
-                Some((row, fit_col(col, &lines[row])))
+                Some((row, lines[row].chars().count()))
             }
             WordEnd => {
                 // `+ 1` for not accepting the current cursor position
@@ -309,8 +380,34 @@ impl CursorMove {
                     }
                 }
             }
+            WordSpacingEnd => {
+                // `+ 1` for not accepting the current cursor position
+                if let Some(col) = find_wordspacing_inclusive_end_forward(&lines[row], col + 1) {
+                    Some((row, col))
+                } else {
+                    let mut row = row;
+                    loop {
+                        if row == lines.len() - 1 {
+                            break Some((row, lines[row].chars().count()));
+                        }
+                        row += 1;
+                        if let Some(col) = find_wordspacing_inclusive_end_forward(&lines[row], 0) {
+                            break Some((row, col));
+                        }
+                    }
+                }
+            }
             WordForward => {
                 if let Some(col) = find_word_start_forward(&lines[row], col) {
+                    Some((row, col))
+                } else if row + 1 < lines.len() {
+                    Some((row + 1, 0))
+                } else {
+                    Some((row, lines[row].chars().count()))
+                }
+            }
+            WordSpacingForward => {
+                if let Some(col) = find_wordspacing_start_forward(&lines[row], col) {
                     Some((row, col))
                 } else if row + 1 < lines.len() {
                     Some((row + 1, 0))
@@ -327,18 +424,34 @@ impl CursorMove {
                     Some((row, 0))
                 }
             }
+            WordSpacingBack => {
+                if let Some(col) = find_wordspacing_start_backward(&lines[row], col) {
+                    Some((row, col))
+                } else if row > 0 {
+                    Some((row - 1, lines[row - 1].chars().count()))
+                } else {
+                    Some((row, 0))
+                }
+            }
             ParagraphForward => {
                 let mut prev_is_empty = lines[row].is_empty();
                 for row in row + 1..lines.len() {
                     let line = &lines[row];
                     let is_empty = line.is_empty();
                     if !is_empty && prev_is_empty {
-                        return Some((row, fit_col(col, line)));
+                        return Some((row, 0));
+                        // return Some((row, fit_col(col, line)));
                     }
                     prev_is_empty = is_empty;
                 }
                 let row = lines.len() - 1;
-                Some((row, fit_col(col, &lines[row])))
+                Some((row, lines[row].chars().count()))
+                // if textwrap.is_some() {
+                //     let (_, _, width, _) = viewport.rect();
+                //     Some((row, fit_col(col % width as usize, &lines[row])))
+                // } else {
+                //     Some((row, fit_col(col, &lines[row])))
+                // }
             }
             ParagraphBack => {
                 let row = row.checked_sub(1)?;
@@ -346,11 +459,15 @@ impl CursorMove {
                 for row in (0..row).rev() {
                     let is_empty = lines[row].is_empty();
                     if is_empty && !prev_is_empty {
-                        return Some((row + 1, fit_col(col, &lines[row + 1])));
+                        let row = row + 1;
+                        return Some((row, 0));
+                        // return Some((row, lines[row].chars().count()));
+                        // return Some((row + 1, fit_col(col, &lines[row + 1])));
                     }
                     prev_is_empty = is_empty;
                 }
-                Some((0, fit_col(col, &lines[0])))
+                Some((0, 0))
+                // Some((0, fit_col(col, &lines[0])))
             }
             Jump(row, col) => {
                 let row = cmp::min(*row as usize, lines.len() - 1);
@@ -359,11 +476,23 @@ impl CursorMove {
             }
             InViewport => {
                 let (row_top, col_top, row_bottom, col_bottom) = viewport.position();
+                let (_, _, width, _) = viewport.rect();
+
+                let clines = if textwrap.is_some() {
+                    wordwrap::count_lines(lines, width as usize, textwrap.as_ref().unwrap())
+                } else {
+                    lines.len()
+                };
 
                 let row = row.clamp(row_top as usize, row_bottom as usize);
-                let row = cmp::min(row, lines.len() - 1);
+                let row = cmp::min(row, clines - 1);
+                // let row = cmp::min(row, lines.len() - 1);
                 let col = col.clamp(col_top as usize, col_bottom as usize);
-                let col = fit_col(col, &lines[row]);
+                let col = if textwrap.is_some() {
+                    0
+                } else {
+                    fit_col(col, &lines[row])
+                };
 
                 Some((row, col))
             }
@@ -392,9 +521,9 @@ mod tests {
         textarea.render(r, &mut b);
 
         textarea.move_cursor(CursorMove::Bottom);
-        assert_eq!(textarea.cursor(), (19, 0));
+        assert_eq!(textarea.cursor(), (19, 2));
 
         textarea.move_cursor(CursorMove::InViewport);
-        assert_eq!(textarea.cursor(), (7, 0));
+        assert_eq!(textarea.cursor(), (7, 1));
     }
 }
