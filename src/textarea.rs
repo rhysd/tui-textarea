@@ -4,7 +4,7 @@ use crate::history::{Edit, EditKind, History};
 use crate::input::{Input, Key};
 use crate::ratatui::layout::Alignment;
 use crate::ratatui::style::{Color, Modifier, Style};
-use crate::ratatui::widgets::{Block, Widget};
+use crate::ratatui::widgets::{block::Block, Widget};
 use crate::scroll::Scrolling;
 #[cfg(feature = "search")]
 use crate::search::Search;
@@ -1676,7 +1676,7 @@ impl<'a> TextArea<'a> {
     /// Set the block of textarea. By default, no block is set.
     /// ```
     /// use tui_textarea::TextArea;
-    /// use ratatui::widgets::{Block, Borders};
+    /// use ratatui::widgets::{block::Block, Borders};
     ///
     /// let mut textarea = TextArea::default();
     /// let block = Block::default().borders(Borders::ALL).title("Block Title");
@@ -1690,7 +1690,7 @@ impl<'a> TextArea<'a> {
     /// Remove the block of textarea which was set by [`TextArea::set_block`].
     /// ```
     /// use tui_textarea::TextArea;
-    /// use ratatui::widgets::{Block, Borders};
+    /// use ratatui::widgets::{block::Block, Borders};
     ///
     /// let mut textarea = TextArea::default();
     /// let block = Block::default().borders(Borders::ALL).title("Block Title");

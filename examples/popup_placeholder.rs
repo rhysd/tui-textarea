@@ -5,7 +5,7 @@ use crossterm::terminal::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
-use ratatui::widgets::{Block, Borders};
+use ratatui::widgets::{block::Block, Borders};
 use ratatui::Terminal;
 use std::io;
 use tui_textarea::{Input, Key, TextArea};

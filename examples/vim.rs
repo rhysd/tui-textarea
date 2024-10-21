@@ -4,7 +4,7 @@ use crossterm::terminal::{
 };
 use ratatui::backend::CrosstermBackend;
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::widgets::{Block, Borders};
+use ratatui::widgets::{block::Block, Borders};
 use ratatui::Terminal;
 use std::env;
 use std::fmt;

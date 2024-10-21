@@ -16,7 +16,7 @@ use tui::backend::CrosstermBackend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, Paragraph};
+use tui::widgets::{block::Block, Borders, Paragraph};
 use tui::Terminal;
 use tui_textarea::{CursorMove, Input, Key, TextArea};
 

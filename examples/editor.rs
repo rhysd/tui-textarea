@@ -6,7 +6,7 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::widgets::{block::Block, Borders, Paragraph};
 use ratatui::Terminal;
 use std::borrow::Cow;
 use std::env;
