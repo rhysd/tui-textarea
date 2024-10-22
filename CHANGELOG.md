@@ -1,5 +1,13 @@
-<a name="v0.6.1"></a>
-# [v0.6.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.6.1) - 08 Aug 2024
+<a id="v0.7.0"></a>
+# [v0.7.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.7.0) - 2024-10-22
+
+- **BREAKING:** Update [ratatui](https://ratatui.rs/) crate dependency from v0.28 to [v0.29](https://github.com/ratatui-org/ratatui/releases/tag/v0.29.0). ([#86](https://github.com/rhysd/tui-textarea/issues/86), thanks [@ricott1](https://github.com/ricott1))
+
+[Changes][v0.7.0]
+
+
+<a id="v0.6.1"></a>
+# [v0.6.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.6.1) - 2024-08-08
 
 - Add [`TextArea::selection_range`](https://docs.rs/tui-textarea/latest/tui_textarea/struct.TextArea.html#method.selection_range) method to get the range of the current selection. Please read the document for more details. ([#81](https://github.com/rhysd/tui-textarea/issues/81), thanks [@achristmascarl](https://github.com/achristmascarl))
   ```rust
@@ -25,8 +33,8 @@
 [Changes][v0.6.1]
 
 
-<a name="v0.6.0"></a>
-# [v0.6.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.6.0) - 07 Aug 2024
+<a id="v0.6.0"></a>
+# [v0.6.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.6.0) - 2024-08-07
 
 - **BREAKING:** Update [ratatui](https://ratatui.rs/) crate dependency from v0.27 to [v0.28](https://github.com/ratatui-org/ratatui/releases/tag/v0.28.0).
 - **BREAKING:** Update [crossterm](https://crates.io/crates/crossterm) crate dependency from v0.27 to v0.28 because ratatui crate depends on the new version.
@@ -35,8 +43,8 @@
 [Changes][v0.6.0]
 
 
-<a name="v0.5.3"></a>
-# [v0.5.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.3) - 03 Aug 2024
+<a id="v0.5.3"></a>
+# [v0.5.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.3) - 2024-08-03
 
 - `&TextArea` now implements `Widget` trait. ([#78](https://github.com/rhysd/tui-textarea/issues/78))
   - Now the reference can be passed to `ratatui::terminal::Frame::render_widget` method call directly.
@@ -72,8 +80,8 @@
 [Changes][v0.5.3]
 
 
-<a name="v0.5.2"></a>
-# [v0.5.2](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.2) - 01 Aug 2024
+<a id="v0.5.2"></a>
+# [v0.5.2](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.2) - 2024-08-01
 
 - Do not hide a cursor when a placeholder text is printed. ([#73](https://github.com/rhysd/tui-textarea/issues/73), thanks [@kyu08](https://github.com/kyu08))
   - ![demo](https://raw.githubusercontent.com/rhysd/ss/master/tui-textarea/placepop.gif)
@@ -83,8 +91,8 @@
 [Changes][v0.5.2]
 
 
-<a name="v0.5.1"></a>
-# [v0.5.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.1) - 12 Jul 2024
+<a id="v0.5.1"></a>
+# [v0.5.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.1) - 2024-07-12
 
 - Add `serde` optional feature. When it is enabled, some types support the serialization/deserialization with [serde](https://crates.io/crates/serde) crate. See [the document](https://github.com/rhysd/tui-textarea?tab=readme-ov-file#serializationdeserialization-support) for more details. ([#62](https://github.com/rhysd/tui-textarea/issues/62), thanks [@cestef](https://github.com/cestef))
   ```rust
@@ -113,8 +121,8 @@
 [Changes][v0.5.1]
 
 
-<a name="v0.5.0"></a>
-# [v0.5.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.0) - 07 Jul 2024
+<a id="v0.5.0"></a>
+# [v0.5.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.5.0) - 2024-07-07
 
 This is a maintenance release for supporting recent versions of [ratatui](https://crates.io/crates/ratatui) crate.
 
@@ -127,8 +135,8 @@ This is a maintenance release for supporting recent versions of [ratatui](https:
 [Changes][v0.5.0]
 
 
-<a name="v0.4.0"></a>
-# [v0.4.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.4.0) - 19 Nov 2023
+<a id="v0.4.0"></a>
+# [v0.4.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.4.0) - 2023-11-19
 
 This release introduces text selection feature. The internal implementation was largely refactored to handle multi-line text for this feature. As the side effect, several APIs now can handle a multi-line string (string contains newlines) correctly.
 
@@ -166,8 +174,8 @@ This release introduces text selection feature. The internal implementation was 
 [Changes][v0.4.0]
 
 
-<a name="v0.3.1"></a>
-# [v0.3.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.3.1) - 04 Nov 2023
+<a id="v0.3.1"></a>
+# [v0.3.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.3.1) - 2023-11-04
 
 - Fix the width of rendered tab character (`\t`) is wrong in some cases when hard tab is enabled by `TextArea::set_hard_tab_indent` ([#43](https://github.com/rhysd/tui-textarea/issues/43)).
 - Fix key inputs are doubled on Windows when converting from `crossterm::event::KeyEvent` into `tui_textarea::Input`. Note that the conversion from `crossterm::event::Event` into `tui_textarea::Input` does not have this issue.
@@ -184,8 +192,8 @@ This release introduces text selection feature. The internal implementation was 
 [Changes][v0.3.1]
 
 
-<a name="v0.3.0"></a>
-# [v0.3.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.3.0) - 24 Oct 2023
+<a id="v0.3.0"></a>
+# [v0.3.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.3.0) - 2023-10-24
 
 - **BREAKING CHANGE:** Enable ratatui support by default instead of inactive tui-rs.
   - `ratatui-` prefix is removed from all `ratatui-*` features. `crossterm`, `termion`, and `termwiz` features are for ratatui:
@@ -227,8 +235,8 @@ New backend features table (v0.3.0):
 [Changes][v0.3.0]
 
 
-<a name="v0.2.4"></a>
-# [v0.2.4](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.4) - 21 Oct 2023
+<a id="v0.2.4"></a>
+# [v0.2.4](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.4) - 2023-10-21
 
 - Support the ratatui's [termwiz](https://crates.io/crates/termwiz) backend. `ratatui-termwiz` feature was newly added for this.
   - Add the following dependencies in your Cargo.toml to use termwiz support.
@@ -246,8 +254,8 @@ New backend features table (v0.3.0):
 [Changes][v0.2.4]
 
 
-<a name="v0.2.3"></a>
-# [v0.2.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.3) - 20 Oct 2023
+<a id="v0.2.3"></a>
+# [v0.2.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.3) - 2023-10-20
 
 - Add APIs to mask text with a character ([#32](https://github.com/rhysd/tui-textarea/issues/32), thanks [@pm100](https://github.com/pm100)).
   - `TextArea::set_mask_char`, `TextArea::clear_mask_char`, `TextArea::mask_char` are added. See [the documentation](https://docs.rs/tui-textarea/latest/tui_textarea/) for more details.
@@ -258,16 +266,16 @@ New backend features table (v0.3.0):
 [Changes][v0.2.3]
 
 
-<a name="v0.2.2"></a>
-# [v0.2.2](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.2) - 01 Oct 2023
+<a id="v0.2.2"></a>
+# [v0.2.2](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.2) - 2023-10-01
 
 Very small patch release only for fixing [the build failure on docs.rs](https://docs.rs/crate/tui-textarea/0.2.1/builds/926847). No implementation has been changed.
 
 [Changes][v0.2.2]
 
 
-<a name="v0.2.1"></a>
-# [v0.2.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.1) - 01 Oct 2023
+<a id="v0.2.1"></a>
+# [v0.2.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.1) - 2023-10-01
 
 - Add the support for [ratatui](https://crates.io/crates/ratatui) crate in addition to [tui-rs](https://crates.io/crates/tui). The ratatui crate is a community fork of inactive tui-rs crate. ([#12](https://github.com/rhysd/tui-textarea/issues/12))
   - The latest version of ratatui v0.23 is supported.
@@ -294,8 +302,8 @@ Very small patch release only for fixing [the build failure on docs.rs](https://
 [Changes][v0.2.1]
 
 
-<a name="v0.2.0"></a>
-# [v0.2.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.0) - 18 Oct 2022
+<a id="v0.2.0"></a>
+# [v0.2.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.2.0) - 2022-10-18
 
 - Add [`Scrolling` enum](https://docs.rs/tui-textarea/latest/tui_textarea/enum.Scrolling.html) to provide more flexible scrolling via [`TextArea::scroll`](https://docs.rs/tui-textarea/latest/tui_textarea/struct.TextArea.html#method.scroll) method. It has the following enum variants.
   - **BREAKING** `Scrolling::Delta` scrolls the textarea by given rows and cols. This variant can be converted from `(i16, i16)` so migrating from v0.1.6 is very easy.
@@ -321,8 +329,8 @@ Very small patch release only for fixing [the build failure on docs.rs](https://
 [Changes][v0.2.0]
 
 
-<a name="v0.1.6"></a>
-# [v0.1.6](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.6) - 28 Sep 2022
+<a id="v0.1.6"></a>
+# [v0.1.6](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.6) - 2022-09-28
 
 - Support mouse scroll. ([#2](https://github.com/rhysd/tui-textarea/issues/2))
   - Handle mouse events for both `crossterm` and `termion` backends.
@@ -336,8 +344,8 @@ Very small patch release only for fixing [the build failure on docs.rs](https://
 [Changes][v0.1.6]
 
 
-<a name="v0.1.5"></a>
-# [v0.1.5](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.5) - 18 Jul 2022
+<a id="v0.1.5"></a>
+# [v0.1.5](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.5) - 2022-07-18
 
 - Improve performance to render a textarea widget. When number of lines increases, now rendering lines is **about 2~8x faster** according to [our benchmark suites](https://github.com/rhysd/tui-textarea/tree/main/bench). See [the commit](https://github.com/rhysd/tui-textarea/commit/4e5b684baf4401337bb2e30fd663fa967321f1c1) for more details of the benchmark results. This was archived by managing a vertical scroll position by ourselves instead of scroll handling by `Paragraph`. Previously, a cost of rendering lines was `O(n)` where `n` was number of all lines. Now the cost is `O(1)`.
 - Implement `Clone` for `TextArea` so that textarea instances can be copied easily. It is useful when you create multiple textarea instances with the same configuration. Create a first `TextArea` instance with configuring blocks and styles, then simply clone it.
@@ -349,8 +357,8 @@ Very small patch release only for fixing [the build failure on docs.rs](https://
 [Changes][v0.1.5]
 
 
-<a name="v0.1.4"></a>
-# [v0.1.4](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.4) - 10 Jul 2022
+<a id="v0.1.4"></a>
+# [v0.1.4](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.4) - 2022-07-10
 
 - Fix the cursor line style was not applied when a cursor is at the end of line.
 - Fix the cursor position after undoing the modification by 'delete until head of line' (`^J` by default).
@@ -358,8 +366,8 @@ Very small patch release only for fixing [the build failure on docs.rs](https://
 [Changes][v0.1.4]
 
 
-<a name="v0.1.3"></a>
-# [v0.1.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.3) - 08 Jul 2022
+<a id="v0.1.3"></a>
+# [v0.1.3](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.3) - 2022-07-08
 
 - Text search was implemented. Text search is gated behind `search` feature flag to avoid depending on `regex` crate until it is necessary. See [the usage document](https://github.com/rhysd/tui-textarea#text-search-with-regular-expressions), [the API document](https://docs.rs/tui-textarea/latest/tui_textarea/struct.TextArea.html), and [the working example](https://github.com/rhysd/tui-textarea/blob/main/examples/editor.rs) for more details.
   - `TextArea::set_search_pattern` sets a search pattern in regular expression. This updates highlights at matches in textarea, but does not move the cursor.
@@ -371,8 +379,8 @@ Very small patch release only for fixing [the build failure on docs.rs](https://
 [Changes][v0.1.3]
 
 
-<a name="v0.1.2"></a>
-# [v0.1.2](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.2) - 25 Jun 2022
+<a id="v0.1.2"></a>
+# [v0.1.2](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.2) - 2022-06-25
 
 - Indent with hard tab is now supported. `TextArea::set_hard_tab_indent` method enables indentation with a hard tab on hitting a tab key.
   ```rust
@@ -398,8 +406,8 @@ Very small patch release only for fixing [the build failure on docs.rs](https://
 [Changes][v0.1.2]
 
 
-<a name="v0.1.1"></a>
-# [v0.1.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.1) - 21 Jun 2022
+<a id="v0.1.1"></a>
+# [v0.1.1](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.1) - 2022-06-21
 
 - Add `TextArea::yank_text` and `TextArea::set_yank_text` to set/get yanked text of the textarea.
   ```rust
@@ -420,8 +428,8 @@ Very small patch release only for fixing [the build failure on docs.rs](https://
 [Changes][v0.1.1]
 
 
-<a name="v0.1.0"></a>
-# [v0.1.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.0) - 19 Jun 2022
+<a id="v0.1.0"></a>
+# [v0.1.0](https://github.com/rhysd/tui-textarea/releases/tag/v0.1.0) - 2022-06-19
 
 First release :tada:
 
@@ -432,6 +440,7 @@ First release :tada:
 [Changes][v0.1.0]
 
 
+[v0.7.0]: https://github.com/rhysd/tui-textarea/compare/v0.6.1...v0.7.0
 [v0.6.1]: https://github.com/rhysd/tui-textarea/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/rhysd/tui-textarea/compare/v0.5.3...v0.6.0
 [v0.5.3]: https://github.com/rhysd/tui-textarea/compare/v0.5.2...v0.5.3
@@ -454,4 +463,4 @@ First release :tada:
 [v0.1.1]: https://github.com/rhysd/tui-textarea/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/rhysd/tui-textarea/tree/v0.1.0
 
-<!-- Generated by https://github.com/rhysd/changelog-from-release v3.7.2 -->
+<!-- Generated by https://github.com/rhysd/changelog-from-release v3.8.0 -->
