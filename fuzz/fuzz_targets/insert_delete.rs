@@ -16,7 +16,7 @@ fn fuzz(data: &[u8]) -> Result<()> {
         } else {
             textarea.delete_str(usize::arbitrary(&mut data)?);
         }
-        term.draw_textarea(&mut textarea);
+        term.draw_textarea(&textarea);
     }
     Ok(())
 }

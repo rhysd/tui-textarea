@@ -718,7 +718,7 @@ tui-textarea is distributed under [The MIT License](./LICENSE.txt).
 [codecov-badge]: https://codecov.io/gh/rhysd/tui-textarea/graph/badge.svg?token=YAA3EVRXAY
 [codecov]: https://codecov.io/gh/rhysd/tui-textarea
 [tui-rs]: https://github.com/fdehau/tui-rs
-[ratatui]: https://github.com/ratatui-org/ratatui
+[ratatui]: https://github.com/ratatui/ratatui
 [crossterm]: https://docs.rs/crossterm/latest/crossterm/
 [termion]: https://docs.rs/termion/latest/termion/
 [termwiz]: https://docs.rs/termwiz/latest/termwiz/

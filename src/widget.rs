@@ -147,7 +147,7 @@ impl Widget for &TextArea<'_> {
         };
 
         // To get fine control over the text color and the surrrounding block they have to be rendered separately
-        // see https://github.com/ratatui-org/ratatui/issues/144
+        // see https://github.com/ratatui/ratatui/issues/144
         let mut text_area = area;
         let mut inner = Paragraph::new(text)
             .style(style)

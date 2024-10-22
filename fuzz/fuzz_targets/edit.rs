@@ -31,7 +31,7 @@ fn fuzz(data: &[u8]) -> Result<()> {
     for _ in 0..100 {
         let input = RandomInput::arbitrary(&mut data)?;
         input.apply(&mut textarea);
-        term.draw_textarea(&mut textarea);
+        term.draw_textarea(&textarea);
     }
     Ok(())
 }
