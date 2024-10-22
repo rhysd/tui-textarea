@@ -3,7 +3,7 @@ use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
 use ratatui::backend::CrosstermBackend;
-use ratatui::widgets::{block::Block, Borders};
+use ratatui::widgets::{Block, Borders};
 use ratatui::Terminal;
 use std::io;
 use tui_textarea::{Input, Key, TextArea};

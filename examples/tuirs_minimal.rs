@@ -7,7 +7,7 @@ use crossterm::terminal::{
 };
 use std::io;
 use tui::backend::CrosstermBackend;
-use tui::widgets::{block::Block, Borders};
+use tui::widgets::{Block, Borders};
 use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
 

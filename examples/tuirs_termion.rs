@@ -11,7 +11,7 @@ use termion::input::{MouseTerminal, TermRead};
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
-use tui::widgets::{block::Block, Borders};
+use tui::widgets::{Block, Borders};
 use tui::Terminal;
 use tui_textarea::{Input, Key, TextArea};
 
