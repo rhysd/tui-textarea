@@ -155,6 +155,22 @@ impl Vim {
                         key: Key::Char('$'),
                         ..
                     } => textarea.move_cursor(CursorMove::End),
+                    Input { // Note: Not sorted with j
+                        key: Key::Char('J'),
+                        ..
+                    } => {
+                        let cursor = textarea.cursor();
+                        textarea.cancel_selection();
+                        textarea.move_cursor(CursorMove::End);
+                        let success = textarea.delete_line_by_end();
+                        if success {
+                            textarea.insert_char(' ');
+                        } else { // In regular vim, joining on the final line is a noop
+                            let (c1, c2) = cursor;
+                            textarea.move_cursor(CursorMove::Jump(c1 as u16, c2 as u16));
+                            // TODO: beep
+                        }
+                    }
                     Input {
                         key: Key::Char('D'),
                         ..
