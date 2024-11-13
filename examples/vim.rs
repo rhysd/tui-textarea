@@ -160,7 +160,7 @@ impl Vim {
                         ..
                     } => {
                         let cursor = textarea.cursor();
-                        textarea.cancel_selection();
+                        textarea.cancel_selection(); // FIXME: WRONG!! J when there is a selection merges the selected lines.
                         textarea.move_cursor(CursorMove::End);
                         let success = textarea.delete_line_by_end();
                         if success {
@@ -245,6 +245,22 @@ impl Vim {
                     } => {
                         textarea.cancel_selection();
                         textarea.move_cursor(CursorMove::End);
+                        return Transition::Mode(Mode::Insert);
+                    }
+                    Input {
+                        key: Key::Char('S'),
+                        ..
+                    } => {
+                        textarea.cancel_selection(); // FIXME: WRONG!! S when there is a selection collapses and clears all lines.
+                        textarea.move_cursor(CursorMove::Head);
+                        let (cursor_line, _) = textarea.cursor();
+                        let lines = textarea.lines();
+                        let line = &lines[cursor_line];
+                        if line.len() > 0 {
+                            // delete_line_by_end has a special behavior where if you are at the end,
+                            // it joins the line with the next. Prevent accidentally triggering this on an empty line.
+                            textarea.delete_line_by_end();
+                        }
                         return Transition::Mode(Mode::Insert);
                     }
                     Input {
