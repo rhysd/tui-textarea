@@ -212,7 +212,15 @@ impl Vim {
                         ..
                     } => {
                         textarea.cancel_selection();
-                        textarea.move_cursor(CursorMove::Forward);
+
+                        let (cursor_line, cursor_char) = textarea.cursor();
+                        let lines = textarea.lines();
+                        let line = &lines[cursor_line];
+                        let line_length = line.chars().count(); // FIXME: Not acceptable-- O(N)
+
+                        if cursor_char < line_length {
+                            textarea.move_cursor(CursorMove::Forward);
+                        }
                         return Transition::Mode(Mode::Insert);
                     }
                     Input {
