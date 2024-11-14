@@ -17,6 +17,7 @@ use tui_textarea::{CursorMove, Input, Key, Scrolling, TextArea};
 enum Mode {
     Normal,
     Insert,
+    Replace(bool), // Bool for "once only?"
     Visual,
     Operator(char),
 }
@@ -25,7 +26,7 @@ impl Mode {
     fn block<'a>(&self) -> Block<'a> {
         let help = match self {
             Self::Normal => "type q to quit, type i to enter insert mode",
-            Self::Insert => "type Esc to back to normal mode",
+            Self::Replace(_) | Self::Insert => "type Esc to back to normal mode",
             Self::Visual => "type y to yank, type d to delete, type Esc to back to normal mode",
             Self::Operator(_) => "move cursor to apply operator",
         };
@@ -38,6 +39,7 @@ impl Mode {
             Self::Normal => Color::Reset,
             Self::Insert => Color::LightBlue,
             Self::Visual => Color::LightYellow,
+            Self::Replace(_) => Color::LightRed,
             Self::Operator(_) => Color::LightGreen,
         };
         Style::default().fg(color).add_modifier(Modifier::REVERSED)
@@ -50,6 +52,7 @@ impl fmt::Display for Mode {
             Self::Normal => write!(f, "NORMAL"),
             Self::Insert => write!(f, "INSERT"),
             Self::Visual => write!(f, "VISUAL"),
+            Self::Replace(_) => write!(f, "REPLACE"),
             Self::Operator(c) => write!(f, "OPERATOR({})", c),
         }
     }
@@ -213,7 +216,7 @@ impl Vim {
                         key: Key::Char('x'),
                         ..
                     } => {
-                        textarea.delete_next_char();
+                        textarea.delete_next_char(); // FIXME: Will join lines when on final character of line
                         return Transition::Mode(Mode::Normal);
                     }
                     Input {
@@ -288,6 +291,21 @@ impl Vim {
                         textarea.move_cursor(CursorMove::Head);
                         return Transition::Mode(Mode::Insert);
                     }
+                    Input {
+                        key: Key::Char('r'),
+                        ..
+                    } => {
+                        textarea.cancel_selection(); // FIXME: WRONG!! r when there is a selection replaces the selected text.
+                        return Transition::Mode(Mode::Replace(true));
+                    }
+                    Input {
+                        key: Key::Char('R'),
+                        ..
+                    } => {
+                        textarea.cancel_selection(); // FIXME: WRONG!! R when there is a selection acts the same as S (?)
+                        return Transition::Mode(Mode::Replace(false));
+                    }
+
                     Input {
                         key: Key::Char('q'),
                         ..
@@ -450,6 +468,25 @@ impl Vim {
                     Transition::Mode(Mode::Insert)
                 }
             },
+            Mode::Replace(once) => match input {
+                Input { key: Key::Esc, .. }
+                | Input {
+                    key: Key::Char('c'),
+                    ctrl: true,
+                    ..
+                } => Transition::Mode(Mode::Normal),
+                Input { key, .. }  => {
+                    if !match key { Key::Down | Key::Up | Key::Left | Key::Right => true, _ => false } {
+                        textarea.delete_next_char(); // FIXME: Will eat newlines and join into next line, should act like insert at end of line 
+                    }
+                    textarea.input(input); // Use default key mappings in insert mode
+                    if once {
+                        Transition::Mode(Mode::Normal)   
+                    } else {
+                        Transition::Mode(Mode::Replace(false))
+                    }
+                }
+            }
         }
     }
 }
