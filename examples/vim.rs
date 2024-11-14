@@ -87,6 +87,16 @@ impl Vim {
         }
     }
 
+    // True if the textarea cursor is at the end of its given line
+    fn is_before_line_end(textarea: &TextArea<'_>) -> bool {
+        let (cursor_line, cursor_char) = textarea.cursor();
+        let lines = textarea.lines();
+        let line = &lines[cursor_line];
+        let line_length = line.chars().count(); // FIXME: Not acceptable-- O(N)
+
+        cursor_char < line_length
+    }
+
     fn transition(&self, input: Input, textarea: &mut TextArea<'_>) -> Transition {
         if input.key == Key::Null {
             return Transition::Nop;
@@ -216,7 +226,11 @@ impl Vim {
                         key: Key::Char('x'),
                         ..
                     } => {
-                        textarea.delete_next_char(); // FIXME: Will join lines when on final character of line
+                        // FIXME: This check shouldn't be necessary, but the vim example is able to cursor over a terminating newline currently, which real vim can't in normal mode
+                        // FIXME: Repeatedly mashing x at the end of a line should delete the entire line right to left
+                        if Vim::is_before_line_end(&textarea) {
+                            textarea.delete_next_char();
+                        }
                         return Transition::Mode(Mode::Normal);
                     }
                     Input {
@@ -232,12 +246,7 @@ impl Vim {
                     } => {
                         textarea.cancel_selection();
 
-                        let (cursor_line, cursor_char) = textarea.cursor();
-                        let lines = textarea.lines();
-                        let line = &lines[cursor_line];
-                        let line_length = line.chars().count(); // FIXME: Not acceptable-- O(N)
-
-                        if cursor_char < line_length {
+                        if Vim::is_before_line_end(&textarea) {
                             textarea.move_cursor(CursorMove::Forward);
                         }
                         return Transition::Mode(Mode::Insert);
@@ -476,7 +485,8 @@ impl Vim {
                     ..
                 } => Transition::Mode(Mode::Normal),
                 Input { key, .. }  => {
-                    if !match key { Key::Down | Key::Up | Key::Left | Key::Right => true, _ => false } {
+                    if match key { Key::Down | Key::Up | Key::Left | Key::Right => false, _ => true }
+                    && Vim::is_before_line_end(&textarea) {
                         textarea.delete_next_char(); // FIXME: Will eat newlines and join into next line, should act like insert at end of line 
                     }
                     textarea.input(input); // Use default key mappings in insert mode
