@@ -172,16 +172,29 @@ impl Vim {
                         key: Key::Char('J'),
                         ..
                     } => {
-                        let cursor = textarea.cursor();
-                        textarea.cancel_selection(); // FIXME: WRONG!! J when there is a selection merges the selected lines.
-                        textarea.move_cursor(CursorMove::End);
-                        let success = textarea.delete_line_by_end();
-                        if success {
-                            textarea.insert_char(' ');
-                        } else { // In regular vim, joining on the final line is a noop
-                            let (c1, c2) = cursor;
-                            textarea.move_cursor(CursorMove::Jump(c1 as u16, c2 as u16));
-                            // TODO: beep
+                        let mut cursor = textarea.cursor();
+                        let mut lines = 1;
+
+                        if let Some(((from_line, from_idx), (to_line, _))) = textarea.selection_range() {
+                            // J with a selection joins all lines selected
+                            // If only one line is selected, it acts like normal J,
+                            // except on failure the cursor moves to selection start.
+                            lines = (to_line-from_line).max(1);
+                            cursor = (from_line, from_idx);
+                            textarea.cancel_selection(); // fixme restore
+                            textarea.move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
+                        }
+
+                        for _ in 0..lines {
+                            textarea.move_cursor(CursorMove::End);
+                            let success = textarea.delete_line_by_end();
+                            if success { // A line existed
+                                textarea.insert_char(' ');
+                            } else { // In regular vim, joining on the final line is a noop
+                                let (c1, c2) = cursor;
+                                textarea.move_cursor(CursorMove::Jump(c1 as u16, c2 as u16));
+                                // TODO: beep
+                            }
                         }
                     }
                     Input {
