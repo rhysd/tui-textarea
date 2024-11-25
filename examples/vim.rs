@@ -173,19 +173,19 @@ impl Vim {
                         ..
                     } => {
                         let mut cursor = textarea.cursor();
-                        let mut lines = 1;
+                        let mut line_count = 1;
 
                         if let Some(((from_line, from_idx), (to_line, _))) = textarea.selection_range() {
                             // J with a selection joins all lines selected
                             // If only one line is selected, it acts like normal J,
                             // except on failure the cursor moves to selection start.
-                            lines = (to_line-from_line).max(1);
+                            line_count = (to_line-from_line).max(1);
                             cursor = (from_line, from_idx);
                             textarea.cancel_selection(); // fixme restore
                             textarea.move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
                         }
 
-                        for _ in 0..lines {
+                        for _ in 0..line_count {
                             textarea.move_cursor(CursorMove::End);
                             let success = textarea.delete_line_by_end();
                             if success { // A line existed
@@ -276,16 +276,35 @@ impl Vim {
                         key: Key::Char('S'),
                         ..
                     } => {
-                        textarea.cancel_selection(); // FIXME: WRONG!! S when there is a selection collapses and clears all lines.
-                        textarea.move_cursor(CursorMove::Head);
-                        let (cursor_line, _) = textarea.cursor();
-                        let lines = textarea.lines();
-                        let line = &lines[cursor_line];
-                        if line.len() > 0 {
-                            // delete_line_by_end has a special behavior where if you are at the end,
-                            // it joins the line with the next. Prevent accidentally triggering this on an empty line.
-                            textarea.delete_line_by_end();
+                        let mut line_count = 1;
+
+                        if let Some(((from_line, from_idx), (to_line, _))) = textarea.selection_range() {
+                            // S with a selection clears all lines selected
+                            line_count = (to_line-from_line).max(1);
+
+                            textarea.cancel_selection(); // fixme restore
+                            textarea.move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
                         }
+
+                        textarea.move_cursor(CursorMove::Head);
+                        for line_idx in 0..line_count {
+                            let (cursor_line, _) = textarea.cursor();
+                            let lines = textarea.lines();
+                            let line = &lines[cursor_line];
+
+                            if line.len() > 0 {
+                                // delete_line_by_end has a special behavior where if you are at the end,
+                                // it joins the line with the next. Prevent accidentally triggering this on an empty line.
+                                textarea.delete_line_by_end();
+                            }
+
+                            if line_idx < line_count-1 {
+                                // We are now guaranteed at the end of the line.
+                                // Join to next line.
+                                textarea.delete_line_by_end();
+                            }
+                        }
+
                         return Transition::Mode(Mode::Insert);
                     }
                     Input {
