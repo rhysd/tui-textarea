@@ -336,15 +336,19 @@ impl Vim {
                         key: Key::Char('r'),
                         ..
                     } => {
-                        textarea.cancel_selection(); // FIXME: WRONG!! r when there is a selection replaces the selected text.
+                        // Notice selection is not cancelled-- it will be used by replace mode
                         return Transition::Mode(Mode::Replace(true));
                     }
                     Input {
                         key: Key::Char('R'),
                         ..
                     } => {
-                        textarea.cancel_selection(); // FIXME: WRONG!! R when there is a selection acts the same as S (?)
-                        return Transition::Mode(Mode::Replace(false));
+                        if textarea.selection_range().is_some() {
+                            // R with a selection does the same thing as S-- it enters Insert NOT Replace mode.
+                            return self.transition(Input { key: Key::Char('S'), ctrl: false, alt: false, shift: true }, textarea);
+                        } else {
+                            return Transition::Mode(Mode::Replace(false));
+                        }
                     }
 
                     Input {
@@ -530,13 +534,49 @@ impl Vim {
                     key: Key::Char('c'),
                     ctrl: true,
                     ..
-                } => Transition::Mode(Mode::Normal),
+                } => {
+                    if textarea.selection_range().is_some() {
+                        // The user made a selection, hit lowercase 'r', then aborted.
+                        // (It shouldn't be possible to get here in non-"once" mode.)
+                        Transition::Mode(Mode::Visual)
+                    } else {
+                        Transition::Mode(Mode::Normal)
+                    }
+                },
                 Input { key, .. }  => {
                     if match key { Key::Down | Key::Up | Key::Left | Key::Right => false, _ => true }
-                    && Vim::is_before_line_end(&textarea) {
-                        textarea.delete_next_char(); // FIXME: Will eat newlines and join into next line, should act like insert at end of line 
-                    }
-                    textarea.input(input); // Use default key mappings in insert mode
+                    && !(once && (key == Key::Backspace || key == Key::Delete)) { // Allowed with R, not r
+                        if let Some(((from_line, from_idx), (to_line, to_idx))) = textarea.selection_range() {
+                            // Bizarro 'r' with a selection: Replace every non-newline character at once?!
+                            let mut next_start_idx = from_idx;
+                            for line_idx in from_line..=to_line {
+                                let lines = textarea.lines();
+                                let line = &lines[line_idx];
+                                let line_len = line.len();
+
+                                textarea.move_cursor(CursorMove::Jump(line_idx as u16, next_start_idx as u16));
+
+                                // "min" is to handle the odd case where the cursor is on the newline (not possible in real vim)
+                                let end_idx = if line_idx==to_line { line_len.min(to_idx+1) }
+                                else { line_len };
+
+                                for _ in next_start_idx..end_idx {
+                                    textarea.delete_next_char();
+                                    textarea.input(input.clone());
+                                }
+
+                                next_start_idx = 0;
+                            }
+
+                            textarea.move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
+                        } else {
+                            // Normal 'r'
+                            if Vim::is_before_line_end(&textarea) {
+                                textarea.delete_next_char(); // FIXME: Will eat newlines and join into next line, should act like insert at end of line
+                            }
+                            textarea.input(input); // Use default key mappings in insert mode
+                        }
+                    } // TODO: else beep
                     if once {
                         Transition::Mode(Mode::Normal)   
                     } else {
