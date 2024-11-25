@@ -401,6 +401,11 @@ impl Vim {
                     }
                     Input { key: Key::Esc, .. }
                     | Input {
+                        key: Key::Char('['),
+                        ctrl: true,
+                        ..
+                    }
+                    | Input {
                         key: Key::Char('v'),
                         ctrl: false,
                         ..
@@ -500,6 +505,11 @@ impl Vim {
             Mode::Insert => match input {
                 Input { key: Key::Esc, .. }
                 | Input {
+                    key: Key::Char('['),
+                    ctrl: true,
+                    ..
+                }
+                | Input {
                     key: Key::Char('c'),
                     ctrl: true,
                     ..
@@ -511,6 +521,11 @@ impl Vim {
             },
             Mode::Replace(once) => match input {
                 Input { key: Key::Esc, .. }
+                | Input {
+                    key: Key::Char('['),
+                    ctrl: true,
+                    ..
+                }
                 | Input {
                     key: Key::Char('c'),
                     ctrl: true,
