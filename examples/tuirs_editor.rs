@@ -31,7 +31,7 @@ struct SearchBox<'a> {
     open: bool,
 }
 
-impl<'a> Default for SearchBox<'a> {
+impl Default for SearchBox<'_> {
     fn default() -> Self {
         let mut textarea = TextArea::default();
         textarea.set_block(Block::default().borders(Borders::ALL).title("Search"));
@@ -42,7 +42,7 @@ impl<'a> Default for SearchBox<'a> {
     }
 }
 
-impl<'a> SearchBox<'a> {
+impl SearchBox<'_> {
     fn open(&mut self) {
         self.open = true;
     }
@@ -99,7 +99,7 @@ struct Buffer<'a> {
     modified: bool,
 }
 
-impl<'a> Buffer<'a> {
+impl Buffer<'_> {
     fn new(path: PathBuf) -> io::Result<Self> {
         let mut textarea = if let Ok(md) = path.metadata() {
             if md.is_file() {
@@ -146,7 +146,7 @@ struct Editor<'a> {
     search: SearchBox<'a>,
 }
 
-impl<'a> Editor<'a> {
+impl Editor<'_> {
     fn new<I>(paths: I) -> io::Result<Self>
     where
         I: Iterator,
@@ -351,7 +351,7 @@ impl<'a> Editor<'a> {
     }
 }
 
-impl<'a> Drop for Editor<'a> {
+impl Drop for Editor<'_> {
     fn drop(&mut self) {
         self.term.show_cursor().unwrap();
         disable_raw_mode().unwrap();

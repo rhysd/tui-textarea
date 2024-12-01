@@ -147,7 +147,7 @@ pub struct TextArea<'a> {
 /// let textarea = TextArea::from(slice.iter().copied());
 /// assert_eq!(textarea.lines(), ["hello", "world"]);
 /// ```
-impl<'a, I> From<I> for TextArea<'a>
+impl<I> From<I> for TextArea<'_>
 where
     I: IntoIterator,
     I::Item: Into<String>,
@@ -174,7 +174,7 @@ where
 /// let textarea = read_from_file("README.md").unwrap();
 /// assert!(!textarea.is_empty());
 /// ```
-impl<'a, S: Into<String>> FromIterator<S> for TextArea<'a> {
+impl<S: Into<String>> FromIterator<S> for TextArea<'_> {
     fn from_iter<I: IntoIterator<Item = S>>(iter: I) -> Self {
         iter.into()
     }
@@ -188,7 +188,7 @@ impl<'a, S: Into<String>> FromIterator<S> for TextArea<'a> {
 /// assert_eq!(textarea.lines(), [""]);
 /// assert!(textarea.is_empty());
 /// ```
-impl<'a> Default for TextArea<'a> {
+impl Default for TextArea<'_> {
     fn default() -> Self {
         Self::new(vec![String::new()])
     }
