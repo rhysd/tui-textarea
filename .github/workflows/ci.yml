@@ -64,15 +64,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
-      - name: Run `cargo doc` with same configuration as docs.rs
+      - name: Run `cargo rustdoc` with same configuration as docs.rs
         run: |
           set -e
           md="$(cargo metadata --format-version=1 | jq '.packages[] | select(.name=="tui-textarea") | .metadata.docs.rs')"
-          export RUSTDOCFLAGS="$(echo "$md" | jq -r '.["rustdoc-args"] | join(" ")') -D warnings"
+          rustdoc_args="$(echo "$md" | jq -r '.["rustdoc-args"] | join(" ")') -D warnings"
           features="$(echo "$md" | jq -r '.features | join(",")')"
+
           set -x
           for target in $(echo "$md" | jq -r '.targets | join(" ")')
           do
             rustup target add "$target"
-            cargo doc -p tui-textarea "--features=$features" "--target=$target"
+            cargo rustdoc -p tui-textarea "--features=$features" "--target=$target" -- $rustdoc_args
           done
