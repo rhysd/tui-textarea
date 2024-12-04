@@ -108,37 +108,27 @@ impl Vim {
                     Input {
                         key: Key::Char('h'),
                         ..
-                    } |
-                    Input {
-                        key: Key::Left,
-                        ..
-                    } => textarea.move_cursor(CursorMove::Back),
+                    }
+                    | Input { key: Key::Left, .. } => textarea.move_cursor(CursorMove::Back),
 
                     Input {
                         key: Key::Char('j'),
                         ..
-                    } |
-                    Input {
-                        key: Key::Down,
-                        ..
-                    } => textarea.move_cursor(CursorMove::Down),
+                    }
+                    | Input { key: Key::Down, .. } => textarea.move_cursor(CursorMove::Down),
 
                     Input {
                         key: Key::Char('k'),
                         ..
-                    } |
-                    Input {
-                        key: Key::Up,
-                        ..
-                    } => textarea.move_cursor(CursorMove::Up),
+                    }
+                    | Input { key: Key::Up, .. } => textarea.move_cursor(CursorMove::Up),
 
                     Input {
                         key: Key::Char('l'),
                         ..
-                    } |
-                    Input {
-                        key: Key::Right,
-                        ..
+                    }
+                    | Input {
+                        key: Key::Right, ..
                     } => textarea.move_cursor(CursorMove::Forward),
 
                     Input {
@@ -168,29 +158,35 @@ impl Vim {
                         key: Key::Char('$'),
                         ..
                     } => textarea.move_cursor(CursorMove::End),
-                    Input { // Note: Not sorted with j
+                    Input {
+                        // Note: Not sorted with j
                         key: Key::Char('J'),
                         ..
                     } => {
                         let mut cursor = textarea.cursor();
                         let mut line_count = 1;
 
-                        if let Some(((from_line, from_idx), (to_line, _))) = textarea.selection_range() {
+                        if let Some(((from_line, from_idx), (to_line, _))) =
+                            textarea.selection_range()
+                        {
                             // J with a selection joins all lines selected
                             // If only one line is selected, it acts like normal J,
                             // except on failure the cursor moves to selection start.
-                            line_count = (to_line-from_line).max(1);
+                            line_count = (to_line - from_line).max(1);
                             cursor = (from_line, from_idx);
                             textarea.cancel_selection(); // fixme restore
-                            textarea.move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
+                            textarea
+                                .move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
                         }
 
                         for _ in 0..line_count {
                             textarea.move_cursor(CursorMove::End);
                             let success = textarea.delete_line_by_end();
-                            if success { // A line existed
+                            if success {
+                                // A line existed
                                 textarea.insert_char(' ');
-                            } else { // In regular vim, joining on the final line is a noop
+                            } else {
+                                // In regular vim, joining on the final line is a noop
                                 let (c1, c2) = cursor;
                                 textarea.move_cursor(CursorMove::Jump(c1 as u16, c2 as u16));
                                 // TODO: beep
@@ -278,12 +274,15 @@ impl Vim {
                     } => {
                         let mut line_count = 1;
 
-                        if let Some(((from_line, from_idx), (to_line, _))) = textarea.selection_range() {
+                        if let Some(((from_line, from_idx), (to_line, _))) =
+                            textarea.selection_range()
+                        {
                             // S with a selection clears all lines selected
-                            line_count = (to_line-from_line).max(1);
+                            line_count = (to_line - from_line).max(1);
 
                             textarea.cancel_selection(); // fixme restore
-                            textarea.move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
+                            textarea
+                                .move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
                         }
 
                         textarea.move_cursor(CursorMove::Head);
@@ -298,7 +297,7 @@ impl Vim {
                                 textarea.delete_line_by_end();
                             }
 
-                            if line_idx < line_count-1 {
+                            if line_idx < line_count - 1 {
                                 // We are now guaranteed at the end of the line.
                                 // Join to next line.
                                 textarea.delete_line_by_end();
@@ -345,7 +344,15 @@ impl Vim {
                     } => {
                         if textarea.selection_range().is_some() {
                             // R with a selection does the same thing as S-- it enters Insert NOT Replace mode.
-                            return self.transition(Input { key: Key::Char('S'), ctrl: false, alt: false, shift: true }, textarea);
+                            return self.transition(
+                                Input {
+                                    key: Key::Char('S'),
+                                    ctrl: false,
+                                    alt: false,
+                                    shift: true,
+                                },
+                                textarea,
+                            );
                         } else {
                             return Transition::Mode(Mode::Replace(false));
                         }
@@ -542,11 +549,17 @@ impl Vim {
                     } else {
                         Transition::Mode(Mode::Normal)
                     }
-                },
-                Input { key, .. }  => {
-                    if match key { Key::Down | Key::Up | Key::Left | Key::Right => false, _ => true }
-                    && !(once && (key == Key::Backspace || key == Key::Delete)) { // Allowed with R, not r
-                        if let Some(((from_line, from_idx), (to_line, to_idx))) = textarea.selection_range() {
+                }
+                Input { key, .. } => {
+                    if match key {
+                        Key::Down | Key::Up | Key::Left | Key::Right => false,
+                        _ => true,
+                    } && !(once && (key == Key::Backspace || key == Key::Delete))
+                    {
+                        // Allowed with R, not r
+                        if let Some(((from_line, from_idx), (to_line, to_idx))) =
+                            textarea.selection_range()
+                        {
                             // Bizarro 'r' with a selection: Replace every non-newline character at once?!
                             let mut next_start_idx = from_idx;
                             for line_idx in from_line..=to_line {
@@ -554,11 +567,17 @@ impl Vim {
                                 let line = &lines[line_idx];
                                 let line_len = line.len();
 
-                                textarea.move_cursor(CursorMove::Jump(line_idx as u16, next_start_idx as u16));
+                                textarea.move_cursor(CursorMove::Jump(
+                                    line_idx as u16,
+                                    next_start_idx as u16,
+                                ));
 
                                 // "min" is to handle the odd case where the cursor is on the newline (not possible in real vim)
-                                let end_idx = if line_idx==to_line { line_len.min(to_idx+1) }
-                                else { line_len };
+                                let end_idx = if line_idx == to_line {
+                                    line_len.min(to_idx + 1)
+                                } else {
+                                    line_len
+                                };
 
                                 for _ in next_start_idx..end_idx {
                                     textarea.delete_next_char();
@@ -568,7 +587,8 @@ impl Vim {
                                 next_start_idx = 0;
                             }
 
-                            textarea.move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
+                            textarea
+                                .move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
                         } else {
                             // Normal 'r'
                             if Vim::is_before_line_end(&textarea) {
@@ -578,12 +598,12 @@ impl Vim {
                         }
                     } // TODO: else beep
                     if once {
-                        Transition::Mode(Mode::Normal)   
+                        Transition::Mode(Mode::Normal)
                     } else {
                         Transition::Mode(Mode::Replace(false))
                     }
                 }
-            }
+            },
         }
     }
 }
