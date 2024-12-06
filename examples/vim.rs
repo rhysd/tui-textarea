@@ -17,6 +17,7 @@ use tui_textarea::{CursorMove, Input, Key, Scrolling, TextArea};
 enum Mode {
     Normal,
     Insert,
+    Replace(bool), // Bool for "once only?"
     Visual,
     Operator(char),
 }
@@ -25,7 +26,7 @@ impl Mode {
     fn block<'a>(&self) -> Block<'a> {
         let help = match self {
             Self::Normal => "type q to quit, type i to enter insert mode",
-            Self::Insert => "type Esc to back to normal mode",
+            Self::Replace(_) | Self::Insert => "type Esc to back to normal mode",
             Self::Visual => "type y to yank, type d to delete, type Esc to back to normal mode",
             Self::Operator(_) => "move cursor to apply operator",
         };
@@ -38,6 +39,7 @@ impl Mode {
             Self::Normal => Color::Reset,
             Self::Insert => Color::LightBlue,
             Self::Visual => Color::LightYellow,
+            Self::Replace(_) => Color::LightRed,
             Self::Operator(_) => Color::LightGreen,
         };
         Style::default().fg(color).add_modifier(Modifier::REVERSED)
@@ -50,6 +52,7 @@ impl fmt::Display for Mode {
             Self::Normal => write!(f, "NORMAL"),
             Self::Insert => write!(f, "INSERT"),
             Self::Visual => write!(f, "VISUAL"),
+            Self::Replace(_) => write!(f, "REPLACE"),
             Self::Operator(c) => write!(f, "OPERATOR({})", c),
         }
     }
@@ -84,6 +87,16 @@ impl Vim {
         }
     }
 
+    // True if the textarea cursor is at the end of its given line
+    fn is_before_line_end(textarea: &TextArea<'_>) -> bool {
+        let (cursor_line, cursor_char) = textarea.cursor();
+        let lines = textarea.lines();
+        let line = &lines[cursor_line];
+        let line_length = line.chars().count(); // FIXME: Not acceptable-- O(N)
+
+        cursor_char < line_length
+    }
+
     fn transition(&self, input: Input, textarea: &mut TextArea<'_>) -> Transition {
         if input.key == Key::Null {
             return Transition::Nop;
@@ -95,19 +108,29 @@ impl Vim {
                     Input {
                         key: Key::Char('h'),
                         ..
-                    } => textarea.move_cursor(CursorMove::Back),
+                    }
+                    | Input { key: Key::Left, .. } => textarea.move_cursor(CursorMove::Back),
+
                     Input {
                         key: Key::Char('j'),
                         ..
-                    } => textarea.move_cursor(CursorMove::Down),
+                    }
+                    | Input { key: Key::Down, .. } => textarea.move_cursor(CursorMove::Down),
+
                     Input {
                         key: Key::Char('k'),
                         ..
-                    } => textarea.move_cursor(CursorMove::Up),
+                    }
+                    | Input { key: Key::Up, .. } => textarea.move_cursor(CursorMove::Up),
+
                     Input {
                         key: Key::Char('l'),
                         ..
+                    }
+                    | Input {
+                        key: Key::Right, ..
                     } => textarea.move_cursor(CursorMove::Forward),
+
                     Input {
                         key: Key::Char('w'),
                         ..
@@ -135,6 +158,41 @@ impl Vim {
                         key: Key::Char('$'),
                         ..
                     } => textarea.move_cursor(CursorMove::End),
+                    Input {
+                        // Note: Not sorted with j
+                        key: Key::Char('J'),
+                        ..
+                    } => {
+                        let mut cursor = textarea.cursor();
+                        let mut line_count = 1;
+
+                        if let Some(((from_line, from_idx), (to_line, _))) =
+                            textarea.selection_range()
+                        {
+                            // J with a selection joins all lines selected
+                            // If only one line is selected, it acts like normal J,
+                            // except on failure the cursor moves to selection start.
+                            line_count = (to_line - from_line).max(1);
+                            cursor = (from_line, from_idx);
+                            textarea.cancel_selection(); // fixme restore
+                            textarea
+                                .move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
+                        }
+
+                        for _ in 0..line_count {
+                            textarea.move_cursor(CursorMove::End);
+                            let success = textarea.delete_line_by_end();
+                            if success {
+                                // A line existed
+                                textarea.insert_char(' ');
+                            } else {
+                                // In regular vim, joining on the final line is a noop
+                                let (c1, c2) = cursor;
+                                textarea.move_cursor(CursorMove::Jump(c1 as u16, c2 as u16));
+                                // TODO: beep
+                            }
+                        }
+                    }
                     Input {
                         key: Key::Char('D'),
                         ..
@@ -177,7 +235,11 @@ impl Vim {
                         key: Key::Char('x'),
                         ..
                     } => {
-                        textarea.delete_next_char();
+                        // FIXME: This check shouldn't be necessary, but the vim example is able to cursor over a terminating newline currently, which real vim can't in normal mode
+                        // FIXME: Repeatedly mashing x at the end of a line should delete the entire line right to left
+                        if Vim::is_before_line_end(textarea) {
+                            textarea.delete_next_char();
+                        }
                         return Transition::Mode(Mode::Normal);
                     }
                     Input {
@@ -192,7 +254,10 @@ impl Vim {
                         ..
                     } => {
                         textarea.cancel_selection();
-                        textarea.move_cursor(CursorMove::Forward);
+
+                        if Vim::is_before_line_end(textarea) {
+                            textarea.move_cursor(CursorMove::Forward);
+                        }
                         return Transition::Mode(Mode::Insert);
                     }
                     Input {
@@ -201,6 +266,44 @@ impl Vim {
                     } => {
                         textarea.cancel_selection();
                         textarea.move_cursor(CursorMove::End);
+                        return Transition::Mode(Mode::Insert);
+                    }
+                    Input {
+                        key: Key::Char('S'),
+                        ..
+                    } => {
+                        let mut line_count = 1;
+
+                        if let Some(((from_line, from_idx), (to_line, _))) =
+                            textarea.selection_range()
+                        {
+                            // S with a selection clears all lines selected
+                            line_count = (to_line - from_line).max(1);
+
+                            textarea.cancel_selection(); // fixme restore
+                            textarea
+                                .move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
+                        }
+
+                        textarea.move_cursor(CursorMove::Head);
+                        for line_idx in 0..line_count {
+                            let (cursor_line, _) = textarea.cursor();
+                            let lines = textarea.lines();
+                            let line = &lines[cursor_line];
+
+                            if !line.is_empty() {
+                                // delete_line_by_end has a special behavior where if you are at the end,
+                                // it joins the line with the next. Prevent accidentally triggering this on an empty line.
+                                textarea.delete_line_by_end();
+                            }
+
+                            if line_idx < line_count - 1 {
+                                // We are now guaranteed at the end of the line.
+                                // Join to next line.
+                                textarea.delete_line_by_end();
+                            }
+                        }
+
                         return Transition::Mode(Mode::Insert);
                     }
                     Input {
@@ -228,6 +331,33 @@ impl Vim {
                         textarea.move_cursor(CursorMove::Head);
                         return Transition::Mode(Mode::Insert);
                     }
+                    Input {
+                        key: Key::Char('r'),
+                        ..
+                    } => {
+                        // Notice selection is not cancelled-- it will be used by replace mode
+                        return Transition::Mode(Mode::Replace(true));
+                    }
+                    Input {
+                        key: Key::Char('R'),
+                        ..
+                    } => {
+                        if textarea.selection_range().is_some() {
+                            // R with a selection does the same thing as S-- it enters Insert NOT Replace mode.
+                            return self.transition(
+                                Input {
+                                    key: Key::Char('S'),
+                                    ctrl: false,
+                                    alt: false,
+                                    shift: true,
+                                },
+                                textarea,
+                            );
+                        } else {
+                            return Transition::Mode(Mode::Replace(false));
+                        }
+                    }
+
                     Input {
                         key: Key::Char('q'),
                         ..
@@ -281,6 +411,11 @@ impl Vim {
                         return Transition::Mode(Mode::Visual);
                     }
                     Input { key: Key::Esc, .. }
+                    | Input {
+                        key: Key::Char('['),
+                        ctrl: true,
+                        ..
+                    }
                     | Input {
                         key: Key::Char('v'),
                         ctrl: false,
@@ -381,6 +516,11 @@ impl Vim {
             Mode::Insert => match input {
                 Input { key: Key::Esc, .. }
                 | Input {
+                    key: Key::Char('['),
+                    ctrl: true,
+                    ..
+                }
+                | Input {
                     key: Key::Char('c'),
                     ctrl: true,
                     ..
@@ -388,6 +528,78 @@ impl Vim {
                 input => {
                     textarea.input(input); // Use default key mappings in insert mode
                     Transition::Mode(Mode::Insert)
+                }
+            },
+            Mode::Replace(once) => match input {
+                Input { key: Key::Esc, .. }
+                | Input {
+                    key: Key::Char('['),
+                    ctrl: true,
+                    ..
+                }
+                | Input {
+                    key: Key::Char('c'),
+                    ctrl: true,
+                    ..
+                } => {
+                    if textarea.selection_range().is_some() {
+                        // The user made a selection, hit lowercase 'r', then aborted.
+                        // (It shouldn't be possible to get here in non-"once" mode.)
+                        Transition::Mode(Mode::Visual)
+                    } else {
+                        Transition::Mode(Mode::Normal)
+                    }
+                }
+                Input { key, .. } => {
+                    if !matches!(key, Key::Down | Key::Up | Key::Left | Key::Right)
+                        && !(once && (key == Key::Backspace || key == Key::Delete))
+                    {
+                        // Allowed with R, not r
+                        if let Some(((from_line, from_idx), (to_line, to_idx))) =
+                            textarea.selection_range()
+                        {
+                            // Bizarro 'r' with a selection: Replace every non-newline character at once?!
+                            let mut next_start_idx = from_idx;
+                            for line_idx in from_line..=to_line {
+                                let lines = textarea.lines();
+                                let line = &lines[line_idx];
+                                let line_len = line.len();
+
+                                textarea.move_cursor(CursorMove::Jump(
+                                    line_idx as u16,
+                                    next_start_idx as u16,
+                                ));
+
+                                // "min" is to handle the odd case where the cursor is on the newline (not possible in real vim)
+                                let end_idx = if line_idx == to_line {
+                                    line_len.min(to_idx + 1)
+                                } else {
+                                    line_len
+                                };
+
+                                for _ in next_start_idx..end_idx {
+                                    textarea.delete_next_char();
+                                    textarea.input(input.clone());
+                                }
+
+                                next_start_idx = 0;
+                            }
+
+                            textarea
+                                .move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
+                        } else {
+                            // Normal 'r'
+                            if Vim::is_before_line_end(textarea) {
+                                textarea.delete_next_char(); // FIXME: Will eat newlines and join into next line, should act like insert at end of line
+                            }
+                            textarea.input(input); // Use default key mappings in insert mode
+                        }
+                    } // TODO: else beep
+                    if once {
+                        Transition::Mode(Mode::Normal)
+                    } else {
+                        Transition::Mode(Mode::Replace(false))
+                    }
                 }
             },
         }
