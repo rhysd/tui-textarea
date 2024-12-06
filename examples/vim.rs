@@ -237,7 +237,7 @@ impl Vim {
                     } => {
                         // FIXME: This check shouldn't be necessary, but the vim example is able to cursor over a terminating newline currently, which real vim can't in normal mode
                         // FIXME: Repeatedly mashing x at the end of a line should delete the entire line right to left
-                        if Vim::is_before_line_end(&textarea) {
+                        if Vim::is_before_line_end(textarea) {
                             textarea.delete_next_char();
                         }
                         return Transition::Mode(Mode::Normal);
@@ -255,7 +255,7 @@ impl Vim {
                     } => {
                         textarea.cancel_selection();
 
-                        if Vim::is_before_line_end(&textarea) {
+                        if Vim::is_before_line_end(textarea) {
                             textarea.move_cursor(CursorMove::Forward);
                         }
                         return Transition::Mode(Mode::Insert);
@@ -291,7 +291,7 @@ impl Vim {
                             let lines = textarea.lines();
                             let line = &lines[cursor_line];
 
-                            if line.len() > 0 {
+                            if !line.is_empty() {
                                 // delete_line_by_end has a special behavior where if you are at the end,
                                 // it joins the line with the next. Prevent accidentally triggering this on an empty line.
                                 textarea.delete_line_by_end();
@@ -551,10 +551,8 @@ impl Vim {
                     }
                 }
                 Input { key, .. } => {
-                    if match key {
-                        Key::Down | Key::Up | Key::Left | Key::Right => false,
-                        _ => true,
-                    } && !(once && (key == Key::Backspace || key == Key::Delete))
+                    if !matches!(key, Key::Down | Key::Up | Key::Left | Key::Right)
+                        && !(once && (key == Key::Backspace || key == Key::Delete))
                     {
                         // Allowed with R, not r
                         if let Some(((from_line, from_idx), (to_line, to_idx))) =
@@ -591,7 +589,7 @@ impl Vim {
                                 .move_cursor(CursorMove::Jump(from_line as u16, from_idx as u16));
                         } else {
                             // Normal 'r'
-                            if Vim::is_before_line_end(&textarea) {
+                            if Vim::is_before_line_end(textarea) {
                                 textarea.delete_next_char(); // FIXME: Will eat newlines and join into next line, should act like insert at end of line
                             }
                             textarea.input(input); // Use default key mappings in insert mode
