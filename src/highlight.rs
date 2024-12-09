@@ -15,6 +15,7 @@ enum Boundary {
     Select(Style),
     #[cfg(feature = "search")]
     Search(Style),
+    Custom(Style, u8), // style, priority
     End,
 }
 
@@ -22,10 +23,11 @@ impl Boundary {
     fn cmp(&self, other: &Boundary) -> Ordering {
         fn rank(b: &Boundary) -> u8 {
             match b {
-                Boundary::Cursor(_) => 3,
+                Boundary::Cursor(_) => 30,
                 #[cfg(feature = "search")]
-                Boundary::Search(_) => 2,
-                Boundary::Select(_) => 1,
+                Boundary::Search(_) => 20,
+                Boundary::Select(_) => 10,
+                Boundary::Custom(_, p) => *p,
                 Boundary::End => 0,
             }
         }
@@ -38,6 +40,7 @@ impl Boundary {
             Boundary::Select(s) => Some(*s),
             #[cfg(feature = "search")]
             Boundary::Search(s) => Some(*s),
+            Boundary::Custom(s, _) => Some(*s),
             Boundary::End => None,
         }
     }
@@ -156,13 +159,15 @@ impl<'a> LineHighlighter<'a> {
         }
     }
 
-    pub fn selection(
+    // Shared code for selection and custom highlights
+    fn multiline_highlight(
         &mut self,
         current_row: usize,
         start_row: usize,
         start_off: usize,
         end_row: usize,
         end_off: usize,
+        boundary: Boundary
     ) {
         let (start, end) = if current_row == start_row {
             if start_row == end_row {
@@ -181,9 +186,33 @@ impl<'a> LineHighlighter<'a> {
         };
         if start != end {
             self.boundaries
-                .push((Boundary::Select(self.select_style), start));
+                .push((boundary, start));
             self.boundaries.push((Boundary::End, end));
         }
+    }
+
+    pub fn selection(
+        &mut self,
+        current_row: usize,
+        start_row: usize,
+        start_off: usize,
+        end_row: usize,
+        end_off: usize,
+    ) {
+        self.multiline_highlight(current_row, start_row, start_off, end_row, end_off, Boundary::Select(self.select_style));
+    }
+
+    pub fn custom(
+        &mut self,
+        current_row: usize,
+        start_row: usize,
+        start_off: usize,
+        end_row: usize,
+        end_off: usize,
+        style: Style,
+        priority: u8
+        ) {
+        self.multiline_highlight(current_row, start_row, start_off, end_row, end_off, Boundary::Custom(style, priority));
     }
 
     pub fn into_spans(self) -> Line<'a> {
