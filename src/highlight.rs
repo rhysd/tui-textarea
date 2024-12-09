@@ -167,7 +167,7 @@ impl<'a> LineHighlighter<'a> {
         start_off: usize,
         end_row: usize,
         end_off: usize,
-        boundary: Boundary
+        boundary: Boundary,
     ) {
         let (start, end) = if current_row == start_row {
             if start_row == end_row {
@@ -185,8 +185,7 @@ impl<'a> LineHighlighter<'a> {
             return;
         };
         if start != end {
-            self.boundaries
-                .push((boundary, start));
+            self.boundaries.push((boundary, start));
             self.boundaries.push((Boundary::End, end));
         }
     }
@@ -199,7 +198,14 @@ impl<'a> LineHighlighter<'a> {
         end_row: usize,
         end_off: usize,
     ) {
-        self.multiline_highlight(current_row, start_row, start_off, end_row, end_off, Boundary::Select(self.select_style));
+        self.multiline_highlight(
+            current_row,
+            start_row,
+            start_off,
+            end_row,
+            end_off,
+            Boundary::Select(self.select_style),
+        );
     }
 
     pub fn custom(
@@ -210,9 +216,16 @@ impl<'a> LineHighlighter<'a> {
         end_row: usize,
         end_off: usize,
         style: Style,
-        priority: u8
-        ) {
-        self.multiline_highlight(current_row, start_row, start_off, end_row, end_off, Boundary::Custom(style, priority));
+        priority: u8,
+    ) {
+        self.multiline_highlight(
+            current_row,
+            start_row,
+            start_off,
+            end_row,
+            end_off,
+            Boundary::Custom(style, priority),
+        );
     }
 
     pub fn into_spans(self) -> Line<'a> {
