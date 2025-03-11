@@ -9,6 +9,8 @@ impl CharKind {
     fn new(c: char) -> Self {
         if c.is_whitespace() {
             Self::Space
+        } else if c == '_' {
+            Self::Other
         } else if c.is_ascii_punctuation() {
             Self::Punct
         } else {
