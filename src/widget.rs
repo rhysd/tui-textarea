@@ -7,7 +7,7 @@ use crate::util::num_digits;
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
 use std::cmp;
-use std::sync::atomic::{AtomicU64, Ordering};
+use portable_atomic::{AtomicU64, Ordering};
 #[cfg(feature = "tuirs")]
 use tui::text::Spans as Line;
 
