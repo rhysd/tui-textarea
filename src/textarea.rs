@@ -11,8 +11,10 @@ use crate::search::Search;
 use crate::util::{spaces, Pos};
 use crate::widget::Viewport;
 use crate::word::{find_word_exclusive_end_forward, find_word_start_backward};
+use ratatui::style::Stylize;
 #[cfg(feature = "ratatui")]
 use ratatui::text::Line;
+use ratatui::text::Text;
 use std::cmp::Ordering;
 use std::fmt;
 #[cfg(feature = "tuirs")]
@@ -120,8 +122,7 @@ pub struct TextArea<'a> {
     #[cfg(feature = "search")]
     search: Search,
     alignment: Alignment,
-    pub(crate) placeholder: String,
-    pub(crate) placeholder_style: Style,
+    pub(crate) placeholder: Text<'a>,
     mask: Option<char>,
     selection_start: Option<(usize, usize)>,
     select_style: Style,
@@ -225,8 +226,7 @@ impl<'a> TextArea<'a> {
             #[cfg(feature = "search")]
             search: Search::default(),
             alignment: Alignment::Left,
-            placeholder: String::new(),
-            placeholder_style: Style::default().fg(Color::DarkGray),
+            placeholder: Text::default().fg(Color::DarkGray),
             mask: None,
             selection_start: None,
             select_style: Style::default().bg(Color::LightBlue),
@@ -1853,9 +1853,44 @@ impl<'a> TextArea<'a> {
         self.line_number_style
     }
 
-    /// Set the placeholder text. The text is set in the textarea when no text is input. Setting a non-empty string `""`
-    /// enables the placeholder. The default value is an empty string so the placeholder is disabled by default.
+    /// Gets the placeholder
+    pub fn placeholder(&self) -> &Text<'_> {
+        &self.placeholder
+    }
+
+    /// Set the placeholder text. The Text is set in the textarea when no text is input. The default value is an empty Text with foreground [`Color::DarkGray`] so the placeholder is invisible by default.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// assert_eq!(textarea.placeholder().lines, Vec::new);
+    /// assert!(textarea.placeholder_style(), Style::mew);
+    ///
+    /// textarea.set_placeholder("Hello");
+    /// assert_eq!(textarea.placeholder(), "Hello");
+    /// assert!(textarea.placeholder_style().is_some());
+    /// ```
+    pub fn set_placeholder(&mut self, placeholder: impl Into<Text<'a>>) {
+        self.placeholder = placeholder.into()
+    }
+
+    /// Set the style of the placeholder text. The default style is a dark gray text.
+    /// ```
+    /// use ratatui::style::{Style, Color};
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// let style = Style::default().bg(Color::Blue);
+    /// textarea.set_placeholder_style(style);
+    /// assert_eq!(textarea.placeholder().style, style);
+    /// ```
+    pub fn set_placeholder_style(&mut self, style: Style) {
+        self.placeholder.style = style;
+    }
+
+    /// Set the placeholder text. The Text is set in the textarea when no text is input. The default value is an empty Text so the placeholder is invisible by default.
     /// To customize the text style, see [`TextArea::set_placeholder_style`].
+    /// This method is deprecated as it accepts [`impl Into<String>`] instead of [`impl Into<Text>`], please use [`TextArea::set_placeholder`]
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -1867,26 +1902,10 @@ impl<'a> TextArea<'a> {
     /// assert_eq!(textarea.placeholder_text(), "Hello");
     /// assert!(textarea.placeholder_style().is_some());
     /// ```
+    #[deprecated = "Placeholder is now Text, so this method removes styling of individual spans and preserves only the Text's style, and also doesn't work with newlines. Please use set_placeholder"]
     pub fn set_placeholder_text(&mut self, placeholder: impl Into<String>) {
-        self.placeholder = placeholder.into();
-    }
-
-    /// Set the style of the placeholder text. The default style is a dark gray text.
-    /// ```
-    /// use ratatui::style::{Style, Color};
-    /// use tui_textarea::TextArea;
-    ///
-    /// let mut textarea = TextArea::default();
-    /// assert_eq!(textarea.placeholder_style(), None); // When the placeholder is disabled
-    ///
-    /// textarea.set_placeholder_text("Enter your message"); // Enable placeholder by setting non-empty text
-    ///
-    /// let style = Style::default().bg(Color::Blue);
-    /// textarea.set_placeholder_style(style);
-    /// assert_eq!(textarea.placeholder_style(), Some(style));
-    /// ```
-    pub fn set_placeholder_style(&mut self, style: Style) {
-        self.placeholder_style = style;
+        let placeholder: String = placeholder.into();
+        self.placeholder.lines = vec![Line::raw(placeholder)];
     }
 
     /// Get the placeholder text. An empty string means the placeholder is disabled. The default value is an empty string.
@@ -1896,12 +1915,20 @@ impl<'a> TextArea<'a> {
     /// let textarea = TextArea::default();
     /// assert_eq!(textarea.placeholder_text(), "");
     /// ```
+    #[deprecated = "Placeholder is now Text, so this method can only return the first span of the first line. Please use placeholder"]
     pub fn placeholder_text(&self) -> &'_ str {
-        self.placeholder.as_str()
+        let line = match self.placeholder.lines.first() {
+            Some(line) => line,
+            None => return "",
+        };
+
+        match line.spans.first() {
+            Some(span) => &span.content,
+            None => "",
+        }
     }
 
-    /// Get the placeholder style. When the placeholder text is empty, it returns `None` since the placeholder is disabled.
-    /// The default style is a dark gray text.
+    /// Get the placeholder style. The default style is a dark gray text. This method is deprecated, as it returns an [`Option`] that is always [`Some`] please use [`TextArea::placeholder`] and access it's style
     /// ```
     /// use tui_textarea::TextArea;
     ///
@@ -1911,12 +1938,9 @@ impl<'a> TextArea<'a> {
     /// textarea.set_placeholder_text("hello");
     /// assert!(textarea.placeholder_style().is_some());
     /// ```
+    #[deprecated = "please use placeholder and access it's style"]
     pub fn placeholder_style(&self) -> Option<Style> {
-        if self.placeholder.is_empty() {
-            None
-        } else {
-            Some(self.placeholder_style)
-        }
+        Some(self.placeholder.style)
     }
 
     /// Specify a character masking the text. All characters in the textarea will be replaced by this character.

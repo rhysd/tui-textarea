@@ -4,7 +4,8 @@ use crossterm::terminal::{
 };
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Layout};
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Style, Stylize};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders};
 use ratatui::Terminal;
 use std::io;
@@ -43,7 +44,11 @@ fn main() -> io::Result<()> {
 
     let mut textarea = TextArea::default();
     textarea.set_cursor_line_style(Style::default());
-    textarea.set_placeholder_text("Enter a valid float (e.g. 1.56)");
+    textarea.set_placeholder(Line::from_iter([
+        Span::raw("Enter a valid float "),
+        "(e.g. 1.56)".fg(Color::Green),
+    ]));
+
     let layout = Layout::default().constraints([Constraint::Length(3), Constraint::Min(1)]);
     let mut is_valid = validate(&mut textarea);
 

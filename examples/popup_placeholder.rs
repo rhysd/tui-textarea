@@ -4,7 +4,7 @@ use crossterm::terminal::{
 };
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Style, Styled};
 use ratatui::widgets::{Block, Borders};
 use ratatui::Terminal;
 use std::io;
@@ -34,8 +34,7 @@ fn main() -> io::Result<()> {
         y: 5,
     };
     textarea.set_style(Style::default().fg(Color::Yellow));
-    textarea.set_placeholder_style(Style::default());
-    textarea.set_placeholder_text("prompt message");
+    textarea.set_placeholder("prompt message".set_style(Style::new()));
     loop {
         term.draw(|f| {
             f.render_widget(&textarea, area);

@@ -1,11 +1,9 @@
 use crate::ratatui::buffer::Buffer;
 use crate::ratatui::layout::Rect;
-use crate::ratatui::text::{Span, Text};
+use crate::ratatui::text::Text;
 use crate::ratatui::widgets::{Paragraph, Widget};
 use crate::textarea::TextArea;
 use crate::util::num_digits;
-#[cfg(feature = "ratatui")]
-use ratatui::text::Line;
 use std::cmp;
 use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(feature = "tuirs")]
@@ -100,13 +98,7 @@ impl<'a> TextArea<'a> {
         for (i, line) in self.lines()[top_row..bottom_row].iter().enumerate() {
             lines.push(self.line_spans(line.as_str(), top_row + i, lnum_len));
         }
-        Text::from(lines)
-    }
-
-    fn placeholder_widget(&'a self) -> Text<'a> {
-        let cursor = Span::styled(" ", self.cursor_style);
-        let text = Span::raw(self.placeholder.as_str());
-        Text::from(Line::from(vec![cursor, text]))
+        Text::from(lines).style(self.style())
     }
 
     fn scroll_top_row(&self, prev_top: u16, height: u16) -> u16 {
@@ -140,18 +132,16 @@ impl Widget for &TextArea<'_> {
         let top_row = self.scroll_top_row(top_row, height);
         let top_col = self.scroll_top_col(top_col, width);
 
-        let (text, style) = if !self.placeholder.is_empty() && self.is_empty() {
-            (self.placeholder_widget(), self.placeholder_style)
+        let text = if self.is_empty() {
+            self.placeholder().clone()
         } else {
-            (self.text_widget(top_row as _, height as _), self.style())
+            self.text_widget(top_row as _, height as _)
         };
 
         // To get fine control over the text color and the surrrounding block they have to be rendered separately
         // see https://github.com/ratatui/ratatui/issues/144
         let mut text_area = area;
-        let mut inner = Paragraph::new(text)
-            .style(style)
-            .alignment(self.alignment());
+        let mut inner = Paragraph::new(text).alignment(self.alignment());
         if let Some(b) = self.block() {
             text_area = b.inner(area);
             // ratatui does not need `clone()` call because `Block` implements `WidgetRef` and `&T` implements `Widget`
