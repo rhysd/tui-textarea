@@ -1438,6 +1438,44 @@ fn test_delete_selection_before_insert() {
 }
 
 #[test]
+fn test_clear_on_empty_text() {
+    let mut t = TextArea::default();
+
+    let was_cleared = t.clear();
+    assert!(!was_cleared);
+}
+
+#[test]
+fn test_clear_text() {
+    let mut t = TextArea::default();
+    let input = "
+Hello world
+
+Again
+";
+    t.insert_str(input);
+    let was_cleared = t.clear();
+    assert!(
+        t.lines().join("\n").is_empty(),
+        "Textarea should be empty after clearing the text"
+    );
+    assert!(was_cleared);
+
+    t.undo();
+    assert_eq!(
+        t.lines().join("\n"),
+        input,
+        "Textare should have the previous content before the reset. Orginal input: {input}",
+    );
+
+    t.redo();
+    assert!(
+        t.lines().join("\n").is_empty(),
+        "Textarea should be empty after clearing the text again"
+    );
+}
+
+#[test]
 fn test_undo_redo_stop_selection() {
     fn check(t: &mut TextArea, f: fn(&mut TextArea) -> bool) {
         t.move_cursor(CursorMove::Jump(0, 0));

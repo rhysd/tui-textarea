@@ -1299,6 +1299,37 @@ impl<'a> TextArea<'a> {
         }
     }
 
+    /// Clears the whole content of the text area.
+    /// This will result in an empty text area.
+    /// The position of the cursor does matter for clearing the entire text.
+    ///
+    /// This method returns if some text was deleted or not in the textarea.
+    ///
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::from(["aaa\nbbb ccc"]);
+    ///
+    /// textarea.clear();
+    /// assert!(textarea.is_empty());
+    /// ```
+    pub fn clear(&mut self) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+
+        let all_lines = self.lines();
+        let summed_up_chars_new_lines: usize = all_lines
+            .iter()
+            .map(|line| line.chars().map(|_| 1usize).sum::<usize>())
+            .sum();
+        let all_chars = all_lines.len() + summed_up_chars_new_lines;
+        self.move_cursor(CursorMove::Jump(0, 0));
+        self.delete_str(all_chars);
+
+        true
+    }
+
     /// Paste a string previously deleted by [`TextArea::delete_line_by_head`], [`TextArea::delete_line_by_end`],
     /// [`TextArea::delete_word`], [`TextArea::delete_next_word`]. This method returns if some text was inserted or not
     /// in the textarea.
