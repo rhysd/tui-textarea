@@ -341,7 +341,7 @@ assert_eq!(textarea.into_lines(), [""]);
 
 ### Show line number
 
-By default, `TextArea` does now show line numbers. To enable, set a style for rendering line numbers by
+By default, `TextArea` does not show line numbers. To enable, set a style for rendering line numbers by
 `TextArea::set_line_number_style()`. For example, the following renders line numbers in dark gray background
 color.
 
