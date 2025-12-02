@@ -36,7 +36,7 @@ arbitrary = ["dep:arbitrary"]
 
 [dependencies]
 arbitrary = { version = "1", features = ["derive"], optional = true }
-crossterm = { package = "crossterm", version = "0.28", optional = true }
+crossterm = { package = "crossterm", version = "0.29", optional = true }
 crossterm-025 = { package = "crossterm", version = "0.25", optional = true }
 ratatui = { version = "0.29.0", default-features = false, optional = true }
 regex = { version = "1", optional = true }
