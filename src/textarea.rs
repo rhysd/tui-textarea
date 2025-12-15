@@ -1858,22 +1858,6 @@ impl<'a> TextArea<'a> {
         &self.placeholder
     }
 
-    /// Set the placeholder text. The Text is set in the textarea when no text is input. The default value is an empty Text with foreground [`Color::DarkGray`] so the placeholder is invisible by default.
-    /// ```
-    /// use tui_textarea::TextArea;
-    ///
-    /// let mut textarea = TextArea::default();
-    /// assert_eq!(textarea.placeholder().lines, Vec::new);
-    /// assert!(textarea.placeholder_style(), Style::mew);
-    ///
-    /// textarea.set_placeholder("Hello");
-    /// assert_eq!(textarea.placeholder(), "Hello");
-    /// assert!(textarea.placeholder_style().is_some());
-    /// ```
-    pub fn set_placeholder(&mut self, placeholder: impl Into<Text<'a>>) {
-        self.placeholder = placeholder.into()
-    }
-
     /// Set the style of the placeholder text. The default style is a dark gray text.
     /// ```
     /// use ratatui::style::{Style, Color};
@@ -1906,6 +1890,22 @@ impl<'a> TextArea<'a> {
     pub fn set_placeholder_text(&mut self, placeholder: impl Into<String>) {
         let placeholder: String = placeholder.into();
         self.placeholder.lines = vec![Line::raw(placeholder)];
+    }
+
+    /// Set the placeholder text. The Text is set in the textarea when no text is input. The default value is an empty Text with foreground [`Color::DarkGray`] so the placeholder is invisible by default.
+    /// ```
+    /// use tui_textarea::TextArea;
+    ///
+    /// let mut textarea = TextArea::default();
+    /// assert_eq!(textarea.placeholder().lines, Vec::new);
+    /// assert!(textarea.placeholder_style(), Style::mew);
+    ///
+    /// textarea.set_placeholder("Hello");
+    /// assert_eq!(textarea.placeholder(), "Hello");
+    /// assert!(textarea.placeholder_style().is_some());
+    /// ```
+    pub fn set_placeholder(&mut self, placeholder: impl Into<Text<'a>>) {
+        self.placeholder = placeholder.into()
     }
 
     /// Get the placeholder text. An empty string means the placeholder is disabled. The default value is an empty string.
