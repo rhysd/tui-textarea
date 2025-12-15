@@ -1,11 +1,9 @@
 use crate::ratatui::buffer::Buffer;
 use crate::ratatui::layout::Rect;
-use crate::ratatui::text::{Span, Text};
+use crate::ratatui::text::Text;
 use crate::ratatui::widgets::{Paragraph, Widget};
 use crate::textarea::TextArea;
 use crate::util::num_digits;
-#[cfg(feature = "ratatui")]
-use ratatui::text::Line;
 use std::cmp;
 use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(feature = "tuirs")]
@@ -92,23 +90,6 @@ fn next_scroll_top(prev_top: u16, cursor: u16, len: u16) -> u16 {
 }
 
 impl<'a> TextArea<'a> {
-    fn text_widget(&'a self, top_row: usize, height: usize) -> Text<'a> {
-        let lines_len = self.lines().len();
-        let lnum_len = num_digits(lines_len);
-        let bottom_row = cmp::min(top_row + height, lines_len);
-        let mut lines = Vec::with_capacity(bottom_row - top_row);
-        for (i, line) in self.lines()[top_row..bottom_row].iter().enumerate() {
-            lines.push(self.line_spans(line.as_str(), top_row + i, lnum_len));
-        }
-        Text::from(lines)
-    }
-
-    fn placeholder_widget(&'a self) -> Text<'a> {
-        let cursor = Span::styled(" ", self.cursor_style);
-        let text = Span::raw(self.placeholder.as_str());
-        Text::from(Line::from(vec![cursor, text]))
-    }
-
     fn scroll_top_row(&self, prev_top: u16, height: u16) -> u16 {
         next_scroll_top(prev_top, self.cursor().0 as u16, height)
     }
@@ -137,21 +118,26 @@ impl Widget for &TextArea<'_> {
         };
 
         let (top_row, top_col) = self.viewport.scroll_top();
-        let top_row = self.scroll_top_row(top_row, height);
-        let top_col = self.scroll_top_col(top_col, width);
+        let top_row = self.scroll_top_row(top_row, height) as usize;
+        let top_col = self.scroll_top_col(top_col, width) as usize;
 
-        let (text, style) = if !self.placeholder.is_empty() && self.is_empty() {
-            (self.placeholder_widget(), self.placeholder_style)
+        let text = if self.is_empty() {
+            self.placeholder().clone()
         } else {
-            (self.text_widget(top_row as _, height as _), self.style())
+            let lines_len = self.lines().len();
+            let lnum_len = num_digits(lines_len);
+            let bottom_row = cmp::min(top_row + height as usize, lines_len);
+            let mut lines = Vec::with_capacity(bottom_row - top_row);
+            for (i, line) in self.lines()[top_row..bottom_row].iter().enumerate() {
+                lines.push(self.line_spans(line.as_str(), top_row + i, lnum_len));
+            }
+            Text::from(lines).style(self.style())
         };
 
         // To get fine control over the text color and the surrrounding block they have to be rendered separately
         // see https://github.com/ratatui/ratatui/issues/144
         let mut text_area = area;
-        let mut inner = Paragraph::new(text)
-            .style(style)
-            .alignment(self.alignment());
+        let mut inner = Paragraph::new(text).alignment(self.alignment());
         if let Some(b) = self.block() {
             text_area = b.inner(area);
             // ratatui does not need `clone()` call because `Block` implements `WidgetRef` and `&T` implements `Widget`
@@ -161,11 +147,12 @@ impl Widget for &TextArea<'_> {
             b.render(area, buf)
         }
         if top_col != 0 {
-            inner = inner.scroll((0, top_col));
+            inner = inner.scroll((0, top_col as u16));
         }
 
         // Store scroll top position for rendering on the next tick
-        self.viewport.store(top_row, top_col, width, height);
+        self.viewport
+            .store(top_row as u16, top_col as u16, width, height);
 
         inner.render(text_area, buf);
     }
