@@ -25,11 +25,13 @@ use ratatui;
 #[cfg(feature = "tuirs")]
 use tui as ratatui;
 
-#[cfg(feature = "crossterm")]
+#[cfg(all(feature = "crossterm", not(feature = "ratatui")))]
 #[allow(clippy::single_component_path_imports)]
 use crossterm;
 #[cfg(feature = "tuirs-crossterm")]
 use crossterm_025 as crossterm;
+#[cfg(all(feature = "crossterm", feature = "ratatui"))]
+use ratatui::crossterm;
 
 #[cfg(feature = "termion")]
 #[allow(clippy::single_component_path_imports)]
