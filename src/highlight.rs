@@ -2,7 +2,7 @@ use crate::ratatui::style::Style;
 use crate::ratatui::text::Span;
 use crate::util::{num_digits, spaces};
 #[cfg(feature = "ratatui")]
-use ratatui::text::Line;
+use ratatui_core::text::Line;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::iter;

@@ -12,7 +12,7 @@ use crate::util::{spaces, Pos};
 use crate::widget::Viewport;
 use crate::word::{find_word_exclusive_end_forward, find_word_start_backward};
 #[cfg(feature = "ratatui")]
-use ratatui::text::Line;
+use ratatui_core::text::Line;
 use std::cmp::Ordering;
 use std::fmt;
 #[cfg(feature = "tuirs")]
@@ -78,8 +78,8 @@ impl fmt::Display for YankText {
 /// println!("Lines: {:?}", textarea.lines());
 /// ```
 ///
-/// It implements [`ratatui::widgets::Widget`] trait so it can be rendered to a terminal screen via
-/// [`ratatui::Frame::render_widget`] method.
+/// It implements [`ratatui_core::widgets::Widget`] trait so it can be rendered to a terminal screen via
+/// [`ratatui_core::terminal::Frame::render_widget`] method.
 /// ```no_run
 /// use ratatui::backend::CrosstermBackend;
 /// use ratatui::layout::{Constraint, Direction, Layout};
@@ -1616,7 +1616,7 @@ impl<'a> TextArea<'a> {
     }
 
     /// Build a ratatui (or tui-rs) widget to render the current state of the textarea. The widget instance returned
-    /// from this method can be rendered with [`ratatui::Frame::render_widget`].
+    /// from this method can be rendered with [`ratatui_core::terminal::Frame::render_widget`].
     ///
     /// This method was deprecated at v0.5.3 and is no longer necessary. Instead you can directly pass `&TextArea`
     /// reference to the `Frame::render_widget` method call.

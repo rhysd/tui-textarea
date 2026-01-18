@@ -21,15 +21,25 @@ mod word;
 
 #[cfg(feature = "ratatui")]
 #[allow(clippy::single_component_path_imports)]
-use ratatui;
+mod ratatui {
+    // Best effort to reproduce ratatui 0.29 module layout to keep compatibility with tui module layout
+    pub use ratatui_core::{buffer, layout, style, text};
+    pub mod widgets {
+        pub use ratatui_core::widgets::*;
+        pub use ratatui_widgets::{block::Block, paragraph::Paragraph};
+    }
+}
 #[cfg(feature = "tuirs")]
 use tui as ratatui;
 
-#[cfg(feature = "crossterm")]
+#[cfg(all(feature = "crossterm", not(feature = "crossterm_0_28")))]
 #[allow(clippy::single_component_path_imports)]
 use crossterm;
 #[cfg(feature = "tuirs-crossterm")]
 use crossterm_025 as crossterm;
+#[cfg(feature = "crossterm_0_28")]
+#[allow(clippy::single_component_path_imports)]
+use crossterm_028 as crossterm;
 
 #[cfg(feature = "termion")]
 #[allow(clippy::single_component_path_imports)]

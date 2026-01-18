@@ -4,6 +4,7 @@
 use ratatui::backend::{Backend, WindowSize};
 use ratatui::buffer::Cell;
 use ratatui::layout::{Position, Size};
+use ratatui::prelude::backend::ClearType;
 use ratatui::Terminal;
 use std::io;
 use tui_textarea::TextArea;
@@ -40,6 +41,8 @@ impl Default for DummyBackend {
 }
 
 impl Backend for DummyBackend {
+    type Error = io::Error;
+
     #[inline]
     fn draw<'a, I>(&mut self, _content: I) -> io::Result<()>
     where
@@ -71,6 +74,11 @@ impl Backend for DummyBackend {
 
     #[inline]
     fn clear(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn clear_region(&mut self, _clear_type: ClearType) -> io::Result<()> {
         Ok(())
     }
 

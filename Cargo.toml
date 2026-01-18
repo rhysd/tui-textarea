@@ -19,10 +19,11 @@ include = ["/src", "/examples", "/tests", "/README.md", "/LICENSE.txt"]
 [features]
 default = ["crossterm"]
 # Features to use ratatui
-ratatui = ["dep:ratatui"]
-crossterm = ["ratatui", "dep:crossterm", "ratatui/crossterm"]
-termion = ["ratatui", "dep:termion", "ratatui/termion"]
-termwiz = ["ratatui", "dep:termwiz", "ratatui/termwiz"]
+ratatui = ["dep:ratatui-core", "dep:ratatui-widgets"]
+crossterm = ["ratatui", "dep:crossterm"]
+crossterm_0_28 = ["ratatui", "dep:crossterm-028"]
+termion = ["ratatui", "dep:termion"]
+termwiz = ["ratatui", "dep:termwiz"]
 no-backend = ["ratatui"]
 # Features to use tui-rs
 tuirs = ["dep:tui"]
@@ -36,13 +37,15 @@ arbitrary = ["dep:arbitrary"]
 
 [dependencies]
 arbitrary = { version = "1", features = ["derive"], optional = true }
-crossterm = { package = "crossterm", version = "0.28", optional = true }
+crossterm = { package = "crossterm", version = "0.29", optional = true }
+crossterm-028 = { package = "crossterm", version = "0.28", optional = true }
 crossterm-025 = { package = "crossterm", version = "0.25", optional = true }
-ratatui = { version = "0.29.0", default-features = false, optional = true }
+ratatui-core = { version = "0.1.0", default-features = false, optional = true }
+ratatui-widgets = { version = "0.3.0", default-features = false, optional = true }
 regex = { version = "1", optional = true }
 termion = { version = "4.0", optional = true }
 termion-15 = { package = "termion", version = "1.5", optional = true }
-termwiz = { version = "0.22.0", optional = true }
+termwiz = { version = "0.23.0", optional = true }
 tui = { version = "0.19", default-features = false, optional = true }
 unicode-width = "0.2.0"
 serde = { version = "1", optional = true , features = ["derive"] }
@@ -107,6 +110,8 @@ lto = "thin"
 
 [dev-dependencies]
 serde_json = "1.0.120"
+# Ratatui with all backends enabled for tests and examples
+ratatui = {version = "0.30.0", features=["crossterm", "termion", "termwiz"]} # Used by examples
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

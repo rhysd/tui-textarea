@@ -5,7 +5,7 @@ use crate::ratatui::widgets::{Paragraph, Widget};
 use crate::textarea::TextArea;
 use crate::util::num_digits;
 #[cfg(feature = "ratatui")]
-use ratatui::text::Line;
+use ratatui_core::text::Line;
 use std::cmp;
 use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(feature = "tuirs")]

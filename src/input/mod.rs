@@ -1,4 +1,8 @@
-#[cfg(any(feature = "crossterm", feature = "tuirs-crossterm"))]
+#[cfg(any(
+    feature = "crossterm",
+    feature = "crossterm_0_28",
+    feature = "tuirs-crossterm"
+))]
 mod crossterm;
 #[cfg(any(feature = "termion", feature = "tuirs-termion"))]
 mod termion;

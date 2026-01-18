@@ -61,7 +61,7 @@ impl EditKind {
                 // Remove middle lines of chunk
                 let mut last_line = lines
                     .drain(after.row + 1..after.row + c.len())
-                    .last()
+                    .next_back()
                     .unwrap();
                 // Remove last line of chunk
                 last_line.drain(..c[c.len() - 1].len());
