@@ -336,7 +336,7 @@ impl<'a> TextArea<'a> {
                 ..
             } => self.delete_line_by_end(),
             Input {
-                key: Key::Char('j'),
+                key: Key::Char('u'),
                 ctrl: true,
                 alt: false,
                 ..
@@ -574,7 +574,7 @@ impl<'a> TextArea<'a> {
                 false
             }
             Input {
-                key: Key::Char('u'),
+                key: Key::Char('/'),
                 ctrl: true,
                 alt: false,
                 ..
