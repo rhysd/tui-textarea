@@ -927,15 +927,19 @@ fn test_delete_str_multiple_lines() {
         let mut t = TextArea::from(before.iter().map(|s| s.to_string()));
         t.move_cursor(CursorMove::Jump(row as _, col as _));
 
-        assert!(t.delete_str(chars), "{test:?}");
+        let modified = before != after;
+        assert_eq!(t.delete_str(chars), modified, "{test:?}");
         assert_eq!(t.cursor(), (row, col), "{test:?}");
         assert_eq!(t.lines(), after, "{test:?}");
         assert_eq!(t.yank_text(), deleted, "{test:?}");
 
         let pos = t.cursor();
-        assert!(t.undo(), "{test:?}");
+        assert_eq!(t.undo(), modified, "{test:?}");
+        let (undo_row, undo_col) = t.cursor();
+        assert!(undo_row < t.lines().len(), "{test:?}");
+        assert!(undo_col <= t.lines()[undo_row].chars().count(), "{test:?}");
         assert_eq!(t.lines(), before, "{test:?}");
-        assert!(t.redo(), "{test:?}");
+        assert_eq!(t.redo(), modified, "{test:?}");
         assert_eq!(t.lines(), after, "{test:?}");
         assert_eq!(t.cursor(), pos, "{test:?}");
     }

@@ -983,6 +983,21 @@ impl<'a> TextArea<'a> {
             r += 1;
         }
 
+        // A count beyond the buffer must end at its real last character.
+        // Recording the one-past-the-last row would restore an invalid cursor on undo.
+        if r == self.lines.len() {
+            r = self.lines.len().saturating_sub(1);
+            if let Some(line) = self.lines.get(r) {
+                offset = line.len();
+                col = line.chars().count();
+            } else {
+                return false;
+            }
+        }
+        if (start_row, start_col) == (r, col) {
+            return false;
+        }
+
         let start = Pos::new(start_row, start_col, start_offset);
         let end = Pos::new(r, col, offset);
         self.delete_range(start, end, true);
